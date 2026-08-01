@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "everything",
+  "name": "kutno",
   "main": "worker/index.js",
   "compatibility_date": "2026-08-01",
   "assets": {
