@@ -1288,6 +1288,11 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    if (url.hostname === "www.kutno.ru") {
+      url.hostname = "kutno.ru";
+      return Response.redirect(url.toString(), 308);
+    }
+
     if (url.pathname === "/api/config" && request.method === "GET") {
       return json({ googleClientId: env.GOOGLE_CLIENT_ID });
     }
