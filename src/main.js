@@ -765,6 +765,9 @@ function renderFavorites() {
         <span>Сохранено / ${favoriteRecipes.length.toString().padStart(2, "0")}</span>
         <h2 id="favorites-title">Избранное</h2>
         <p>${authUser ? "Рецепты сохранены в вашем аккаунте." : "Рецепты сохранены на этом устройстве. Войдите, чтобы синхронизировать их."}</p>
+        <figure class="section-illustration favorites-list-illustration" aria-hidden="true">
+          <img src="/illustrations/favorites-hero.webp" alt="">
+        </figure>
       </div>
       <div class="recipe-list">
         ${favoriteRecipes.map((recipe, index) => renderRecipeCard(recipe, index, "favorites")).join("")}
@@ -878,7 +881,17 @@ function renderSwipeView() {
 
 function renderFavoritesView() {
   if (favoriteRecipes.length) return renderFavorites();
-  return `<section class="favorites-empty"><p class="eyebrow">Личная коллекция</p><h1>Пока<br>пусто</h1><p>Смахните рецепт вправо в разделе «АМ ❤️» или нажмите сердечко в базе.</p><button data-view="swipe">Открыть АМ ❤️ <span>→</span></button></section>`;
+  return `<section class="favorites-empty">
+    <div class="favorites-copy">
+      <p class="eyebrow">Личная коллекция</p>
+      <h1>Пока<br>пусто</h1>
+      <p>Смахните рецепт вправо в разделе «АМ ❤️» или нажмите сердечко в базе.</p>
+      <button data-view="swipe">Открыть АМ ❤️ <span>→</span></button>
+    </div>
+    <figure class="section-illustration favorites-illustration" aria-hidden="true">
+      <img src="/illustrations/favorites-hero.webp" alt="">
+    </figure>
+  </section>`;
 }
 
 function resetSwipeDeck() {

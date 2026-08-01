@@ -615,9 +615,14 @@ legend { margin-bottom: 12px; }
 .swipe-finished p { color: var(--soft); }
 .swipe-finished button { border: 0; background: var(--ink); color: white; padding: 14px 18px; margin-top: 20px; cursor: pointer; }
 
-.favorites-empty { min-height: calc(100dvh - 108px); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 70px 0 100px; }
-.favorites-empty > p:last-of-type { max-width: 430px; margin: 35px 0 0; color: var(--soft); line-height: 1.6; }
-.favorites-empty button { display: flex; justify-content: space-between; gap: 60px; min-width: 280px; border: 0; background: var(--ink); color: white; padding: 16px 18px; margin-top: 28px; text-transform: uppercase; font-size: 10px; letter-spacing: .08em; cursor: pointer; }
+.favorites-empty { min-height: calc(100dvh - 108px); display: grid; grid-template-columns: minmax(300px, .8fr) minmax(420px, 1.2fr); gap: 6vw; align-items: center; padding: 70px 0 100px; }
+.favorites-copy { display: flex; flex-direction: column; align-items: flex-start; }
+.favorites-copy > p:last-of-type { max-width: 430px; margin: 35px 0 0; color: var(--soft); line-height: 1.6; }
+.favorites-copy button { display: flex; justify-content: space-between; gap: 60px; min-width: 280px; border: 0; background: var(--ink); color: white; padding: 16px 18px; margin-top: 28px; text-transform: uppercase; font-size: 10px; letter-spacing: .08em; cursor: pointer; }
+.favorites-illustration { width: 100%; justify-self: center; }
+.favorites-illustration img { max-height: 520px; object-fit: contain; }
+.favorites-list-illustration { width: min(100%, 300px); margin-top: 38px; }
+.favorites-list-illustration img { max-height: 245px; object-fit: contain; object-position: left center; }
 
 footer { display: flex; justify-content: space-between; border-top: 1px solid var(--ink); padding: 24px 0 50px; font-size: 11px; }
 footer span:first-child { font-family: "Prata", Georgia, serif; font-size: 18px; }
@@ -637,6 +642,9 @@ footer span:first-child { font-family: "Prata", Georgia, serif; font-size: 18px;
   .swipe-heading > p:last-of-type { grid-column: 1; margin: 0; }
   .swipe-illustration { grid-column: 2; grid-row: 2 / 4; width: 100%; margin: 0; padding: 0; }
   .swipe-stage, .swipe-controls { grid-column: 1; }
+  .favorites-empty { grid-template-columns: 1fr; gap: 38px; }
+  .favorites-illustration { width: min(100%, 620px); }
+  .favorites-illustration img { max-height: 390px; }
 }
 
 @media (max-width: 700px) {
@@ -725,7 +733,10 @@ footer span:first-child { font-family: "Prata", Georgia, serif; font-size: 18px;
   .swipe-controls button { min-height: 54px; padding: 12px 8px; font-size: 9px; }
   .swipe-finished { padding: 28px 22px; }
   .swipe-finished h2 { font-size: 42px; }
-  .favorites-empty { min-height: calc(100dvh - 126px); }
+  .favorites-empty { min-height: calc(100dvh - 126px); gap: 32px; padding: 44px 0 75px; }
+  .favorites-illustration img { max-height: 300px; }
+  .favorites-list-illustration { width: min(100%, 260px); margin-top: 26px; }
+  .favorites-list-illustration img { max-height: 210px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
