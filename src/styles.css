@@ -48,12 +48,16 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 }
 
 .wordmark {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
   color: var(--ink);
-  text-decoration: none;
   font-family: "Prata", Georgia, serif;
   font-size: 34px;
   letter-spacing: -2px;
   justify-self: start;
+  cursor: pointer;
 }
 
 .header-note {
@@ -63,6 +67,22 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
   text-transform: uppercase;
   letter-spacing: .11em;
 }
+.header-nav { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.header-nav button {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 8px 11px;
+  color: var(--soft);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.header-nav button:hover { color: var(--ink); }
+.header-nav button.active { background: var(--ink); color: var(--paper); }
 
 .text-button {
   appearance: none;
@@ -489,6 +509,90 @@ legend { margin-bottom: 12px; }
 .account-card h2 { font-size: 60px; }
 .account-summary { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 18px 0; margin: 30px 0; color: var(--soft); font-size: 12px; line-height: 1.7; }
 
+.archive-page, .swipe-page { min-height: calc(100dvh - 108px); padding: 68px 0 110px; }
+.archive-heading, .swipe-page { width: 100%; }
+.archive-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr);
+  gap: 8vw;
+  align-items: end;
+  padding-bottom: 58px;
+}
+.archive-heading h1, .swipe-heading h1, .favorites-empty h1 {
+  margin: 0;
+  font-family: "Prata", Georgia, serif;
+  font-size: clamp(70px, 8.5vw, 138px);
+  font-weight: 400;
+  line-height: .88;
+  letter-spacing: -.06em;
+}
+.archive-heading > p, .swipe-heading > p:last-child { max-width: 390px; margin: 0 0 8px; color: var(--soft); font-size: 13px; line-height: 1.65; }
+.archive-retry { border: 0; background: var(--ink); color: white; padding: 14px 18px; cursor: pointer; }
+.catalog-tools { display: grid; grid-template-columns: minmax(260px, .8fr) 1fr; column-gap: 48px; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); padding: 20px 0; }
+.catalog-search { display: grid; gap: 12px; grid-row: span 2; align-content: start; }
+.catalog-search > span, .catalog-filter > span { color: var(--soft); font-size: 9px; text-transform: uppercase; letter-spacing: .11em; }
+.catalog-search input { width: 100%; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 10px 0 13px; font-family: "Prata", Georgia, serif; font-size: 24px; }
+.catalog-search input:focus { outline: 0; border-color: var(--ink); }
+.catalog-filter { display: grid; grid-template-columns: 90px 1fr; gap: 12px; align-items: start; }
+.catalog-filter + .catalog-filter { margin-top: 14px; }
+.catalog-filter > span { padding-top: 8px; }
+.catalog-filter > div { display: flex; flex-wrap: wrap; gap: 5px; }
+.catalog-filter button { border: 1px solid var(--line); border-radius: 999px; background: transparent; padding: 6px 10px; font-size: 10px; cursor: pointer; }
+.catalog-filter button.active { border-color: var(--ink); background: var(--ink); color: white; }
+.catalog-count { padding: 20px 0 14px; color: var(--soft); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+.catalog-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--ink); border-left: 1px solid var(--ink); }
+.catalog-card { position: relative; min-width: 0; min-height: 440px; display: flex; flex-direction: column; padding: 22px 22px 20px; border-right: 1px solid var(--ink); border-bottom: 1px solid var(--ink); }
+.catalog-card-index { color: var(--soft); font-size: 10px; }
+.catalog-card-topline { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 34px; font-size: 10px; text-transform: uppercase; letter-spacing: .09em; }
+.catalog-card h3 { margin: 18px 0 14px; font-family: "Prata", Georgia, serif; font-size: clamp(30px, 3vw, 48px); font-weight: 400; line-height: 1.02; letter-spacing: -.045em; overflow-wrap: anywhere; }
+.catalog-card h3 button { width: 100%; border: 0; background: transparent; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.catalog-card h3 button:hover { color: var(--accent); }
+.catalog-card > p { margin: 0; color: var(--soft); font-size: 12px; line-height: 1.5; }
+.catalog-card-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; font-size: 9px; text-transform: uppercase; letter-spacing: .05em; }
+.catalog-card .catalog-ingredients { margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 10px; }
+.catalog-open { display: flex; justify-content: space-between; border: 0; border-top: 1px solid var(--ink); background: transparent; padding: 11px 0 0; margin-top: auto; font-size: 10px; text-transform: uppercase; letter-spacing: .07em; cursor: pointer; }
+.catalog-empty { grid-column: 1 / -1; padding: 50px 24px; color: var(--soft); }
+
+.swipe-page { display: grid; grid-template-columns: minmax(270px, .72fr) minmax(420px, 1.28fr); grid-template-rows: 1fr auto; gap: 28px 7vw; align-items: center; }
+.swipe-heading { align-self: start; padding-top: 4px; }
+.swipe-heading h1 { font-size: clamp(68px, 7.5vw, 118px); }
+.swipe-heading > p:last-child { margin-top: 34px; }
+.swipe-stage { position: relative; width: min(100%, 620px); height: min(650px, calc(100dvh - 235px)); min-height: 500px; justify-self: center; perspective: 1200px; }
+.swipe-card { --swipe-progress: 0; position: absolute; inset: 0; display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid var(--ink); background: var(--paper); padding: 28px 32px 30px; box-shadow: 0 24px 70px rgba(20, 20, 18, .1); touch-action: pan-y; user-select: none; }
+.swipe-card.front { z-index: 2; transition: transform .25s ease, opacity .25s ease; cursor: grab; }
+.swipe-card.front:active { cursor: grabbing; transition: none; }
+.swipe-card.behind { z-index: 1; transform: translateY(13px) scale(.965) rotate(1.2deg); background: #f2f1eb; }
+.swipe-card.fly-right { transform: translateX(130%) rotate(13deg) !important; opacity: 0; }
+.swipe-card.fly-left { transform: translateX(-130%) rotate(-13deg) !important; opacity: 0; }
+.swipe-card-counter { font-size: 10px; color: var(--soft); }
+.swipe-cuisine { margin: 42px 0 18px; color: var(--accent); font-size: 10px; text-transform: uppercase; letter-spacing: .12em; }
+.swipe-card h2 { margin: 0; font-family: "Prata", Georgia, serif; font-size: clamp(48px, 5.2vw, 82px); font-weight: 400; line-height: .94; letter-spacing: -.055em; }
+.swipe-card h2 button { width: 100%; border: 0; background: transparent; padding: 0; color: inherit; font: inherit; line-height: inherit; letter-spacing: inherit; text-align: left; cursor: pointer; }
+.swipe-card h2 button:hover { color: var(--accent); }
+.swipe-subtitle { margin: 22px 0 0; color: var(--soft); font-size: 14px; line-height: 1.5; }
+.swipe-meta { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 28px; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.swipe-ingredients { margin-top: auto; padding-top: 24px; border-top: 1px solid var(--ink); }
+.swipe-ingredients span { color: var(--soft); font-size: 9px; text-transform: uppercase; letter-spacing: .1em; }
+.swipe-ingredients p { margin: 11px 0 0; font-family: "Prata", Georgia, serif; font-size: 18px; line-height: 1.45; }
+.swipe-saved { position: absolute; right: 24px; top: 24px; color: var(--accent); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.swipe-stamp { position: absolute; z-index: 4; top: 35px; border: 2px solid currentColor; padding: 8px 11px; opacity: 0; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; pointer-events: none; }
+.swipe-stamp-no { right: 28px; color: var(--accent); transform: rotate(7deg); }
+.swipe-stamp-yes { left: 28px; color: #497736; transform: rotate(-7deg); }
+.swipe-card[data-swipe-direction="left"] .swipe-stamp-no, .swipe-card[data-swipe-direction="right"] .swipe-stamp-yes { opacity: var(--swipe-progress); }
+.swipe-controls { grid-column: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(100%, 620px); justify-self: center; }
+.swipe-controls button { min-height: 56px; border: 1px solid var(--ink); background: transparent; padding: 14px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; cursor: pointer; }
+.swipe-controls .swipe-yes { background: var(--ink); color: white; }
+.swipe-controls button span { font-size: 17px; margin: 0 8px; }
+.swipe-finished { position: absolute; inset: 0; display: grid; align-content: center; justify-items: start; border: 1px solid var(--ink); padding: 38px; }
+.swipe-finished > span { color: var(--soft); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+.swipe-finished h2 { margin: 22px 0 14px; font-family: "Prata", Georgia, serif; font-size: 54px; font-weight: 400; line-height: 1; }
+.swipe-finished p { color: var(--soft); }
+.swipe-finished button { border: 0; background: var(--ink); color: white; padding: 14px 18px; margin-top: 20px; cursor: pointer; }
+
+.favorites-empty { min-height: calc(100dvh - 108px); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 70px 0 100px; }
+.favorites-empty > p:last-of-type { max-width: 430px; margin: 35px 0 0; color: var(--soft); line-height: 1.6; }
+.favorites-empty button { display: flex; justify-content: space-between; gap: 60px; min-width: 280px; border: 0; background: var(--ink); color: white; padding: 16px 18px; margin-top: 28px; text-transform: uppercase; font-size: 10px; letter-spacing: .08em; cursor: pointer; }
+
 footer { display: flex; justify-content: space-between; border-top: 1px solid var(--ink); padding: 24px 0 50px; font-size: 11px; }
 footer span:first-child { font-family: "Prata", Georgia, serif; font-size: 18px; }
 
@@ -500,12 +604,20 @@ footer span:first-child { font-family: "Prata", Georgia, serif; font-size: 18px;
   .results-heading h2 br { display: none; }
   .recipe-overlay { grid-template-columns: 35px 1fr; }
   .sheet-grid { gap: 45px; }
+  .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .swipe-page { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+  .swipe-heading { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: end; }
+  .swipe-heading .eyebrow { grid-column: 1 / -1; }
+  .swipe-heading > p:last-child { margin: 0; }
+  .swipe-stage, .swipe-controls { grid-column: 1; }
 }
 
 @media (max-width: 700px) {
   .page-shell { width: 100%; padding: 0 16px; }
   .site-header { min-height: 80px; grid-template-columns: 1fr auto; }
-  .header-note { display: none; }
+  .header-nav { grid-column: 1 / -1; grid-row: 2; width: calc(100% + 32px); margin-left: -16px; justify-content: flex-start; overflow-x: auto; padding: 9px 16px 11px; border-top: 1px solid var(--line); scrollbar-width: none; }
+  .header-nav::-webkit-scrollbar { display: none; }
+  .header-nav button { flex: 0 0 auto; }
   .wordmark { font-size: 28px; }
   .header-actions { gap: 0; }
   .header-clear { display: none; }
@@ -557,6 +669,28 @@ footer span:first-child { font-family: "Prata", Georgia, serif; font-size: 18px;
   .auth-card { width: 100%; max-height: calc(100dvh - 20px); padding: 28px 22px 26px; }
   .auth-card .eyebrow { margin-bottom: 32px; }
   .auth-card h2, .account-card h2 { font-size: 43px; }
+  .archive-page, .swipe-page { min-height: calc(100dvh - 126px); padding: 44px 0 75px; }
+  .archive-heading { grid-template-columns: 1fr; gap: 30px; padding-bottom: 42px; }
+  .archive-heading h1, .swipe-heading h1, .favorites-empty h1 { font-size: clamp(55px, 18vw, 76px); }
+  .catalog-tools { grid-template-columns: 1fr; gap: 25px; }
+  .catalog-search { grid-row: auto; }
+  .catalog-filter { grid-template-columns: 70px 1fr; }
+  .catalog-grid { grid-template-columns: 1fr; }
+  .catalog-card { min-height: 390px; padding: 19px 18px; }
+  .catalog-card h3 { font-size: 38px; }
+  .swipe-heading { display: block; }
+  .swipe-heading > p:last-child { margin-top: 25px; }
+  .swipe-stage { width: 100%; height: min(590px, calc(100dvh - 285px)); min-height: 460px; }
+  .swipe-card { padding: 22px 20px 24px; }
+  .swipe-cuisine { margin-top: 38px; }
+  .swipe-card h2 { font-size: clamp(43px, 12vw, 57px); overflow-wrap: anywhere; }
+  .swipe-subtitle { font-size: 13px; }
+  .swipe-ingredients p { font-size: 16px; }
+  .swipe-controls { gap: 7px; }
+  .swipe-controls button { min-height: 54px; padding: 12px 8px; font-size: 9px; }
+  .swipe-finished { padding: 28px 22px; }
+  .swipe-finished h2 { font-size: 42px; }
+  .favorites-empty { min-height: calc(100dvh - 126px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
