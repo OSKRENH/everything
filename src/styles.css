@@ -296,7 +296,12 @@ legend { margin-bottom: 12px; }
 }
 .primary-action:hover:not(:disabled) { background: var(--accent); }
 .primary-action:disabled { background: #d8d6ce; color: #83827c; cursor: not-allowed; }
-.action-arrow { font-size: 20px; }
+.action-arrow {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+}
 .pot-loader {
   position: relative;
   display: inline-block;

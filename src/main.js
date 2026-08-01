@@ -678,7 +678,7 @@ function renderKitchenView() {
 
         <button class="primary-action" data-action="generate" ${!state.ingredients.length || isLoading ? "disabled" : ""}>
           <span>${isLoading ? "Составляем меню" : "Предложить блюда"}</span>
-          ${isLoading ? renderPotLoader("pot-loader-small") : `<span class="action-arrow" aria-hidden="true">↘</span>`}
+          ${isLoading ? renderPotLoader("pot-loader-small") : `<span class="action-arrow" aria-hidden="true">↘︎</span>`}
         </button>
         ${!state.ingredients.length ? `<p class="action-note">Добавьте хотя бы один продукт</p>` : ""}
         <p class="save-status">${authUser ? `Кухня сохранена в аккаунте ${escapeHtml(authUser.email)}` : `Кухня сохранена на этом устройстве. <button data-action="account">Войдите</button>, чтобы открыть её на другом.`}</p>
