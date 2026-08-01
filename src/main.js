@@ -29,8 +29,7 @@ const equipmentOptions = [
 const defaults = {
   ingredients: [],
   equipment: ["pan", "pot"],
-  minutes: "30",
-  difficulty: "просто",
+  difficulty: "легко",
   portions: 2,
 };
 
@@ -172,7 +171,9 @@ const fallbackRecipes = [
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return { ...defaults, ...saved };
+    const next = { ...defaults, ...saved };
+    if (!["легко", "обычно", "сложно"].includes(next.difficulty)) next.difficulty = defaults.difficulty;
+    return next;
   } catch {
     return { ...defaults };
   }
@@ -203,11 +204,20 @@ let googleConfigPromise = null;
 let googleConfigured = false;
 let ingredientSuggestions = [];
 let activeSuggestionIndex = -1;
+let recentRecipeTitles = [];
+let recentSourceIds = [];
 
 const app = document.querySelector("#app");
 
 function normalize(value) {
   return value.trim().toLowerCase().replace(/ё/g, "е");
+}
+
+function difficultyValue(value) {
+  const normalized = normalize(String(value || ""));
+  if (/слож|труд/.test(normalized)) return "сложно";
+  if (/обыч|сред/.test(normalized)) return "обычно";
+  return "легко";
 }
 
 function recipeId(recipe) {
@@ -246,7 +256,7 @@ function kitchenPayload() {
   return {
     ingredients: state.ingredients,
     equipment: state.equipment,
-    minutes: state.minutes,
+    difficulty: state.difficulty,
     portions: state.portions,
   };
 }
@@ -273,7 +283,7 @@ function applyRemoteKitchen(kitchen) {
     ...state,
     ingredients: kitchen.ingredients.map(normalize).filter(Boolean),
     equipment: Array.isArray(kitchen.equipment) ? kitchen.equipment : state.equipment,
-    minutes: String(kitchen.minutes || state.minutes),
+    difficulty: ["легко", "обычно", "сложно"].includes(kitchen.difficulty) ? kitchen.difficulty : state.difficulty,
     portions: Number(kitchen.portions) || state.portions,
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -595,9 +605,9 @@ function render() {
               <div class="section-index">03</div>
               <div class="section-content preference-columns">
                 <fieldset>
-                  <legend>Время</legend>
+                  <legend>Сложность</legend>
                   <div class="segmented">
-                    ${["15", "30", "60"].map((value) => `<button type="button" class="${state.minutes === value ? "active" : ""}" data-minutes="${value}">${value} мин</button>`).join("")}
+                    ${["легко", "обычно", "сложно"].map((value) => `<button type="button" class="${state.difficulty === value ? "active" : ""}" data-difficulty="${value}">${value}</button>`).join("")}
                   </div>
                 </fieldset>
                 <fieldset>
@@ -703,7 +713,7 @@ function renderRecipeCard(recipe, index, source = "recipes") {
         <h3><button class="recipe-title-button" data-open-recipe="${index}" data-recipe-source="${source}">${escapeHtml(recipe.title)}</button></h3>
         <p class="recipe-subtitle">${escapeHtml(recipe.subtitle || recipe.why)}</p>
         <div class="recipe-meta">
-          <span>${Number(recipe.minutes) || state.minutes} мин</span>
+          <span>${Number(recipe.minutes) || 30} мин</span>
           <span>${escapeHtml(recipe.difficulty || "просто")}</span>
           ${calories ? `<span>≈ ${calories} ккал</span>` : ""}
           <span>Без покупок</span>
@@ -711,7 +721,7 @@ function renderRecipeCard(recipe, index, source = "recipes") {
       </div>
       <div class="recipe-side">
         <p>${escapeHtml(recipe.why)}</p>
-        ${uses.length ? `<p class="uses-line">Используем: ${uses.slice(0, 5).map(escapeHtml).join(", ")}</p>` : ""}
+        ${uses.length ? `<p class="uses-line">Используем: ${uses.map(escapeHtml).join(", ")}</p>` : ""}
         <button class="open-recipe" data-open-recipe="${index}" data-recipe-source="${source}">Открыть рецепт <span aria-hidden="true">→</span></button>
       </div>
     </article>`;
@@ -816,6 +826,9 @@ function addIngredients(values) {
     .map(normalize)
     .filter(Boolean);
   state.ingredients = [...new Set([...state.ingredients, ...next])];
+  recentRecipeTitles = [];
+  recentSourceIds = [];
+  recipes = [];
   saveState();
   render();
 }
@@ -856,12 +869,16 @@ function getFallbackSuggestions() {
   });
   return scored
     .filter((item) => item.missing.length === 0 && item.ingredients.every((ingredient) => ingredientIsAvailable(ingredient.name)))
-    .sort((a, b) => b.match - a.match || a.minutes - b.minutes)
+    .sort((a, b) => Number(difficultyValue(a.difficulty) === state.difficulty) * -1
+      - Number(difficultyValue(b.difficulty) === state.difficulty) * -1
+      || b.match - a.match || a.minutes - b.minutes)
     .slice(0, 3);
 }
 
 async function generateRecipes() {
   if (!state.ingredients.length || isLoading) return;
+  const excludeTitles = [...new Set([...recentRecipeTitles, ...recipes.map((recipe) => recipe.title).filter(Boolean)])].slice(-12);
+  const excludeSourceIds = [...new Set([...recentSourceIds, ...recipes.map((recipe) => Number(recipe.source?.id)).filter(Number.isFinite)])].slice(-20);
   isLoading = true;
   recipes = [];
   generationError = "";
@@ -874,8 +891,11 @@ async function generateRecipes() {
       body: JSON.stringify({
         ingredients: state.ingredients,
         equipment: state.equipment.map(equipmentName),
-        minutes: Number(state.minutes),
+        difficulty: state.difficulty,
         portions: state.portions,
+        excludeTitles,
+        excludeSourceIds,
+        variation: Date.now() % 1000000,
       }),
     });
     if (!response.ok) {
@@ -885,6 +905,8 @@ async function generateRecipes() {
     const data = await response.json();
     if (!Array.isArray(data.recipes) || !data.recipes.length) throw new Error("Не найдено подходящих вариантов");
     recipes = data.recipes.slice(0, 3);
+    recentRecipeTitles = [...new Set([...excludeTitles, ...recipes.map((recipe) => recipe.title).filter(Boolean)])].slice(-12);
+    recentSourceIds = [...new Set([...excludeSourceIds, ...recipes.map((recipe) => Number(recipe.source?.id)).filter(Number.isFinite)])].slice(-20);
   } catch (error) {
     const safeFallbacks = getFallbackSuggestions();
     recipes = safeFallbacks;
@@ -985,6 +1007,8 @@ app.addEventListener("click", (event) => {
   if (target.dataset.addIngredient) addIngredients([target.dataset.addIngredient]);
   if (target.dataset.removeIngredient) {
     state.ingredients = state.ingredients.filter((item) => item !== target.dataset.removeIngredient);
+    recentRecipeTitles = [];
+    recentSourceIds = [];
     saveState();
     recipes = [];
     generationError = "";
@@ -996,8 +1020,8 @@ app.addEventListener("click", (event) => {
     saveState();
     render();
   }
-  if (target.dataset.minutes) {
-    state.minutes = target.dataset.minutes;
+  if (target.dataset.difficulty) {
+    state.difficulty = target.dataset.difficulty;
     saveState();
     render();
   }
@@ -1010,6 +1034,8 @@ app.addEventListener("click", (event) => {
   if (target.dataset.action === "clear-all") {
     state = { ...defaults, equipment: [...defaults.equipment] };
     recipes = [];
+    recentRecipeTitles = [];
+    recentSourceIds = [];
     generationError = "";
     saveState();
     render();
