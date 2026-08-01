@@ -161,6 +161,47 @@ h1 { font-size: clamp(70px, 7.1vw, 124px); line-height: .91; }
   letter-spacing: .08em;
   cursor: pointer;
 }
+.ingredient-suggestions {
+  border-bottom: 1px solid var(--ink);
+  max-height: 284px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.ingredient-suggestions[hidden] { display: none; }
+.ingredient-suggestion {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  padding: 11px 0;
+  text-align: left;
+  cursor: pointer;
+  transition: background .14s ease, padding .14s ease;
+}
+.ingredient-suggestion:first-child { border-top: 0; }
+.ingredient-suggestion span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: "Prata", Georgia, serif;
+  font-size: 20px;
+  letter-spacing: -.025em;
+}
+.ingredient-suggestion span:last-child {
+  color: var(--soft);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+}
+.ingredient-suggestion:hover,
+.ingredient-suggestion.active {
+  background: var(--acid);
+  padding-right: 10px;
+  padding-left: 10px;
+}
 .microcopy { margin: 9px 0 18px; color: var(--soft); font-size: 11px; }
 .selected-ingredients, .quick-row { display: flex; flex-wrap: wrap; gap: 7px; }
 .selected-ingredients { min-height: 34px; margin-bottom: 13px; }
@@ -371,6 +412,9 @@ footer span:first-child { font-family: "Prata", Georgia, serif; font-size: 18px;
   .ingredient-form { grid-template-columns: minmax(0, 1fr) auto; }
   .ingredient-form input { min-width: 0; padding-right: 8px; font-size: 23px; }
   .ingredient-form button { padding-left: 8px; font-size: 10px; }
+  .ingredient-suggestions { max-height: 222px; }
+  .ingredient-suggestion { padding-top: 10px; padding-bottom: 10px; }
+  .ingredient-suggestion span:first-child { font-size: 18px; }
   .microcopy { line-height: 1.45; }
   .equipment-grid { grid-template-columns: repeat(2, 1fr); }
   .equipment-option:nth-child(3n+2), .equipment-option:nth-child(3n+3) { border-left: 0; padding-left: 4px; }
