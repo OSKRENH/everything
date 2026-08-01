@@ -459,6 +459,7 @@ legend { margin-bottom: 12px; }
 .cook-note span { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--accent); }
 .cook-note p { font-size: 12px; line-height: 1.55; }
 .recipe-source-note { margin: 42px 0 0; padding-top: 16px; border-top: 1px solid var(--line); color: var(--soft); font-size: 10px; line-height: 1.5; }
+.recipe-source-note a { color: var(--ink); text-underline-offset: 3px; }
 
 .auth-overlay { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 20px; }
 .auth-card {
