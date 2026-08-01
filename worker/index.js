@@ -43,6 +43,26 @@ const recipeSchema = {
   required: ["recipes"],
 };
 
+function recipeSchemaFor(ingredients) {
+  const schema = structuredClone(recipeSchema);
+  const recipe = schema.properties.recipes.items;
+  const allowedIngredients = [...new Set([...ingredients, "соль", "вода", "растительное масло"])];
+  recipe.properties.ingredients.items.properties.name = {
+    type: "string",
+    enum: allowedIngredients,
+  };
+  recipe.properties.uses.items = {
+    type: "string",
+    enum: ingredients,
+  };
+  recipe.properties.missing = {
+    type: "array",
+    maxItems: 0,
+    items: { type: "string" },
+  };
+  return schema;
+}
+
 function json(data, status = 200, extraHeaders = {}) {
   return Response.json(data, {
     status,
@@ -360,7 +380,7 @@ async function generateRecipes(request, env) {
         { role: "system", content: system },
         { role: "user", content: user },
       ],
-      guided_json: recipeSchema,
+      guided_json: recipeSchemaFor(ingredients),
       max_tokens: 2200,
       temperature: 0.25,
     });
