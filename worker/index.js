@@ -822,7 +822,9 @@ function catalogRecipeForPortions(recipe, ownedIngredients, portions) {
       const itemSignature = normalizedSignature(item.name);
       const glossaryEntry = Object.entries(INGREDIENT_GLOSSARY).find(([name]) => {
         const glossarySignature = normalizedSignature(name);
-        return itemSignature === glossarySignature || itemSignature.includes(glossarySignature) || glossarySignature.includes(itemSignature);
+        return itemSignature === glossarySignature
+          || itemSignature.includes(glossarySignature)
+          || (itemSignature.length >= 8 && glossarySignature.includes(itemSignature));
       })?.[1];
       return {
         name: item.name,
