@@ -7,7 +7,7 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <span className="navbar-brand">Что приготовить</span>
+      <span className="navbar-brand">Кутно</span>
       <div className="navbar-links">
         <Link to="/inventory">Инвентарь</Link>
         <Link to="/recipes">Рецепты</Link>
