@@ -148,6 +148,9 @@ function ingredientIsOwned(value = "", ownedIngredients = []) {
 
 function fallbackAmount(name = "", portions = 2) {
   const value = name.toLowerCase().replace(/ё/g, "е");
+  if (value.includes("вод")) return `${portions * 250} мл`;
+  if (value.includes("масл")) return `${Math.max(1, portions)} ст. л.`;
+  if (value.includes("сол")) return "по вкусу";
   if (value.includes("соус")) return `${Math.max(1, portions)} ст. л.`;
   if (value.includes("яйц")) return `${Math.max(2, portions)} шт.`;
   if (value.includes("лук") || value.includes("помидор") || value.includes("картоф")) return `${Math.max(1, Math.ceil(portions / 2))} шт.`;
@@ -184,12 +187,15 @@ function normalizeRecipes(recipes, portions, ownedIngredients, requestedDifficul
       const recipeText = [recipe.title, recipe.subtitle, ...steps].filter(Boolean).join(" ");
       const mentionedOwned = ownedIngredients.filter((owned) => ingredientMentioned(recipeText, owned));
       const ingredients = Array.isArray(recipe.ingredients)
-        ? recipe.ingredients.map((item) => ({
-            name: String(item?.name || "").trim(),
-            amount: !item?.amount || /^(unit|units|штука)$/i.test(String(item.amount).trim())
-              ? fallbackAmount(item?.name, portions)
-              : String(item.amount).trim(),
-          }))
+        ? recipe.ingredients.map((item) => {
+            const name = String(item?.name || "").trim();
+            const amount = String(item?.amount || "").trim();
+            const invalidAmount = !amount
+              || /^(?:unit|units|штука|растительное масло)$/i.test(amount)
+              || /[\u3400-\u9fff]/u.test(amount)
+              || /^\d+(?:[.,]\d+)?$/u.test(amount);
+            return { name, amount: invalidAmount ? fallbackAmount(name, portions) : amount };
+          })
         : [];
       for (const owned of mentionedOwned) {
         if (!ingredients.some((item) => ingredientIsOwned(item.name, [owned]) && !isPantryBasic(item.name))) {
