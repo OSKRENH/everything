@@ -25,7 +25,10 @@ const recipeSchema = {
               type: "object",
               properties: {
                 name: { type: "string" },
-                amount: { type: "string" },
+                amount: {
+                  type: "string",
+                  description: "Конкретное количество на указанное число порций: граммы, миллилитры, чайные/столовые ложки или штуки. Никогда не писать unit.",
+                },
               },
               required: ["name", "amount"],
             },
@@ -67,6 +70,44 @@ function parseAiResult(result) {
   return JSON.parse(cleaned);
 }
 
+const pantryBasics = ["соль", "вода", "масло", "перец"];
+
+function isPantryBasic(value = "") {
+  const normalized = value.toLowerCase().replace(/ё/g, "е");
+  return pantryBasics.some((item) => normalized.includes(item));
+}
+
+function fallbackAmount(name = "", portions = 2) {
+  const value = name.toLowerCase().replace(/ё/g, "е");
+  if (value.includes("яйц")) return `${Math.max(2, portions)} шт.`;
+  if (value.includes("лук") || value.includes("помидор") || value.includes("картоф")) return `${Math.max(1, Math.ceil(portions / 2))} шт.`;
+  if (value.includes("рис") || value.includes("греч") || value.includes("макарон") || value.includes("паст")) return `${portions * 90} г`;
+  if (value.includes("куриц") || value.includes("мяс") || value.includes("рыб")) return `${portions * 160} г`;
+  if (isPantryBasic(value) || value.includes("специ")) return "по вкусу";
+  return `${portions * 100} г`;
+}
+
+function normalizeRecipes(recipes, portions) {
+  return recipes.slice(0, 3).map((recipe) => ({
+    ...recipe,
+    missing: sanitizeList(recipe.missing).filter((item) => !isPantryBasic(item)),
+    uses: sanitizeList(recipe.uses),
+    equipment: sanitizeList(recipe.equipment, 12),
+    ingredients: Array.isArray(recipe.ingredients)
+      ? recipe.ingredients.map((item) => ({
+          name: String(item?.name || "ингредиент").trim(),
+          amount: !item?.amount || /^(unit|units|штука)$/i.test(String(item.amount).trim())
+            ? fallbackAmount(item?.name, portions)
+            : String(item.amount).trim(),
+        }))
+      : [],
+    steps: sanitizeList(recipe.steps, 12),
+    why: String(recipe.why || "Подходит к продуктам и возможностям вашей кухни")
+      .replace(/,?\s*но требует покупки соли\.?/gi, ".")
+      .replace(/требует покупки соли/gi, "не требует дополнительных покупок"),
+  }));
+}
+
 async function generateRecipes(request, env) {
   let body;
   try {
@@ -83,7 +124,7 @@ async function generateRecipes(request, env) {
 
   if (!ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
 
-  const system = `Ты — внимательный редактор современной русской кулинарной книги. Составь ровно 3 реалистичных домашних рецепта. Пиши только по-русски, без англицизмов и выдуманных техник. Соль, вода, растительное масло и чёрный перец считаются базовыми. Не предлагай опасные способы приготовления. Каждый шаг должен быть коротким, конкретным и выполнимым.`;
+  const system = `Ты — внимательный редактор современной русской кулинарной книги. Составь ровно 3 реалистичных домашних рецепта. Пиши только по-русски, без англицизмов и выдуманных техник. Соль, вода, растительное масло и чёрный перец считаются базовыми: никогда не добавляй их в missing и не предлагай покупать. В amount всегда указывай понятное русское количество: г, мл, ст. л., ч. л. или шт.; слово unit запрещено. Не предлагай опасные способы приготовления. Каждый шаг должен быть коротким, конкретным и выполнимым.`;
   const user = `Продукты дома: ${ingredients.join(", ")}.
 Инвентарь: ${equipment.length ? equipment.join(", ") : "обычная базовая кухня"}.
 Время: до ${minutes} минут. Порций: ${portions}.
@@ -102,7 +143,7 @@ async function generateRecipes(request, env) {
     });
     const data = parseAiResult(result);
     if (!Array.isArray(data.recipes) || data.recipes.length < 3) throw new Error("Incomplete recipes");
-    return json({ recipes: data.recipes.slice(0, 3) });
+    return json({ recipes: normalizeRecipes(data.recipes, portions) });
   } catch (error) {
     console.error("recipe_generation_failed", error instanceof Error ? error.message : String(error));
     return json({ error: "Не удалось составить меню" }, 503);
