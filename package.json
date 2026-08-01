@@ -1,0 +1,16 @@
+{
+  "name": "kutno",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "deploy": "wrangler deploy",
+    "check": "npm run build && wrangler deploy --dry-run"
+  },
+  "devDependencies": {
+    "vite": "^8.2.0",
+    "wrangler": "^4.118.0"
+  }
+}
