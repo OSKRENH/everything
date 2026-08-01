@@ -604,12 +604,7 @@ function chooseIngredientSuggestion(name) {
 }
 
 function renderPotLoader(className = "") {
-  return `<span class="pot-loader ${className}" aria-hidden="true">
-    <span class="steam steam-one"></span>
-    <span class="steam steam-two"></span>
-    <span class="pot-lid"></span>
-    <span class="pot-body"></span>
-  </span>`;
+  return `<img class="pot-loader ${className}" src="/illustrations/pot-loader.gif" alt="" aria-hidden="true">`;
 }
 
 function renderKitchenView() {
