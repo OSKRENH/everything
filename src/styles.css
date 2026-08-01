@@ -471,9 +471,10 @@ legend { margin-bottom: 12px; }
 .ingredient-ledger li { display: flex; justify-content: space-between; align-items: start; gap: 18px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
 .ingredient-ledger b { font-weight: 500; white-space: nowrap; }
 .ingredient-info { min-width: 0; flex: 1; }
-.ingredient-info summary { display: inline-flex; align-items: center; gap: 6px; list-style: none; cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 4px; }
+.ingredient-info summary { display: inline-flex; align-items: center; gap: 6px; list-style: none; cursor: pointer; text-decoration: none; }
 .ingredient-info summary::-webkit-details-marker { display: none; }
-.ingredient-info summary span { color: var(--accent); font-size: 11px; text-decoration: none; }
+.ingredient-info-name { color: inherit; font-size: inherit; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 4px; }
+.ingredient-info-icon { color: var(--accent); font-size: 11px; text-decoration: none; }
 .ingredient-info > div { margin-top: 13px; padding: 13px 14px; background: #f0efe8; }
 .ingredient-info p { margin: 0; color: var(--soft); font-size: 10px; line-height: 1.55; }
 .ingredient-info p + p { margin-top: 8px; }
@@ -569,6 +570,13 @@ legend { margin-bottom: 12px; }
 .swipe-card { --swipe-progress: 0; position: absolute; inset: 0; display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid var(--ink); background: var(--paper); padding: 28px 32px 30px; box-shadow: 0 24px 70px rgba(20, 20, 18, .1); touch-action: pan-y; user-select: none; }
 .swipe-card.front { z-index: 2; transition: transform .34s cubic-bezier(.22,.75,.24,1), opacity .28s ease; cursor: grab; }
 .swipe-card.front:active { cursor: grabbing; transition: none; }
+.swipe-card.front.swipe-hint { animation: swipe-hint 1.05s cubic-bezier(.22,.75,.24,1) .2s both; }
+@keyframes swipe-hint {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  42% { transform: translateX(42px) rotate(2.4deg); }
+  68% { transform: translateX(-8px) rotate(-.5deg); }
+}
+.am-heart { display: inline-block; font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; font-size: .55em; vertical-align: .12em; letter-spacing: 0; }
 .swipe-card.behind { z-index: 1; transform: translateY(13px) scale(.965) rotate(1.2deg); background: #f2f1eb; transition: transform .36s cubic-bezier(.22,.75,.24,1), background .36s ease, box-shadow .36s ease; }
 .swipe-card.behind.promoting { transform: translateY(0) scale(1) rotate(0); background: var(--paper); box-shadow: 0 24px 70px rgba(20, 20, 18, .1); }
 .swipe-card.fly-right { transform: translateX(130%) rotate(13deg) !important; opacity: 0; }
