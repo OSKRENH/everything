@@ -309,71 +309,14 @@ legend { margin-bottom: 12px; }
   line-height: 1;
 }
 .pot-loader {
-  position: relative;
-  display: inline-block;
+  display: block;
   flex: 0 0 auto;
-  width: 34px;
-  height: 30px;
-  color: currentColor;
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
 }
-.pot-body {
-  position: absolute;
-  right: 3px;
-  bottom: 2px;
-  width: 23px;
-  height: 12px;
-  border: 2px solid currentColor;
-  border-top: 0;
-  border-radius: 2px 2px 7px 7px;
-}
-.pot-body::before,
-.pot-body::after {
-  content: "";
-  position: absolute;
-  top: 1px;
-  width: 5px;
-  height: 2px;
-  background: currentColor;
-}
-.pot-body::before { left: -7px; }
-.pot-body::after { right: -7px; }
-.pot-lid {
-  position: absolute;
-  right: 5px;
-  bottom: 14px;
-  width: 19px;
-  height: 2px;
-  background: currentColor;
-}
-.pot-lid::before {
-  content: "";
-  position: absolute;
-  left: 7px;
-  bottom: 2px;
-  width: 6px;
-  height: 3px;
-  border: 2px solid currentColor;
-  border-bottom: 0;
-  border-radius: 4px 4px 0 0;
-}
-.steam {
-  position: absolute;
-  bottom: 21px;
-  width: 6px;
-  height: 9px;
-  border-left: 1.5px solid currentColor;
-  border-radius: 50%;
-  opacity: 0;
-  animation: steam-rise 1.35s ease-in-out infinite;
-}
-.steam-one { left: 12px; }
-.steam-two { left: 21px; animation-delay: .42s; }
-.pot-loader-large { width: 72px; height: 64px; margin-top: 24px; transform: scale(1.7); transform-origin: left top; }
-@keyframes steam-rise {
-  0% { opacity: 0; transform: translateY(4px) scale(.8); }
-  35% { opacity: .8; }
-  100% { opacity: 0; transform: translateY(-9px) translateX(2px) scale(1.15); }
-}
+.primary-action .pot-loader { filter: invert(1); }
+.pot-loader-large { width: 128px; height: 128px; margin-top: 24px; }
 .action-note { text-align: right; font-size: 10px; color: var(--soft); margin: 8px 0 0; }
 .save-status { margin: 12px 0 0; color: var(--soft); font-size: 10px; line-height: 1.45; text-align: right; }
 .save-status button { border: 0; background: transparent; padding: 0; color: var(--ink); text-decoration: underline; cursor: pointer; }
@@ -460,7 +403,7 @@ legend { margin-bottom: 12px; }
 .load-more-recipes { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 54px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); padding: 14px 18px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; cursor: pointer; }
 .load-more-recipes:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
 .load-more-recipes:disabled { cursor: wait; opacity: .72; }
-.load-more-recipes .pot-loader { filter: invert(1); transform: scale(.65); transform-origin: center; }
+.load-more-recipes .pot-loader { filter: invert(1); }
 .load-more-message { margin: 10px 0 0; color: var(--soft); font-size: 11px; line-height: 1.45; }
 
 .loading-results { min-height: 400px; }
@@ -760,4 +703,5 @@ footer span:first-child { font-family: "Prata", Georgia, serif; font-size: 18px;
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; }
+  .pot-loader { content: url("/illustrations/loader/pot-loader-01.png"); }
 }
