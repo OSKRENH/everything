@@ -267,8 +267,10 @@ let catalogCourse = "все";
 let catalogProtein = "все";
 let catalogQuery = "";
 let swipeIndex = 0;
+let swipeRecipes = [];
 let swipeBusy = false;
 let swipeGesture = null;
+let swipeHintPending = currentView === "swipe";
 
 const app = document.querySelector("#app");
 
@@ -690,7 +692,7 @@ function render() {
       <header class="site-header">
         <button class="wordmark" data-view="kitchen" aria-label="Кутно, на главную">Кутно</button>
         <nav class="header-nav" aria-label="Разделы Кутно">
-          ${[["kitchen", "Кухня"], ["catalog", "База"], ["swipe", "Листать"], ["favorites", `Избранное${favoriteRecipes.length ? ` · ${favoriteRecipes.length}` : ""}`]].map(([id, label]) => `<button class="${currentView === id ? "active" : ""}" data-view="${id}">${label}</button>`).join("")}
+          ${[["kitchen", "Кухня"], ["catalog", "База"], ["swipe", "АМ ❤️"], ["favorites", `Избранное${favoriteRecipes.length ? ` · ${favoriteRecipes.length}` : ""}`]].map(([id, label]) => `<button class="${currentView === id ? "active" : ""}" data-view="${id}">${label}</button>`).join("")}
         </nav>
         <div class="header-actions">
           ${currentView === "kitchen" ? `<button class="text-button header-clear" data-action="clear-all" ${state.ingredients.length ? "" : "disabled"}>Очистить кухню</button>` : ""}
@@ -711,6 +713,7 @@ function render() {
     ${authModalOpen ? renderAuthOverlay() : ""}
   `;
   if (authModalOpen && !authUser && !authBusy) requestAnimationFrame(mountGoogleButton);
+  if (currentView === "swipe" && swipeHintPending && document.querySelector(".swipe-card.front")) swipeHintPending = false;
 }
 
 function renderResults() {
@@ -831,10 +834,10 @@ function renderCatalogView() {
 
 function renderSwipeCard(recipe, position = "front") {
   const favorite = isFavorite(recipe);
-  return `<article class="swipe-card ${position}" data-swipe-card ${position === "front" ? "tabindex=\"0\"" : "aria-hidden=\"true\""}>
+  return `<article class="swipe-card ${position} ${position === "front" && swipeHintPending ? "swipe-hint" : ""}" data-swipe-card ${position === "front" ? "tabindex=\"0\"" : "aria-hidden=\"true\""}>
     <div class="swipe-stamp swipe-stamp-no">Пропустить</div>
     <div class="swipe-stamp swipe-stamp-yes">В избранное</div>
-    <div class="swipe-card-counter">${String(swipeIndex + 1).padStart(2, "0")} / ${catalogRecipes.length.toString().padStart(2, "0")}</div>
+    <div class="swipe-card-counter">${String(swipeIndex + 1).padStart(2, "0")} / ${swipeRecipes.length.toString().padStart(2, "0")}</div>
     <p class="swipe-cuisine">${escapeHtml(`${recipe.flag || "🌍"} ${recipe.cuisine || "Мировая кухня"}`)}</p>
     <h2><button data-open-recipe="${catalogRecipes.indexOf(recipe)}" data-recipe-source="catalog">${escapeHtml(recipe.title)}</button></h2>
     <p class="swipe-subtitle">${escapeHtml(recipe.subtitle || "Классический рецепт")}</p>
@@ -845,12 +848,12 @@ function renderSwipeCard(recipe, position = "front") {
 }
 
 function renderSwipeView() {
-  if (catalogLoading) return `<section class="swipe-page"><div class="swipe-heading"><p class="eyebrow">Выбирать можно быстрее</p><h1>Листаем<br>меню</h1>${renderPotLoader("pot-loader-large")}</div></section>`;
-  if (catalogError) return `<section class="swipe-page"><div class="swipe-heading"><p class="eyebrow">Выбирать можно быстрее</p><h1>Листаем<br>меню</h1><button class="archive-retry" data-action="load-catalog">Попробовать ещё раз</button></div></section>`;
-  const recipe = catalogRecipes[swipeIndex];
-  const nextRecipe = catalogRecipes[swipeIndex + 1];
+  if (catalogLoading) return `<section class="swipe-page"><div class="swipe-heading"><p class="eyebrow">Выбирать можно быстрее</p><h1>АМ <span class="am-heart">❤️</span></h1>${renderPotLoader("pot-loader-large")}</div></section>`;
+  if (catalogError) return `<section class="swipe-page"><div class="swipe-heading"><p class="eyebrow">Выбирать можно быстрее</p><h1>АМ <span class="am-heart">❤️</span></h1><button class="archive-retry" data-action="load-catalog">Попробовать ещё раз</button></div></section>`;
+  const recipe = swipeRecipes[swipeIndex];
+  const nextRecipe = swipeRecipes[swipeIndex + 1];
   return `<section class="swipe-page" aria-labelledby="swipe-title">
-    <header class="swipe-heading"><p class="eyebrow">Влево — пропустить · вправо — сохранить</p><h1 id="swipe-title">Листаем<br>меню</h1><p>Можно нажимать кнопки снизу. Название открывает полный рецепт.</p></header>
+    <header class="swipe-heading"><p class="eyebrow">Влево — пропустить · вправо — сохранить</p><h1 id="swipe-title">АМ <span class="am-heart">❤️</span></h1><p>Можно нажимать кнопки снизу. Название открывает полный рецепт.</p></header>
     <div class="swipe-stage">
       ${recipe ? `${nextRecipe ? renderSwipeCard(nextRecipe, "behind") : ""}${renderSwipeCard(recipe)}` : `<div class="swipe-finished"><span>Колода закончилась</span><h2>Вы посмотрели все рецепты</h2><p>Сохранённые блюда уже лежат в избранном.</p><button data-action="restart-swipe">Начать заново</button></div>`}
     </div>
@@ -860,7 +863,18 @@ function renderSwipeView() {
 
 function renderFavoritesView() {
   if (favoriteRecipes.length) return renderFavorites();
-  return `<section class="favorites-empty"><p class="eyebrow">Личная коллекция</p><h1>Пока<br>пусто</h1><p>Смахните рецепт вправо в разделе «Листать» или нажмите сердечко в базе.</p><button data-view="swipe">Начать листать <span>→</span></button></section>`;
+  return `<section class="favorites-empty"><p class="eyebrow">Личная коллекция</p><h1>Пока<br>пусто</h1><p>Смахните рецепт вправо в разделе «АМ ❤️» или нажмите сердечко в базе.</p><button data-view="swipe">Открыть АМ ❤️ <span>→</span></button></section>`;
+}
+
+function resetSwipeDeck() {
+  swipeRecipes = [...catalogRecipes];
+  const random = new Uint32Array(1);
+  for (let index = swipeRecipes.length - 1; index > 0; index -= 1) {
+    crypto.getRandomValues(random);
+    const target = random[0] % (index + 1);
+    [swipeRecipes[index], swipeRecipes[target]] = [swipeRecipes[target], swipeRecipes[index]];
+  }
+  swipeIndex = 0;
 }
 
 async function loadCatalog(force = false) {
@@ -873,7 +887,7 @@ async function loadCatalog(force = false) {
     const data = await response.json();
     if (!response.ok || !Array.isArray(data.recipes)) throw new Error(data.error || "Не удалось открыть базу рецептов");
     catalogRecipes = data.recipes;
-    swipeIndex = Math.min(swipeIndex, catalogRecipes.length);
+    resetSwipeDeck();
   } catch (error) {
     catalogError = error instanceof Error ? error.message : "Не удалось открыть базу рецептов";
   } finally {
@@ -891,6 +905,10 @@ function selectRecipeSource(source) {
 function setView(view) {
   if (!["kitchen", "catalog", "swipe", "favorites"].includes(view)) return;
   currentView = view;
+  if (view === "swipe") {
+    if (catalogRecipes.length) resetSwipeDeck();
+    swipeHintPending = true;
+  }
   history.replaceState(null, "", view === "kitchen" ? `${location.pathname}${location.search}` : `#${view}`);
   render();
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -898,13 +916,13 @@ function setView(view) {
 }
 
 function finishSwipe(direction) {
-  if (swipeBusy || !catalogRecipes[swipeIndex]) return;
+  if (swipeBusy || !swipeRecipes[swipeIndex]) return;
   swipeBusy = true;
   const card = document.querySelector(".swipe-card.front");
   const nextCard = document.querySelector(".swipe-card.behind");
   card?.classList.add(direction === "right" ? "fly-right" : "fly-left");
   nextCard?.classList.add("promoting");
-  const recipe = catalogRecipes[swipeIndex];
+  const recipe = swipeRecipes[swipeIndex];
   window.setTimeout(() => {
     swipeIndex += 1;
     swipeBusy = false;
@@ -1020,7 +1038,7 @@ function renderRecipeOverlay(recipe) {
             <h3>Что понадобится</h3>
             <ol class="ingredient-ledger">
               ${ingredients.map((item) => `<li class="${item.info ? "has-ingredient-info" : ""}">
-                ${item.info ? `<details class="ingredient-info"><summary>${escapeHtml(item.name)} <span aria-hidden="true">ⓘ</span></summary><div><p>${escapeHtml(item.info.description || "")}</p><p><b>Чем заменить:</b> ${escapeHtml(item.info.substitutes || "Точной замены нет.")}</p></div></details>` : `<span>${escapeHtml(item.name)}</span>`}
+                ${item.info ? `<details class="ingredient-info"><summary><span class="ingredient-info-name">${escapeHtml(item.name)}</span><span class="ingredient-info-icon" aria-hidden="true">ⓘ</span></summary><div><p>${escapeHtml(item.info.description || "")}</p><p><b>Чем заменить:</b> ${escapeHtml(item.info.substitutes || "Точной замены нет.")}</p></div></details>` : `<span>${escapeHtml(item.name)}</span>`}
                 <b>${escapeHtml(item.amount)}</b>
               </li>`).join("")}
             </ol>
@@ -1235,6 +1253,7 @@ app.addEventListener("pointerdown", (event) => {
   }
   const card = event.target.closest(".swipe-card.front");
   if (!card || event.target.closest("button") || swipeBusy) return;
+  card.classList.remove("swipe-hint");
   swipeGesture = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, card, dragging: false };
   card.setPointerCapture?.(event.pointerId);
 });
@@ -1338,7 +1357,8 @@ app.addEventListener("click", (event) => {
   }
   if (target.dataset.swipe) finishSwipe(target.dataset.swipe);
   if (target.dataset.action === "restart-swipe") {
-    swipeIndex = 0;
+    resetSwipeDeck();
+    swipeHintPending = true;
     render();
   }
   if (target.dataset.action === "load-catalog") loadCatalog(true);
