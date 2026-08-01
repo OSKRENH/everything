@@ -257,6 +257,16 @@ let ingredientSuggestions = [];
 let activeSuggestionIndex = -1;
 let recentRecipeTitles = [];
 let recentSourceIds = [];
+let currentView = ["kitchen", "catalog", "swipe", "favorites"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "kitchen";
+let catalogRecipes = [];
+let catalogLoading = false;
+let catalogError = "";
+let catalogCuisine = "все";
+let catalogDifficulty = "все";
+let catalogQuery = "";
+let swipeIndex = 0;
+let swipeBusy = false;
+let swipeGesture = null;
 
 const app = document.querySelector("#app");
 
@@ -595,94 +605,99 @@ function renderPotLoader(className = "") {
   </span>`;
 }
 
+function renderKitchenView() {
+  return `
+    <section class="intro-grid" aria-labelledby="main-title">
+      <div class="intro-copy">
+        <p class="eyebrow">Рецепты из того, что уже дома</p>
+        <h1 id="main-title">Сначала —<br>что есть<br>на кухне?</h1>
+        <p class="intro-footnote"><span>①</span> Соль, воду и масло можно не указывать — мы считаем их базовыми.</p>
+      </div>
+
+      <div class="kitchen-form">
+        <section class="form-section ingredient-section">
+          <div class="section-index">01</div>
+          <div class="section-content">
+            <label for="ingredient-input">Продукты</label>
+            <form id="ingredient-form" class="ingredient-form">
+              <input id="ingredient-input" autocomplete="off" placeholder="Например: курица, рис, лук" aria-describedby="ingredient-hint" role="combobox" aria-autocomplete="list" aria-controls="ingredient-suggestions" aria-expanded="false">
+              <button type="submit" aria-label="Добавить продукты">Добавить</button>
+            </form>
+            <div id="ingredient-suggestions" class="ingredient-suggestions" role="listbox" aria-label="Подходящие продукты" hidden></div>
+            <p id="ingredient-hint" class="microcopy">Можно перечислить несколько продуктов через запятую.</p>
+            <div class="selected-ingredients" aria-live="polite">
+              ${state.ingredients.length
+                ? state.ingredients.map((item) => `<button class="ingredient-tag selected" data-remove-ingredient="${escapeHtml(item)}">${escapeHtml(item)} <span aria-hidden="true">×</span></button>`).join("")
+                : `<span class="empty-line">Пока пусто — начните с главного продукта</span>`}
+            </div>
+            <div class="quick-row" aria-label="Частые продукты">
+              ${quickIngredients.filter((item) => !state.ingredients.includes(normalize(item))).slice(0, 7).map((item) => `<button class="ingredient-tag" data-add-ingredient="${item}">+ ${item}</button>`).join("")}
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <div class="section-index">02</div>
+          <div class="section-content">
+            <span class="field-label">Что умеет кухня</span>
+            <div class="equipment-grid">
+              ${equipmentOptions.map(([id, name]) => `
+                <button class="equipment-option ${state.equipment.includes(id) ? "active" : ""}" data-equipment="${id}" aria-pressed="${state.equipment.includes(id)}">
+                  <span class="equipment-mark" aria-hidden="true">${state.equipment.includes(id) ? "●" : "○"}</span>${name}
+                </button>`).join("")}
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section preferences-section">
+          <div class="section-index">03</div>
+          <div class="section-content preference-columns">
+            <fieldset>
+              <legend>Сложность</legend>
+              <div class="segmented">
+                ${["легко", "обычно", "сложно"].map((value) => `<button type="button" class="${state.difficulty === value ? "active" : ""}" data-difficulty="${value}">${value}</button>`).join("")}
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Порции</legend>
+              <div class="stepper">
+                <button type="button" data-portions="-1" aria-label="Уменьшить число порций">−</button>
+                <output aria-live="polite">${state.portions}</output>
+                <button type="button" data-portions="1" aria-label="Увеличить число порций">+</button>
+              </div>
+            </fieldset>
+          </div>
+        </section>
+
+        <button class="primary-action" data-action="generate" ${!state.ingredients.length || isLoading ? "disabled" : ""}>
+          <span>${isLoading ? "Составляем меню" : "Предложить блюда"}</span>
+          ${isLoading ? renderPotLoader("pot-loader-small") : `<span class="action-arrow" aria-hidden="true">↘</span>`}
+        </button>
+        ${!state.ingredients.length ? `<p class="action-note">Добавьте хотя бы один продукт</p>` : ""}
+        <p class="save-status">${authUser ? `Кухня сохранена в аккаунте ${escapeHtml(authUser.email)}` : `Кухня сохранена на этом устройстве. <button data-action="account">Войдите</button>, чтобы открыть её на другом.`}</p>
+      </div>
+    </section>
+    ${renderResults()}`;
+}
+
 function render() {
   ingredientSuggestions = [];
   activeSuggestionIndex = -1;
   app.innerHTML = `
     <div class="page-shell">
       <header class="site-header">
-        <a class="wordmark" href="#top" aria-label="Кутно, на главную">Кутно</a>
-        <div class="header-note">Кухонная картотека<br>Выпуск 01 — ${new Date().getFullYear()}</div>
+        <button class="wordmark" data-view="kitchen" aria-label="Кутно, на главную">Кутно</button>
+        <nav class="header-nav" aria-label="Разделы Кутно">
+          ${[["kitchen", "Кухня"], ["catalog", "База"], ["swipe", "Листать"], ["favorites", `Избранное${favoriteRecipes.length ? ` · ${favoriteRecipes.length}` : ""}`]].map(([id, label]) => `<button class="${currentView === id ? "active" : ""}" data-view="${id}">${label}</button>`).join("")}
+        </nav>
         <div class="header-actions">
-          <button class="text-button header-clear" data-action="clear-all" ${state.ingredients.length ? "" : "disabled"}>Очистить кухню</button>
+          ${currentView === "kitchen" ? `<button class="text-button header-clear" data-action="clear-all" ${state.ingredients.length ? "" : "disabled"}>Очистить кухню</button>` : ""}
           <button class="account-button" data-action="account">${authUser ? escapeHtml(authUser.name) : "Войти"}</button>
         </div>
       </header>
 
       <main id="top">
-        <section class="intro-grid" aria-labelledby="main-title">
-          <div class="intro-copy">
-            <p class="eyebrow">Рецепты из того, что уже дома</p>
-            <h1 id="main-title">Сначала —<br>что есть<br>на кухне?</h1>
-            <p class="intro-footnote"><span>①</span> Соль, воду и масло можно не указывать — мы считаем их базовыми.</p>
-          </div>
-
-          <div class="kitchen-form">
-            <section class="form-section ingredient-section">
-              <div class="section-index">01</div>
-              <div class="section-content">
-                <label for="ingredient-input">Продукты</label>
-                <form id="ingredient-form" class="ingredient-form">
-                  <input id="ingredient-input" autocomplete="off" placeholder="Например: курица, рис, лук" aria-describedby="ingredient-hint" role="combobox" aria-autocomplete="list" aria-controls="ingredient-suggestions" aria-expanded="false">
-                  <button type="submit" aria-label="Добавить продукты">Добавить</button>
-                </form>
-                <div id="ingredient-suggestions" class="ingredient-suggestions" role="listbox" aria-label="Подходящие продукты" hidden></div>
-                <p id="ingredient-hint" class="microcopy">Можно перечислить несколько продуктов через запятую.</p>
-                <div class="selected-ingredients" aria-live="polite">
-                  ${state.ingredients.length
-                    ? state.ingredients.map((item) => `<button class="ingredient-tag selected" data-remove-ingredient="${escapeHtml(item)}">${escapeHtml(item)} <span aria-hidden="true">×</span></button>`).join("")
-                    : `<span class="empty-line">Пока пусто — начните с главного продукта</span>`}
-                </div>
-                <div class="quick-row" aria-label="Частые продукты">
-                  ${quickIngredients.filter((item) => !state.ingredients.includes(normalize(item))).slice(0, 7).map((item) => `<button class="ingredient-tag" data-add-ingredient="${item}">+ ${item}</button>`).join("")}
-                </div>
-              </div>
-            </section>
-
-            <section class="form-section">
-              <div class="section-index">02</div>
-              <div class="section-content">
-                <span class="field-label">Что умеет кухня</span>
-                <div class="equipment-grid">
-                  ${equipmentOptions.map(([id, name]) => `
-                    <button class="equipment-option ${state.equipment.includes(id) ? "active" : ""}" data-equipment="${id}" aria-pressed="${state.equipment.includes(id)}">
-                      <span class="equipment-mark" aria-hidden="true">${state.equipment.includes(id) ? "●" : "○"}</span>${name}
-                    </button>`).join("")}
-                </div>
-              </div>
-            </section>
-
-            <section class="form-section preferences-section">
-              <div class="section-index">03</div>
-              <div class="section-content preference-columns">
-                <fieldset>
-                  <legend>Сложность</legend>
-                  <div class="segmented">
-                    ${["легко", "обычно", "сложно"].map((value) => `<button type="button" class="${state.difficulty === value ? "active" : ""}" data-difficulty="${value}">${value}</button>`).join("")}
-                  </div>
-                </fieldset>
-                <fieldset>
-                  <legend>Порции</legend>
-                  <div class="stepper">
-                    <button type="button" data-portions="-1" aria-label="Уменьшить число порций">−</button>
-                    <output aria-live="polite">${state.portions}</output>
-                    <button type="button" data-portions="1" aria-label="Увеличить число порций">+</button>
-                  </div>
-                </fieldset>
-              </div>
-            </section>
-
-            <button class="primary-action" data-action="generate" ${!state.ingredients.length || isLoading ? "disabled" : ""}>
-              <span>${isLoading ? "Составляем меню" : "Предложить блюда"}</span>
-              ${isLoading ? renderPotLoader("pot-loader-small") : `<span class="action-arrow" aria-hidden="true">↘</span>`}
-            </button>
-            ${!state.ingredients.length ? `<p class="action-note">Добавьте хотя бы один продукт</p>` : ""}
-            <p class="save-status">${authUser ? `Кухня сохранена в аккаунте ${escapeHtml(authUser.email)}` : `Кухня сохранена на этом устройстве. <button data-action="account">Войдите</button>, чтобы открыть её на другом.`}</p>
-          </div>
-        </section>
-
-        ${renderResults()}
-        ${renderFavorites()}
+        ${currentView === "kitchen" ? renderKitchenView() : currentView === "catalog" ? renderCatalogView() : currentView === "swipe" ? renderSwipeView() : renderFavoritesView()}
       </main>
 
       <footer>
@@ -747,6 +762,138 @@ function renderFavorites() {
         ${favoriteRecipes.map((recipe, index) => renderRecipeCard(recipe, index, "favorites")).join("")}
       </div>
     </section>`;
+}
+
+function catalogCuisines() {
+  return [...new Set(catalogRecipes.map((recipe) => String(recipe.cuisine || "Другая кухня")))].sort((a, b) => a.localeCompare(b, "ru"));
+}
+
+function filteredCatalogRecipes() {
+  const query = normalize(catalogQuery);
+  return catalogRecipes.filter((recipe) => {
+    const cuisineMatches = catalogCuisine === "все" || recipe.cuisine === catalogCuisine;
+    const difficultyMatches = catalogDifficulty === "все" || difficultyValue(recipe.difficulty) === catalogDifficulty;
+    const searchable = [recipe.title, recipe.subtitle, recipe.cuisine, ...(recipe.ingredients || []).map((item) => item.name)].join(" ");
+    return cuisineMatches && difficultyMatches && (!query || normalize(searchable).includes(query));
+  });
+}
+
+function renderCatalogCard(recipe, index) {
+  const favorite = isFavorite(recipe);
+  const ingredients = (recipe.ingredients || []).slice(0, 5).map((item) => escapeHtml(item.name));
+  return `<article class="catalog-card">
+    <div class="catalog-card-index">${String(index + 1).padStart(2, "0")}</div>
+    <div class="catalog-card-topline">
+      <span>${escapeHtml(recipe.cuisine || "Мировая кухня")}</span>
+      <button class="favorite-toggle ${favorite ? "active" : ""}" data-toggle-favorite-source="catalog" data-recipe-index="${index}" aria-label="${favorite ? "Убрать из избранного" : "Сохранить в избранное"}">${favorite ? "♥" : "♡"}</button>
+    </div>
+    <h3><button data-open-recipe="${index}" data-recipe-source="catalog">${escapeHtml(recipe.title)}</button></h3>
+    <p>${escapeHtml(recipe.subtitle || "Классический рецепт")}</p>
+    <div class="catalog-card-meta"><span>${Number(recipe.minutes) || 30} мин</span><span>${escapeHtml(recipe.difficulty || "легко")}</span><span>≈ ${Number(recipe.nutrition?.calories) || 0} ккал</span></div>
+    <p class="catalog-ingredients">${ingredients.join(" · ")}${(recipe.ingredients || []).length > 5 ? " · …" : ""}</p>
+    <button class="catalog-open" data-open-recipe="${index}" data-recipe-source="catalog">Открыть рецепт <span>→</span></button>
+  </article>`;
+}
+
+function renderCatalogView() {
+  if (catalogLoading) return `<section class="archive-page"><div class="archive-heading"><p class="eyebrow">Редакционная коллекция</p><h1>База<br>рецептов</h1>${renderPotLoader("pot-loader-large")}</div></section>`;
+  if (catalogError) return `<section class="archive-page"><div class="archive-heading"><p class="eyebrow">Редакционная коллекция</p><h1>База<br>рецептов</h1><p>${escapeHtml(catalogError)}</p><button class="archive-retry" data-action="load-catalog">Попробовать ещё раз</button></div></section>`;
+  const filtered = filteredCatalogRecipes();
+  return `<section class="archive-page" aria-labelledby="catalog-title">
+    <header class="archive-heading">
+      <div><p class="eyebrow">Редакционная коллекция / ${catalogRecipes.length.toString().padStart(2, "0")}</p><h1 id="catalog-title">База<br>рецептов</h1></div>
+      <p>Известные блюда разных стран в традиционной формуле — без случайных замен и выдуманных шагов.</p>
+    </header>
+    <div class="catalog-tools">
+      <label class="catalog-search"><span>Поиск</span><input data-catalog-search value="${escapeHtml(catalogQuery)}" placeholder="Блюдо, кухня или продукт"></label>
+      <div class="catalog-filter"><span>Сложность</span><div>${["все", "легко", "обычно", "сложно"].map((value) => `<button class="${catalogDifficulty === value ? "active" : ""}" data-catalog-difficulty="${value}">${value}</button>`).join("")}</div></div>
+      <div class="catalog-filter cuisine-filter"><span>Кухня</span><div>${["все", ...catalogCuisines()].map((value) => `<button class="${catalogCuisine === value ? "active" : ""}" data-catalog-cuisine="${escapeHtml(value)}">${escapeHtml(value)}</button>`).join("")}</div></div>
+    </div>
+    <div class="catalog-count">Найдено — ${filtered.length.toString().padStart(2, "0")}</div>
+    <div class="catalog-grid">${filtered.length ? filtered.map((recipe) => renderCatalogCard(recipe, catalogRecipes.indexOf(recipe))).join("") : `<p class="catalog-empty">Ничего не нашлось. Попробуйте убрать один из фильтров.</p>`}</div>
+  </section>`;
+}
+
+function renderSwipeCard(recipe, position = "front") {
+  const favorite = isFavorite(recipe);
+  return `<article class="swipe-card ${position}" data-swipe-card ${position === "front" ? "tabindex=\"0\"" : "aria-hidden=\"true\""}>
+    <div class="swipe-stamp swipe-stamp-no">Пропустить</div>
+    <div class="swipe-stamp swipe-stamp-yes">В избранное</div>
+    <div class="swipe-card-counter">${String(swipeIndex + 1).padStart(2, "0")} / ${catalogRecipes.length.toString().padStart(2, "0")}</div>
+    <p class="swipe-cuisine">${escapeHtml(recipe.cuisine || "Мировая кухня")}</p>
+    <h2><button data-open-recipe="${catalogRecipes.indexOf(recipe)}" data-recipe-source="catalog">${escapeHtml(recipe.title)}</button></h2>
+    <p class="swipe-subtitle">${escapeHtml(recipe.subtitle || "Классический рецепт")}</p>
+    <div class="swipe-meta"><span>${Number(recipe.minutes) || 30} мин</span><span>${escapeHtml(recipe.difficulty || "легко")}</span><span>≈ ${Number(recipe.nutrition?.calories) || 0} ккал</span></div>
+    <div class="swipe-ingredients"><span>Главное</span><p>${(recipe.ingredients || []).slice(0, 6).map((item) => escapeHtml(item.name)).join(", ")}</p></div>
+    ${favorite ? `<div class="swipe-saved">Уже в избранном ♥</div>` : ""}
+  </article>`;
+}
+
+function renderSwipeView() {
+  if (catalogLoading) return `<section class="swipe-page"><div class="swipe-heading"><p class="eyebrow">Выбирать можно быстрее</p><h1>Листаем<br>меню</h1>${renderPotLoader("pot-loader-large")}</div></section>`;
+  if (catalogError) return `<section class="swipe-page"><div class="swipe-heading"><p class="eyebrow">Выбирать можно быстрее</p><h1>Листаем<br>меню</h1><button class="archive-retry" data-action="load-catalog">Попробовать ещё раз</button></div></section>`;
+  const recipe = catalogRecipes[swipeIndex];
+  const nextRecipe = catalogRecipes[swipeIndex + 1];
+  return `<section class="swipe-page" aria-labelledby="swipe-title">
+    <header class="swipe-heading"><p class="eyebrow">Влево — пропустить · вправо — сохранить</p><h1 id="swipe-title">Листаем<br>меню</h1><p>Можно нажимать кнопки снизу. Название открывает полный рецепт.</p></header>
+    <div class="swipe-stage">
+      ${recipe ? `${nextRecipe ? renderSwipeCard(nextRecipe, "behind") : ""}${renderSwipeCard(recipe)}` : `<div class="swipe-finished"><span>Колода закончилась</span><h2>Вы посмотрели все рецепты</h2><p>Сохранённые блюда уже лежат в избранном.</p><button data-action="restart-swipe">Начать заново</button></div>`}
+    </div>
+    ${recipe ? `<div class="swipe-controls"><button class="swipe-no" data-swipe="left" aria-label="Пропустить рецепт"><span>←</span> Пропустить</button><button class="swipe-yes" data-swipe="right" aria-label="Добавить рецепт в избранное">Сохранить <span>♥</span></button></div>` : ""}
+  </section>`;
+}
+
+function renderFavoritesView() {
+  if (favoriteRecipes.length) return renderFavorites();
+  return `<section class="favorites-empty"><p class="eyebrow">Личная коллекция</p><h1>Пока<br>пусто</h1><p>Смахните рецепт вправо в разделе «Листать» или нажмите сердечко в базе.</p><button data-view="swipe">Начать листать <span>→</span></button></section>`;
+}
+
+async function loadCatalog(force = false) {
+  if ((catalogRecipes.length && !force) || catalogLoading) return;
+  catalogLoading = true;
+  catalogError = "";
+  render();
+  try {
+    const response = await fetch(`/api/catalog?portions=${state.portions}`);
+    const data = await response.json();
+    if (!response.ok || !Array.isArray(data.recipes)) throw new Error(data.error || "Не удалось открыть базу рецептов");
+    catalogRecipes = data.recipes;
+    swipeIndex = Math.min(swipeIndex, catalogRecipes.length);
+  } catch (error) {
+    catalogError = error instanceof Error ? error.message : "Не удалось открыть базу рецептов";
+  } finally {
+    catalogLoading = false;
+    render();
+  }
+}
+
+function selectRecipeSource(source) {
+  if (source === "favorites") return favoriteRecipes;
+  if (source === "catalog") return catalogRecipes;
+  return recipes;
+}
+
+function setView(view) {
+  if (!["kitchen", "catalog", "swipe", "favorites"].includes(view)) return;
+  currentView = view;
+  history.replaceState(null, "", view === "kitchen" ? `${location.pathname}${location.search}` : `#${view}`);
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  if ((view === "catalog" || view === "swipe") && !catalogRecipes.length) loadCatalog();
+}
+
+function finishSwipe(direction) {
+  if (swipeBusy || !catalogRecipes[swipeIndex]) return;
+  swipeBusy = true;
+  const card = document.querySelector(".swipe-card.front");
+  card?.classList.add(direction === "right" ? "fly-right" : "fly-left");
+  const recipe = catalogRecipes[swipeIndex];
+  window.setTimeout(async () => {
+    swipeIndex += 1;
+    swipeBusy = false;
+    if (direction === "right" && !isFavorite(recipe)) await toggleFavorite(recipe);
+    else render();
+  }, 260);
 }
 
 function renderRecipeCard(recipe, index, source = "recipes") {
@@ -1002,6 +1149,16 @@ app.addEventListener("submit", (event) => {
 
 app.addEventListener("input", (event) => {
   if (event.target.id === "ingredient-input") updateIngredientSuggestions(event.target.value);
+  if (event.target.matches("[data-catalog-search]")) {
+    catalogQuery = event.target.value;
+    const cursor = event.target.selectionStart;
+    render();
+    requestAnimationFrame(() => {
+      const input = document.querySelector("[data-catalog-search]");
+      input?.focus({ preventScroll: true });
+      input?.setSelectionRange(cursor, cursor);
+    });
+  }
 });
 
 app.addEventListener("focusin", (event) => {
@@ -1051,10 +1208,52 @@ app.addEventListener("keydown", (event) => {
 
 app.addEventListener("pointerdown", (event) => {
   const suggestion = event.target.closest("[data-suggest-ingredient]");
-  if (!suggestion) return;
-  event.preventDefault();
-  chooseIngredientSuggestion(suggestion.dataset.suggestIngredient);
+  if (suggestion) {
+    event.preventDefault();
+    chooseIngredientSuggestion(suggestion.dataset.suggestIngredient);
+    return;
+  }
+  const card = event.target.closest(".swipe-card.front");
+  if (!card || event.target.closest("button") || swipeBusy) return;
+  swipeGesture = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, card, dragging: false };
+  card.setPointerCapture?.(event.pointerId);
 });
+
+app.addEventListener("pointermove", (event) => {
+  if (!swipeGesture || swipeGesture.pointerId !== event.pointerId) return;
+  const dx = event.clientX - swipeGesture.startX;
+  const dy = event.clientY - swipeGesture.startY;
+  if (!swipeGesture.dragging && Math.abs(dx) < 8) return;
+  if (!swipeGesture.dragging && Math.abs(dy) > Math.abs(dx)) {
+    swipeGesture = null;
+    return;
+  }
+  swipeGesture.dragging = true;
+  event.preventDefault();
+  const rotation = Math.max(-9, Math.min(9, dx / 18));
+  swipeGesture.card.style.transform = `translateX(${dx}px) rotate(${rotation}deg)`;
+  swipeGesture.card.style.setProperty("--swipe-progress", String(Math.min(1, Math.abs(dx) / 110)));
+  swipeGesture.card.dataset.swipeDirection = dx >= 0 ? "right" : "left";
+});
+
+function endSwipeGesture(event) {
+  if (!swipeGesture || swipeGesture.pointerId !== event.pointerId) return;
+  const { card, startX, dragging } = swipeGesture;
+  const dx = event.clientX - startX;
+  swipeGesture = null;
+  card.releasePointerCapture?.(event.pointerId);
+  if (dragging && Math.abs(dx) >= 75) {
+    card.style.removeProperty("transform");
+    finishSwipe(dx > 0 ? "right" : "left");
+    return;
+  }
+  card.style.removeProperty("transform");
+  card.style.removeProperty("--swipe-progress");
+  delete card.dataset.swipeDirection;
+}
+
+app.addEventListener("pointerup", endSwipeGesture);
+app.addEventListener("pointercancel", endSwipeGesture);
 
 async function logout() {
   try {
@@ -1071,6 +1270,7 @@ app.addEventListener("click", (event) => {
   const target = event.target.closest("button");
   if (!target) return;
 
+  if (target.dataset.view) setView(target.dataset.view);
   if (target.dataset.suggestIngredient) chooseIngredientSuggestion(target.dataset.suggestIngredient);
   if (target.dataset.addIngredient) addIngredients([target.dataset.addIngredient]);
   if (target.dataset.removeIngredient) {
@@ -1095,9 +1295,25 @@ app.addEventListener("click", (event) => {
   }
   if (target.dataset.portions) {
     state.portions = Math.min(8, Math.max(1, state.portions + Number(target.dataset.portions)));
+    catalogRecipes = [];
+    swipeIndex = 0;
     saveState();
     render();
   }
+  if (target.dataset.catalogDifficulty) {
+    catalogDifficulty = target.dataset.catalogDifficulty;
+    render();
+  }
+  if (target.dataset.catalogCuisine) {
+    catalogCuisine = target.dataset.catalogCuisine;
+    render();
+  }
+  if (target.dataset.swipe) finishSwipe(target.dataset.swipe);
+  if (target.dataset.action === "restart-swipe") {
+    swipeIndex = 0;
+    render();
+  }
+  if (target.dataset.action === "load-catalog") loadCatalog(true);
   if (target.dataset.action === "generate") generateRecipes();
   if (target.dataset.action === "clear-all") {
     state = { ...defaults, equipment: [...defaults.equipment] };
@@ -1120,12 +1336,12 @@ app.addEventListener("click", (event) => {
   }
   if (target.dataset.action === "logout") logout();
   if (target.dataset.toggleFavoriteSource) {
-    const source = target.dataset.toggleFavoriteSource === "favorites" ? favoriteRecipes : recipes;
+    const source = selectRecipeSource(target.dataset.toggleFavoriteSource);
     toggleFavorite(source[Number(target.dataset.recipeIndex)]);
   }
   if (target.dataset.toggleActiveFavorite !== undefined) toggleFavorite(activeRecipe);
   if (target.dataset.openRecipe !== undefined) {
-    const source = target.dataset.recipeSource === "favorites" ? favoriteRecipes : recipes;
+    const source = selectRecipeSource(target.dataset.recipeSource);
     activeRecipe = source[Number(target.dataset.openRecipe)];
     if (!activeRecipe) return;
     render();
