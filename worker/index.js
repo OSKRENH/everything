@@ -620,6 +620,70 @@ function englishIngredientIsOwned(value, translations) {
   });
 }
 
+function originalIngredientForEnglish(value, translations) {
+  const normalized = normalizeEnglishIngredient(value);
+  if (/salt/.test(normalized)) return "соль";
+  if (/water/.test(normalized)) return "вода";
+  if (/oil/.test(normalized)) return "растительное масло";
+  const ranked = translations.map((item) => {
+    const translated = normalizeEnglishIngredient(item.english);
+    const exact = normalized === translated ? 0 : normalized.includes(translated) || translated.includes(normalized) ? 1 : 2;
+    const shared = translated.split(" ").filter((token) => normalized.split(" ").includes(token)).length;
+    return { original: item.original, score: exact * 100 - shared * 10 + Math.abs(normalized.length - translated.length) };
+  }).sort((first, second) => first.score - second.score);
+  return ranked[0]?.score < 200 ? ranked[0].original : "";
+}
+
+function displaySourceAmount(item, portions, sourceServings, originalName) {
+  const factor = portions / Math.max(1, Number(sourceServings) || portions);
+  let amount = Math.max(0, Number(item?.amount) || 0) * factor;
+  const unit = String(item?.unit || "").toLowerCase().replaceAll(".", "").trim();
+  const englishName = normalizeEnglishIngredient(item?.name);
+  const rounded = (value, precision = 1) => {
+    const multiplier = 10 ** precision;
+    return Math.round(value * multiplier) / multiplier;
+  };
+
+  if (["kg", "kilogram", "kilograms"].includes(unit)) return `${Math.round(amount * 1000)} г`;
+  if (["g", "gram", "grams"].includes(unit)) return `${Math.max(1, Math.round(amount))} г`;
+  if (["oz", "ounce", "ounces"].includes(unit)) return `${Math.max(1, Math.round(amount * 28.35))} г`;
+  if (["lb", "lbs", "pound", "pounds"].includes(unit)) return `${Math.max(1, Math.round(amount * 453.6))} г`;
+  if (["l", "liter", "liters", "litre", "litres"].includes(unit)) return `${Math.max(1, Math.round(amount * 1000))} мл`;
+  if (["ml", "milliliter", "milliliters"].includes(unit)) return `${Math.max(1, Math.round(amount))} мл`;
+  if (["tablespoon", "tablespoons", "tbsp", "tbsps"].includes(unit)) return `${Math.max(0.5, rounded(amount, 1))} ст. л.`;
+  if (["teaspoon", "teaspoons", "tsp", "tsps"].includes(unit)) return `${Math.max(0.5, rounded(amount, 1))} ч. л.`;
+  if (["cup", "cups"].includes(unit)) {
+    if (/sauce|oil|water|milk|broth|juice/.test(englishName)) {
+      let milliliters = Math.round(amount * 240);
+      if (normalize(originalName).includes("соус")) milliliters = Math.min(milliliters, portions * 30);
+      return `${Math.max(1, milliliters)} мл`;
+    }
+    const gramsPerCup = /rice|grain|flour|oat/.test(englishName) ? 185 : 150;
+    return `${Math.max(1, Math.round(amount * gramsPerCup))} г`;
+  }
+
+  if (/egg/.test(englishName)) amount = Math.min(amount, portions * 3);
+  if (/garlic/.test(englishName)) amount = Math.min(amount, portions * 2);
+  if (amount > 0) return `${Math.max(0.5, rounded(amount * 2, 0) / 2)} шт.`;
+  return fallbackAmount(originalName, portions);
+}
+
+function sourcedIngredientsForPortions(recipe, translations, portions) {
+  const seen = new Set();
+  return (Array.isArray(recipe?.extendedIngredients) ? recipe.extendedIngredients : [])
+    .filter((item) => englishIngredientIsOwned(item.nameClean || item.name, translations))
+    .map((item) => {
+      const name = originalIngredientForEnglish(item.nameClean || item.name, translations);
+      return name ? {
+        name,
+        amount: displaySourceAmount(item, portions, recipe.servings, name),
+        englishName: String(item.nameClean || item.name || ""),
+      } : null;
+    })
+    .filter((item) => item && !seen.has(item.name) && seen.add(item.name))
+    .slice(0, 30);
+}
+
 async function translateIngredientsForSpoonacular(env, ingredients) {
   const schema = {
     type: "object",
@@ -723,9 +787,17 @@ async function generateFromSpoonacular(env, { ingredients, equipment, minutes, p
     .map((item) => {
       const missed = (Array.isArray(item?.missedIngredients) ? item.missedIngredients : [])
         .filter((missing) => !isAllowedSourcePantryItem(missing?.name));
-      return { ...item, nonPantryMissed: missed, strictMatch: missed.length === 0 };
+      const normalizedTitle = normalizeEnglishIngredient(item?.title);
+      const missesCoreTitleIngredient = missed.some((missing) => {
+        const missingName = normalizeEnglishIngredient(missing?.name);
+        return missingName && (normalizedTitle.includes(missingName) || missingName.includes(normalizedTitle));
+      });
+      return { ...item, nonPantryMissed: missed, strictMatch: missed.length === 0, missesCoreTitleIngredient };
     })
-    .filter((item) => item.nonPantryMissed.length <= 2)
+    .filter((item) => !item.missesCoreTitleIngredient
+      && item.nonPantryMissed.length <= 2
+      && Number(item.usedIngredientCount || 0) >= 2
+      && Number(item.usedIngredientCount || 0) >= item.nonPantryMissed.length * 2)
     .sort((first, second) => first.nonPantryMissed.length - second.nonPantryMissed.length
       || Number(second.usedIngredientCount || 0) - Number(first.usedIngredientCount || 0))
     .slice(0, 6);
@@ -741,15 +813,9 @@ async function generateFromSpoonacular(env, { ingredients, equipment, minutes, p
   const candidates = (Array.isArray(details) ? details : [])
     .map((recipe) => {
       const searchMatch = sourceMatches.find((item) => Number(item.id) === Number(recipe.id));
-      const sourceIngredients = (Array.isArray(recipe.extendedIngredients) ? recipe.extendedIngredients : [])
-        .filter((item) => englishIngredientIsOwned(item.nameClean || item.name, translations))
-        .slice(0, 30)
-        .map((item) => ({
-          name: String(item.nameClean || item.name || "").slice(0, 100),
-          amount: Number(item.amount) || 0,
-          unit: String(item.unit || "").slice(0, 30),
-          original: String(item.original || "").slice(0, 180),
-        }));
+      const sourceIngredients = sourcedIngredientsForPortions(recipe, translations, portions);
+      const nutrition = sourceNutrition(recipe);
+      if (nutrition && !searchMatch?.strictMatch) nutrition.estimated = true;
       return {
         id: Number(recipe.id),
         title: String(recipe.title || "").slice(0, 160),
@@ -760,10 +826,14 @@ async function generateFromSpoonacular(env, { ingredients, equipment, minutes, p
         ingredients: sourceIngredients,
         omittedIngredients: (searchMatch?.nonPantryMissed || []).map((item) => String(item?.name || "").slice(0, 100)),
         steps: sourceRecipeSteps(recipe),
-        nutrition: adaptedSourceNutrition(recipe, translations, Boolean(searchMatch?.strictMatch)),
+        nutrition,
       };
     })
-    .filter((recipe) => recipe.title && recipe.steps.length >= 3 && recipe.nutrition)
+    .filter((recipe) => recipe.title
+      && recipe.readyInMinutes <= minutes
+      && recipe.ingredients.length >= 2
+      && recipe.steps.length >= 3
+      && recipe.nutrition)
     .slice(0, 3)
     .map((recipe, sourceIndex) => ({ ...recipe, sourceIndex }));
   if (!candidates.length) return [];
@@ -791,6 +861,8 @@ async function generateFromSpoonacular(env, { ingredients, equipment, minutes, p
     return {
       ...recipe,
       minutes: Math.min(minutes, Number(recipe.minutes) || source.readyInMinutes),
+      ingredients: source.ingredients.map(({ name, amount }) => ({ name, amount })),
+      uses: ingredients.filter((owned) => source.ingredients.some((item) => ingredientIsOwned(item.name, [owned]))),
       nutrition: source.nutrition,
       source: {
         name: source.sourceName || "Spoonacular",
