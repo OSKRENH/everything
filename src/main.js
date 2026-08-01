@@ -2,6 +2,7 @@ import "./styles.css";
 import { ingredientCatalog } from "./ingredients.js";
 
 const STORAGE_KEY = "kutno-kitchen-v2";
+const FAVORITES_KEY = "kutno-favorites-v1";
 
 const quickIngredients = [
   "яйца",
@@ -47,7 +48,7 @@ const fallbackRecipes = [
       { name: "яйца", amount: "2 шт." },
       { name: "лук", amount: "½ шт." },
       { name: "растительное масло", amount: "1 ст. л." },
-      { name: "соевый соус или соль", amount: "по вкусу" },
+      { name: "соль", amount: "по вкусу" },
     ],
     steps: [
       "Нарежьте лук и обжарьте на хорошо разогретой сковороде 3 минуты.",
@@ -91,7 +92,7 @@ const fallbackRecipes = [
       { name: "рис", amount: "180 г" },
       { name: "лук", amount: "1 шт." },
       { name: "вода", amount: "380 мл" },
-      { name: "масло, соль, перец", amount: "по вкусу" },
+      { name: "масло и соль", amount: "по вкусу" },
     ],
     steps: [
       "Обжарьте кусочки курицы до лёгкой корочки и переложите на тарелку.",
@@ -113,7 +114,7 @@ const fallbackRecipes = [
       { name: "чеснок", amount: "2 зубчика" },
       { name: "сыр", amount: "50 г" },
       { name: "масло", amount: "2 ст. л." },
-      { name: "соль и перец", amount: "по вкусу" },
+      { name: "соль", amount: "по вкусу" },
     ],
     steps: [
       "Отварите пасту на минуту меньше времени на упаковке, сохраните стакан воды.",
@@ -135,7 +136,7 @@ const fallbackRecipes = [
       { name: "помидоры", amount: "350 г" },
       { name: "лук", amount: "1 шт." },
       { name: "масло", amount: "1 ст. л." },
-      { name: "соль и специи", amount: "по вкусу" },
+      { name: "соль", amount: "по вкусу" },
     ],
     steps: [
       "Обжарьте мелко нарезанный лук до прозрачности.",
@@ -177,8 +178,18 @@ function loadState() {
   }
 }
 
+function loadFavoriteRecipes() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(FAVORITES_KEY));
+    return Array.isArray(saved) ? saved.slice(0, 100) : [];
+  } catch {
+    return [];
+  }
+}
+
 let state = loadState();
 let recipes = [];
+let favoriteRecipes = loadFavoriteRecipes();
 let isLoading = false;
 let activeRecipe = null;
 let generationError = "";
@@ -197,6 +208,30 @@ const app = document.querySelector("#app");
 
 function normalize(value) {
   return value.trim().toLowerCase().replace(/ё/g, "е");
+}
+
+function recipeId(recipe) {
+  const signature = [
+    normalize(String(recipe?.title || "")),
+    ...(Array.isArray(recipe?.ingredients) ? recipe.ingredients : [])
+      .map((item) => normalize(String(item?.name || "")))
+      .sort(),
+  ].join("|");
+  let hash = 2166136261;
+  for (let index = 0; index < signature.length; index += 1) {
+    hash ^= signature.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `r-${(hash >>> 0).toString(36)}`;
+}
+
+function saveFavoritesLocally() {
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(favoriteRecipes.slice(0, 100)));
+}
+
+function isFavorite(recipe) {
+  const id = recipeId(recipe);
+  return favoriteRecipes.some((item) => recipeId(item) === id);
 }
 
 function saveState() {
@@ -252,9 +287,59 @@ async function restoreSession() {
     const data = await response.json();
     authUser = data.user;
     if (!applyRemoteKitchen(data.kitchen)) await syncKitchen();
+    await restoreFavorites();
     render();
   } catch {
     // Приложение продолжает работать с локально сохранённой кухней.
+  }
+}
+
+async function restoreFavorites() {
+  if (!authUser) return;
+  try {
+    const response = await fetch("/api/favorites");
+    if (!response.ok) return;
+    const data = await response.json();
+    const remote = Array.isArray(data.favorites) ? data.favorites : [];
+    const localById = new Map(favoriteRecipes.map((recipe) => [recipeId(recipe), recipe]));
+    const remoteById = new Map(remote.map((recipe) => [recipeId(recipe), recipe]));
+    favoriteRecipes = [...remote, ...favoriteRecipes.filter((recipe) => !remoteById.has(recipeId(recipe)))].slice(0, 100);
+    saveFavoritesLocally();
+    const unsynced = [...localById].filter(([id]) => !remoteById.has(id)).map(([, recipe]) => recipe);
+    await Promise.all(unsynced.map((recipe) => fetch("/api/favorites", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ recipe }),
+    })));
+  } catch {
+    // Локальное избранное остаётся доступным без сети.
+  }
+}
+
+async function toggleFavorite(recipe) {
+  if (!recipe) return;
+  const id = recipeId(recipe);
+  const wasFavorite = favoriteRecipes.some((item) => recipeId(item) === id);
+  const sheetScroll = document.querySelector(".recipe-sheet")?.scrollTop || 0;
+  favoriteRecipes = wasFavorite
+    ? favoriteRecipes.filter((item) => recipeId(item) !== id)
+    : [{ ...recipe, id, portions: Number(recipe.portions) || state.portions }, ...favoriteRecipes];
+  saveFavoritesLocally();
+  render();
+  if (activeRecipe) requestAnimationFrame(() => {
+    const sheet = document.querySelector(".recipe-sheet");
+    if (sheet) sheet.scrollTop = sheetScroll;
+  });
+
+  if (!authUser) return;
+  try {
+    await fetch(wasFavorite ? `/api/favorites/${encodeURIComponent(id)}` : "/api/favorites", {
+      method: wasFavorite ? "DELETE" : "POST",
+      headers: wasFavorite ? undefined : { "content-type": "application/json" },
+      body: wasFavorite ? undefined : JSON.stringify({ recipe }),
+    });
+  } catch {
+    // Изменение синхронизируется при следующем входе.
   }
 }
 
@@ -341,6 +426,7 @@ async function handleGoogleCredential(response) {
     if (!authResponse.ok) throw new Error(data.error || "Не получилось войти через Google");
     authUser = data.user;
     if (!applyRemoteKitchen(data.kitchen)) await syncKitchen();
+    await restoreFavorites();
     authModalOpen = false;
   } catch (error) {
     authError = error instanceof Error ? error.message : "Попробуйте ещё раз";
@@ -439,6 +525,15 @@ function chooseIngredientSuggestion(name) {
   requestAnimationFrame(() => document.querySelector("#ingredient-input")?.focus({ preventScroll: true }));
 }
 
+function renderPotLoader(className = "") {
+  return `<span class="pot-loader ${className}" aria-hidden="true">
+    <span class="steam steam-one"></span>
+    <span class="steam steam-two"></span>
+    <span class="pot-lid"></span>
+    <span class="pot-body"></span>
+  </span>`;
+}
+
 function render() {
   ingredientSuggestions = [];
   activeSuggestionIndex = -1;
@@ -517,8 +612,8 @@ function render() {
             </section>
 
             <button class="primary-action" data-action="generate" ${!state.ingredients.length || isLoading ? "disabled" : ""}>
-              <span>${isLoading ? "Составляем меню…" : "Предложить три блюда"}</span>
-              <span aria-hidden="true">↘</span>
+              <span>${isLoading ? "Составляем меню" : "Предложить блюда"}</span>
+              ${isLoading ? renderPotLoader("pot-loader-small") : `<span class="action-arrow" aria-hidden="true">↘</span>`}
             </button>
             ${!state.ingredients.length ? `<p class="action-note">Добавьте хотя бы один продукт</p>` : ""}
             <p class="save-status">${authUser ? `Кухня сохранена в аккаунте ${escapeHtml(authUser.email)}` : `Кухня сохранена на этом устройстве. <button data-action="account">Войдите</button>, чтобы открыть её на другом.`}</p>
@@ -526,6 +621,7 @@ function render() {
         </section>
 
         ${renderResults()}
+        ${renderFavorites()}
       </main>
 
       <footer>
@@ -543,7 +639,7 @@ function renderResults() {
   if (isLoading) {
     return `
       <section class="results-section loading-results" aria-live="polite">
-        <div class="results-heading"><span>Меню</span><h2>Листаем варианты…</h2></div>
+        <div class="results-heading"><span>Меню</span><h2>Готовим варианты</h2>${renderPotLoader("pot-loader-large")}</div>
         <div class="loading-rule"></div><div class="loading-rule short"></div><div class="loading-rule"></div>
       </section>`;
   }
@@ -572,30 +668,51 @@ function renderResults() {
         <p>Варианты расположены от самого подходящего. Базовые специи и масло не считаются.</p>
       </div>
       <div class="recipe-list">
-        ${recipes.map((recipe, index) => renderRecipeCard(recipe, index)).join("")}
+        ${recipes.map((recipe, index) => renderRecipeCard(recipe, index, "recipes")).join("")}
       </div>
     </section>`;
 }
 
-function renderRecipeCard(recipe, index) {
+function renderFavorites() {
+  if (!favoriteRecipes.length) return "";
+  return `
+    <section class="results-section favorites-section" id="favorites" aria-labelledby="favorites-title">
+      <div class="results-heading">
+        <span>Сохранено / ${favoriteRecipes.length.toString().padStart(2, "0")}</span>
+        <h2 id="favorites-title">Избранное</h2>
+        <p>${authUser ? "Рецепты сохранены в вашем аккаунте." : "Рецепты сохранены на этом устройстве. Войдите, чтобы синхронизировать их."}</p>
+      </div>
+      <div class="recipe-list">
+        ${favoriteRecipes.map((recipe, index) => renderRecipeCard(recipe, index, "favorites")).join("")}
+      </div>
+    </section>`;
+}
+
+function renderRecipeCard(recipe, index, source = "recipes") {
   const uses = Array.isArray(recipe.uses) ? recipe.uses : [];
+  const favorite = isFavorite(recipe);
+  const calories = Number(recipe.nutrition?.calories) || 0;
   return `
     <article class="recipe-entry">
       <div class="recipe-number">${String(index + 1).padStart(2, "0")}</div>
       <div class="recipe-main">
-        <div class="recipe-status complete">Все продукты есть</div>
-        <h3>${escapeHtml(recipe.title)}</h3>
+        <div class="recipe-card-topline">
+          <div class="recipe-status complete">Все продукты есть</div>
+          <button class="favorite-toggle ${favorite ? "active" : ""}" data-toggle-favorite-source="${source}" data-recipe-index="${index}" aria-pressed="${favorite}" aria-label="${favorite ? "Убрать из избранного" : "Сохранить в избранное"}">${favorite ? "♥" : "♡"}</button>
+        </div>
+        <h3><button class="recipe-title-button" data-open-recipe="${index}" data-recipe-source="${source}">${escapeHtml(recipe.title)}</button></h3>
         <p class="recipe-subtitle">${escapeHtml(recipe.subtitle || recipe.why)}</p>
         <div class="recipe-meta">
           <span>${Number(recipe.minutes) || state.minutes} мин</span>
           <span>${escapeHtml(recipe.difficulty || "просто")}</span>
+          ${calories ? `<span>≈ ${calories} ккал</span>` : ""}
           <span>Без покупок</span>
         </div>
       </div>
       <div class="recipe-side">
         <p>${escapeHtml(recipe.why)}</p>
         ${uses.length ? `<p class="uses-line">Используем: ${uses.slice(0, 5).map(escapeHtml).join(", ")}</p>` : ""}
-        <button class="open-recipe" data-open-recipe="${index}">Открыть рецепт <span aria-hidden="true">→</span></button>
+        <button class="open-recipe" data-open-recipe="${index}" data-recipe-source="${source}">Открыть рецепт <span aria-hidden="true">→</span></button>
       </div>
     </article>`;
 }
@@ -609,7 +726,7 @@ function renderAuthOverlay() {
         <p class="eyebrow">Ваш профиль</p>
         <h2 id="account-title">${escapeHtml(authUser.name)}</h2>
         <p class="auth-lead">${escapeHtml(authUser.email)}</p>
-        <p class="account-summary">Сохранено продуктов: ${state.ingredients.length}<br>Возможностей кухни: ${state.equipment.length}</p>
+        <p class="account-summary">Сохранено продуктов: ${state.ingredients.length}<br>Возможностей кухни: ${state.equipment.length}<br>Рецептов в избранном: ${favoriteRecipes.length}</p>
         <button class="auth-primary" data-action="close-auth">Продолжить готовить</button>
         <button class="auth-secondary" data-action="logout">Выйти из аккаунта</button>
       </section>
@@ -634,20 +751,41 @@ function renderAuthOverlay() {
 
 function renderRecipeOverlay(recipe) {
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
-  const steps = Array.isArray(recipe.steps) ? recipe.steps : [];
+  const steps = (Array.isArray(recipe.steps) ? recipe.steps : [])
+    .filter((step) => typeof step === "string")
+    .map((step) => step.trim())
+    .filter((step) => step && !/^(?:(?:sub)?title|description|step\s*\d*|шаг\s*\d*|null|undefined)$/i.test(step));
+  const nutrition = recipe.nutrition || {};
+  const favorite = isFavorite(recipe);
+  const portions = Number(recipe.portions) || state.portions;
   return `
     <div class="recipe-overlay" role="dialog" aria-modal="true" aria-labelledby="recipe-title">
       <button class="overlay-backdrop" data-action="close-recipe" aria-label="Закрыть рецепт"></button>
       <article class="recipe-sheet">
         <div class="sheet-topline">
           <span>Кутно / рецепт</span>
-          <button data-action="close-recipe">Закрыть ×</button>
+          <div class="sheet-actions">
+            <button class="sheet-favorite ${favorite ? "active" : ""}" data-toggle-active-favorite aria-pressed="${favorite}">${favorite ? "В избранном ♥" : "В избранное ♡"}</button>
+            <button class="sheet-close" data-action="close-recipe">Закрыть ×</button>
+          </div>
         </div>
         <header class="sheet-header">
           <p>${escapeHtml(recipe.subtitle || "Рецепт из того, что есть")}</p>
           <h2 id="recipe-title">${escapeHtml(recipe.title)}</h2>
-          <div class="sheet-meta"><span>${recipe.minutes} мин</span><span>${state.portions} порции</span><span>${escapeHtml(recipe.difficulty || "просто")}</span></div>
+          <div class="sheet-meta"><span>${recipe.minutes} мин</span><span>${portions} порции</span><span>${escapeHtml(recipe.difficulty || "просто")}</span></div>
         </header>
+        ${Number(nutrition.calories) ? `<section class="nutrition-block" aria-labelledby="nutrition-title">
+          <div class="nutrition-heading">
+            <h3 id="nutrition-title">КБЖУ на порцию</h3>
+            <span>ориентировочно</span>
+          </div>
+          <div class="nutrition-grid">
+            <div><b>${Math.round(Number(nutrition.calories))}</b><span>ккал</span></div>
+            <div><b>${Number(nutrition.protein || 0).toFixed(1)}</b><span>белки, г</span></div>
+            <div><b>${Number(nutrition.fat || 0).toFixed(1)}</b><span>жиры, г</span></div>
+            <div><b>${Number(nutrition.carbs || 0).toFixed(1)}</b><span>углеводы, г</span></div>
+          </div>
+        </section>` : ""}
         <div class="sheet-grid">
           <section>
             <h3>Что понадобится</h3>
@@ -664,6 +802,7 @@ function renderRecipeOverlay(recipe) {
             ${recipe.tip ? `<aside class="cook-note"><span>На заметку</span><p>${escapeHtml(recipe.tip)}</p></aside>` : ""}
           </section>
         </div>
+        <p class="recipe-source-note">${escapeHtml(recipe.source?.note || "Рецепт проверен по вашему списку продуктов")}${recipe.nutrition?.estimated ? ". КБЖУ рассчитано приблизительно" : ""}.</p>
       </article>
     </div>`;
 }
@@ -678,6 +817,15 @@ function addIngredients(values) {
   render();
 }
 
+const fallbackNutrition = {
+  "Жареный рис с яйцом": { calories: 385, protein: 13, fat: 12, carbs: 57, estimated: true },
+  "Картофельная тортилья": { calories: 430, protein: 15, fat: 24, carbs: 38, estimated: true },
+  "Курица с рисом": { calories: 545, protein: 39, fat: 15, carbs: 64, estimated: true },
+  "Паста с чесноком и сыром": { calories: 480, protein: 18, fat: 19, carbs: 59, estimated: true },
+  "Шакшука": { calories: 245, protein: 12, fat: 15, carbs: 15, estimated: true },
+  "Гречка с грибами": { calories: 390, protein: 12, fat: 12, carbs: 61, estimated: true },
+};
+
 function getFallbackSuggestions() {
   const have = state.ingredients.map(normalize);
   const ingredientIsAvailable = (name) => {
@@ -689,7 +837,19 @@ function getFallbackSuggestions() {
     const uses = recipe.required.filter((item) => have.some((owned) => owned.includes(item) || item.includes(owned)));
     const missing = recipe.required.filter((item) => !uses.includes(item));
     const match = Math.round((uses.length / recipe.required.length) * 100);
-    return { ...recipe, uses, missing, match };
+    return {
+      ...recipe,
+      uses,
+      missing,
+      match,
+      portions: state.portions,
+      nutrition: fallbackNutrition[recipe.title],
+      source: {
+        name: "Кутно",
+        type: "curated",
+        note: "Рецепт из проверенной базовой коллекции Кутно",
+      },
+    };
   });
   return scored
     .filter((item) => item.missing.length === 0 && item.ingredients.every((ingredient) => ingredientIsAvailable(ingredient.name)))
@@ -862,8 +1022,15 @@ app.addEventListener("click", (event) => {
     render();
   }
   if (target.dataset.action === "logout") logout();
+  if (target.dataset.toggleFavoriteSource) {
+    const source = target.dataset.toggleFavoriteSource === "favorites" ? favoriteRecipes : recipes;
+    toggleFavorite(source[Number(target.dataset.recipeIndex)]);
+  }
+  if (target.dataset.toggleActiveFavorite !== undefined) toggleFavorite(activeRecipe);
   if (target.dataset.openRecipe !== undefined) {
-    activeRecipe = recipes[Number(target.dataset.openRecipe)];
+    const source = target.dataset.recipeSource === "favorites" ? favoriteRecipes : recipes;
+    activeRecipe = source[Number(target.dataset.openRecipe)];
+    if (!activeRecipe) return;
     render();
     document.body.classList.add("no-scroll");
     document.querySelector(".recipe-sheet [data-action='close-recipe']")?.focus();
