@@ -4,6 +4,16 @@
   "main": "worker/index.js",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
+  "routes": [
+    {
+      "pattern": "kutno.ru",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.kutno.ru",
+      "custom_domain": true
+    }
+  ],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
