@@ -1184,7 +1184,7 @@ async function generateRecipes(request, env) {
   let catalogAttempt = "no_matching_catalog_recipe";
   try {
     recipes = await findCatalogRecipes(env, { ingredients, equipment, difficulty, portions, excludeTitles, variation });
-    if (recipes.length >= 3) return json({ recipes, source: "kutno-catalog", catalogVersion: CATALOG_VERSION });
+    if (recipes.length) return json({ recipes, source: "kutno-catalog", catalogVersion: CATALOG_VERSION });
   } catch (error) {
     catalogAttempt = error instanceof Error ? error.message : String(error);
     console.warn("catalog_search_failed", catalogAttempt);
