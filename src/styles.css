@@ -328,17 +328,16 @@ legend { margin-bottom: 12px; }
 .auth-card .eyebrow { margin: 0 0 40px; }
 .auth-card h2 { margin: 0; max-width: 420px; font-family: "Prata", Georgia, serif; font-size: 52px; font-weight: 400; line-height: .98; letter-spacing: -.05em; }
 .auth-lead { max-width: 390px; margin: 20px 0 30px; color: var(--soft); font-size: 13px; line-height: 1.55; }
-.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--line); margin-bottom: 25px; }
-.auth-tabs button { border: 0; background: transparent; padding: 10px 0; color: var(--soft); text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .09em; cursor: pointer; }
-.auth-tabs button.active { color: var(--ink); border-bottom: 2px solid var(--ink); }
-.auth-form { display: grid; gap: 18px; }
-.auth-form label { display: grid; gap: 8px; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
-.auth-form input { width: 100%; border: 0; border-bottom: 1px solid var(--ink); border-radius: 0; background: transparent; padding: 8px 0 11px; font-size: 16px; text-transform: none; letter-spacing: 0; }
+.google-signin-wrap { min-height: 58px; margin-top: 4px; display: grid; align-items: center; }
+#google-signin-button { width: 100%; min-height: 44px; display: grid; place-items: center; color: var(--soft); font-size: 12px; }
+#google-signin-button > div { max-width: 100%; }
+.google-load-error { margin: 0; color: var(--accent); font-size: 12px; line-height: 1.45; text-align: left; }
+.google-auth-note { margin: 24px 0 0; padding-top: 16px; border-top: 1px solid var(--line); color: var(--soft); font-size: 10px; line-height: 1.55; }
 .auth-primary, .auth-secondary { width: 100%; border: 0; padding: 15px 18px; cursor: pointer; text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
 .auth-primary { margin-top: 8px; background: var(--ink); color: white; }
 .auth-primary:disabled { opacity: .5; cursor: wait; }
 .auth-secondary { margin-top: 10px; background: transparent; border: 1px solid var(--line); }
-.auth-error { margin: 0; color: var(--accent); font-size: 12px; line-height: 1.45; }
+.auth-error { margin: 16px 0 0; color: var(--accent); font-size: 12px; line-height: 1.45; }
 .account-card h2 { font-size: 60px; }
 .account-summary { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 18px 0; margin: 30px 0; color: var(--soft); font-size: 12px; line-height: 1.7; }
 
