@@ -30,7 +30,6 @@ const defaults = {
   minutes: "30",
   difficulty: "просто",
   portions: 2,
-  strict: true,
 };
 
 const fallbackRecipes = [
@@ -181,6 +180,13 @@ let state = loadState();
 let recipes = [];
 let isLoading = false;
 let activeRecipe = null;
+let generationError = "";
+let authUser = null;
+let authModalOpen = false;
+let authMode = "register";
+let authError = "";
+let authBusy = false;
+let remoteSaveTimer = null;
 
 const app = document.querySelector("#app");
 
@@ -190,6 +196,61 @@ function normalize(value) {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (authUser) {
+    clearTimeout(remoteSaveTimer);
+    remoteSaveTimer = setTimeout(syncKitchen, 450);
+  }
+}
+
+function kitchenPayload() {
+  return {
+    ingredients: state.ingredients,
+    equipment: state.equipment,
+    minutes: state.minutes,
+    portions: state.portions,
+  };
+}
+
+async function syncKitchen() {
+  if (!authUser) return;
+  try {
+    const response = await fetch("/api/kitchen", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(kitchenPayload()),
+    });
+    if (!response.ok) throw new Error("sync failed");
+  } catch {
+    // Локальная копия остаётся основной до следующего изменения.
+  }
+}
+
+function applyRemoteKitchen(kitchen) {
+  if (!kitchen || typeof kitchen !== "object") return false;
+  const hasRemoteData = Array.isArray(kitchen.ingredients) && kitchen.ingredients.length > 0;
+  if (!hasRemoteData) return false;
+  state = {
+    ...state,
+    ingredients: kitchen.ingredients.map(normalize).filter(Boolean),
+    equipment: Array.isArray(kitchen.equipment) ? kitchen.equipment : state.equipment,
+    minutes: String(kitchen.minutes || state.minutes),
+    portions: Number(kitchen.portions) || state.portions,
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  return true;
+}
+
+async function restoreSession() {
+  try {
+    const response = await fetch("/api/auth/me");
+    if (!response.ok) return;
+    const data = await response.json();
+    authUser = data.user;
+    if (!applyRemoteKitchen(data.kitchen)) await syncKitchen();
+    render();
+  } catch {
+    // Приложение продолжает работать с локально сохранённой кухней.
+  }
 }
 
 function escapeHtml(value = "") {
@@ -211,14 +272,17 @@ function render() {
       <header class="site-header">
         <a class="wordmark" href="#top" aria-label="Кутно, на главную">Кутно</a>
         <div class="header-note">Кухонная картотека<br>Выпуск 01 — ${new Date().getFullYear()}</div>
-        <button class="text-button header-clear" data-action="clear-all" ${state.ingredients.length ? "" : "disabled"}>Очистить кухню</button>
+        <div class="header-actions">
+          <button class="text-button header-clear" data-action="clear-all" ${state.ingredients.length ? "" : "disabled"}>Очистить кухню</button>
+          <button class="account-button" data-action="account">${authUser ? escapeHtml(authUser.name) : "Войти"}</button>
+        </div>
       </header>
 
       <main id="top">
         <section class="intro-grid" aria-labelledby="main-title">
           <div class="intro-copy">
             <p class="eyebrow">Рецепты из того, что уже дома</p>
-            <h1 id="main-title">Сначала&nbsp;—<br>что есть<br>на кухне?</h1>
+            <h1 id="main-title">Сначала —<br>что есть<br>на кухне?</h1>
             <p class="intro-footnote"><span>①</span> Соль, воду и масло можно не указывать — мы считаем их базовыми.</p>
           </div>
 
@@ -273,11 +337,6 @@ function render() {
                     <button type="button" data-portions="1" aria-label="Увеличить число порций">+</button>
                   </div>
                 </fieldset>
-                <label class="strict-option">
-                  <input type="checkbox" id="strict-toggle" ${state.strict ? "checked" : ""}>
-                  <span class="checkmark" aria-hidden="true"></span>
-                  Без похода в магазин
-                </label>
               </div>
             </section>
 
@@ -286,6 +345,7 @@ function render() {
               <span aria-hidden="true">↘</span>
             </button>
             ${!state.ingredients.length ? `<p class="action-note">Добавьте хотя бы один продукт</p>` : ""}
+            <p class="save-status">${authUser ? `Кухня сохранена в аккаунте ${escapeHtml(authUser.email)}` : `Кухня сохранена на этом устройстве. <button data-action="account">Войдите</button>, чтобы открыть её на другом.`}</p>
           </div>
         </section>
 
@@ -298,6 +358,7 @@ function render() {
       </footer>
     </div>
     ${activeRecipe ? renderRecipeOverlay(activeRecipe) : ""}
+    ${authModalOpen ? renderAuthOverlay() : ""}
   `;
 }
 
@@ -311,6 +372,13 @@ function renderResults() {
   }
 
   if (!recipes.length) {
+    if (generationError) {
+      return `<section class="generation-error" id="results" aria-live="polite">
+        <span>Не получилось составить три честных рецепта</span>
+        <p>${escapeHtml(generationError)}</p>
+        <button data-action="generate">Попробовать ещё раз</button>
+      </section>`;
+    }
     return `
       <section class="manifesto-strip" aria-label="Как работает Кутно">
         <div><b>01</b><span>Запишите продукты</span></div>
@@ -333,21 +401,18 @@ function renderResults() {
 }
 
 function renderRecipeCard(recipe, index) {
-  const missing = Array.isArray(recipe.missing) ? recipe.missing : [];
   const uses = Array.isArray(recipe.uses) ? recipe.uses : [];
   return `
     <article class="recipe-entry">
       <div class="recipe-number">${String(index + 1).padStart(2, "0")}</div>
       <div class="recipe-main">
-        <div class="recipe-status ${missing.length ? "has-missing" : "complete"}">
-          ${missing.length ? `Не хватает: ${missing.map(escapeHtml).join(", ")}` : "Всё есть"}
-        </div>
+        <div class="recipe-status complete">Все продукты есть</div>
         <h3>${escapeHtml(recipe.title)}</h3>
         <p class="recipe-subtitle">${escapeHtml(recipe.subtitle || recipe.why)}</p>
         <div class="recipe-meta">
           <span>${Number(recipe.minutes) || state.minutes} мин</span>
           <span>${escapeHtml(recipe.difficulty || "просто")}</span>
-          <span>${Number(recipe.match) || Math.max(50, 100 - missing.length * 18)}% совпадение</span>
+          <span>Без покупок</span>
         </div>
       </div>
       <div class="recipe-side">
@@ -356,6 +421,45 @@ function renderRecipeCard(recipe, index) {
         <button class="open-recipe" data-open-recipe="${index}">Открыть рецепт <span aria-hidden="true">→</span></button>
       </div>
     </article>`;
+}
+
+function renderAuthOverlay() {
+  if (authUser) {
+    return `<div class="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="account-title">
+      <button class="overlay-backdrop" data-action="close-auth" aria-label="Закрыть"></button>
+      <section class="auth-card account-card">
+        <button class="auth-close" data-action="close-auth" aria-label="Закрыть">×</button>
+        <p class="eyebrow">Ваш профиль</p>
+        <h2 id="account-title">${escapeHtml(authUser.name)}</h2>
+        <p class="auth-lead">${escapeHtml(authUser.email)}</p>
+        <p class="account-summary">Сохранено продуктов: ${state.ingredients.length}<br>Возможностей кухни: ${state.equipment.length}</p>
+        <button class="auth-primary" data-action="close-auth">Продолжить готовить</button>
+        <button class="auth-secondary" data-action="logout">Выйти из аккаунта</button>
+      </section>
+    </div>`;
+  }
+
+  const registering = authMode === "register";
+  return `<div class="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="account-title">
+    <button class="overlay-backdrop" data-action="close-auth" aria-label="Закрыть"></button>
+    <section class="auth-card">
+      <button class="auth-close" data-action="close-auth" aria-label="Закрыть">×</button>
+      <p class="eyebrow">${registering ? "Новая кухня" : "С возвращением"}</p>
+      <h2 id="account-title">${registering ? "Сохранить кухню" : "Войти в Кутно"}</h2>
+      <p class="auth-lead">Продукты и инвентарь будут доступны на телефоне и компьютере.</p>
+      <div class="auth-tabs">
+        <button class="${registering ? "active" : ""}" data-auth-mode="register">Регистрация</button>
+        <button class="${!registering ? "active" : ""}" data-auth-mode="login">Вход</button>
+      </div>
+      <form id="auth-form" class="auth-form">
+        ${registering ? `<label>Имя<input name="name" autocomplete="name" required maxlength="60" placeholder="Как к вам обращаться"></label>` : ""}
+        <label>Почта<input name="email" type="email" autocomplete="email" required maxlength="160" placeholder="name@example.com"></label>
+        <label>Пароль<input name="password" type="password" autocomplete="${registering ? "new-password" : "current-password"}" required minlength="8" maxlength="128" placeholder="Не меньше 8 символов"></label>
+        ${authError ? `<p class="auth-error" role="alert">${escapeHtml(authError)}</p>` : ""}
+        <button class="auth-primary" type="submit" ${authBusy ? "disabled" : ""}>${authBusy ? "Подождите…" : registering ? "Создать аккаунт" : "Войти"}</button>
+      </form>
+    </section>
+  </div>`;
 }
 
 function renderRecipeOverlay(recipe) {
@@ -412,8 +516,8 @@ function getFallbackSuggestions() {
     const match = Math.round((uses.length / recipe.required.length) * 100);
     return { ...recipe, uses, missing, match };
   });
-  const eligible = state.strict ? scored.filter((item) => item.missing.length <= 1) : scored;
-  return (eligible.length >= 3 ? eligible : scored)
+  return scored
+    .filter((item) => item.missing.length === 0)
     .sort((a, b) => b.match - a.match || a.minutes - b.minutes)
     .slice(0, 3);
 }
@@ -422,6 +526,7 @@ async function generateRecipes() {
   if (!state.ingredients.length || isLoading) return;
   isLoading = true;
   recipes = [];
+  generationError = "";
   render();
 
   try {
@@ -433,14 +538,21 @@ async function generateRecipes() {
         equipment: state.equipment.map(equipmentName),
         minutes: Number(state.minutes),
         portions: state.portions,
-        strict: state.strict,
       }),
     });
-    if (!response.ok) throw new Error("Generation failed");
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Не удалось составить меню");
+    }
     const data = await response.json();
-    recipes = Array.isArray(data.recipes) && data.recipes.length ? data.recipes.slice(0, 3) : getFallbackSuggestions();
-  } catch {
-    recipes = getFallbackSuggestions();
+    if (!Array.isArray(data.recipes) || !data.recipes.length) throw new Error("Не найдено подходящих вариантов");
+    recipes = data.recipes.slice(0, 3);
+  } catch (error) {
+    const safeFallbacks = getFallbackSuggestions();
+    recipes = safeFallbacks;
+    if (!safeFallbacks.length) {
+      generationError = error instanceof Error ? error.message : "Попробуйте ещё раз";
+    }
   } finally {
     isLoading = false;
     render();
@@ -449,11 +561,52 @@ async function generateRecipes() {
 }
 
 app.addEventListener("submit", (event) => {
-  if (event.target.id !== "ingredient-form") return;
-  event.preventDefault();
-  const input = event.target.querySelector("input");
-  addIngredients([input.value]);
+  if (event.target.id === "ingredient-form") {
+    event.preventDefault();
+    const input = event.target.querySelector("input");
+    addIngredients([input.value]);
+    return;
+  }
+  if (event.target.id === "auth-form") {
+    event.preventDefault();
+    submitAuth(new FormData(event.target));
+  }
 });
+
+async function submitAuth(formData) {
+  if (authBusy) return;
+  authBusy = true;
+  authError = "";
+  render();
+  try {
+    const payload = Object.fromEntries(formData.entries());
+    const response = await fetch(`/api/auth/${authMode}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Не получилось войти");
+    authUser = data.user;
+    if (!applyRemoteKitchen(data.kitchen)) await syncKitchen();
+    authModalOpen = false;
+  } catch (error) {
+    authError = error instanceof Error ? error.message : "Попробуйте ещё раз";
+  } finally {
+    authBusy = false;
+    render();
+  }
+}
+
+async function logout() {
+  try {
+    await fetch("/api/auth/logout", { method: "POST" });
+  } finally {
+    authUser = null;
+    authModalOpen = false;
+    render();
+  }
+}
 
 app.addEventListener("click", (event) => {
   const target = event.target.closest("button");
@@ -464,6 +617,7 @@ app.addEventListener("click", (event) => {
     state.ingredients = state.ingredients.filter((item) => item !== target.dataset.removeIngredient);
     saveState();
     recipes = [];
+    generationError = "";
     render();
   }
   if (target.dataset.equipment) {
@@ -486,7 +640,24 @@ app.addEventListener("click", (event) => {
   if (target.dataset.action === "clear-all") {
     state = { ...defaults, equipment: [...defaults.equipment] };
     recipes = [];
+    generationError = "";
     saveState();
+    render();
+  }
+  if (target.dataset.action === "account") {
+    authModalOpen = true;
+    authError = "";
+    render();
+  }
+  if (target.dataset.action === "close-auth") {
+    authModalOpen = false;
+    authError = "";
+    render();
+  }
+  if (target.dataset.action === "logout") logout();
+  if (target.dataset.authMode) {
+    authMode = target.dataset.authMode;
+    authError = "";
     render();
   }
   if (target.dataset.openRecipe !== undefined) {
@@ -502,19 +673,18 @@ app.addEventListener("click", (event) => {
   }
 });
 
-app.addEventListener("change", (event) => {
-  if (event.target.id === "strict-toggle") {
-    state.strict = event.target.checked;
-    saveState();
-  }
-});
-
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && activeRecipe) {
     activeRecipe = null;
     document.body.classList.remove("no-scroll");
     render();
   }
+  if (event.key === "Escape" && authModalOpen) {
+    authModalOpen = false;
+    authError = "";
+    render();
+  }
 });
 
 render();
+restoreSession();
