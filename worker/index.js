@@ -174,9 +174,16 @@ function safeNutrition(value) {
 
 function cleanRecipeSteps(value) {
   const placeholders = /^(?:(?:sub)?title|description|step\s*\d*|шаг\s*\d*|null|undefined)$/i;
+  const seen = new Set();
   return sanitizeList(value, 12, 400)
     .filter((step) => !placeholders.test(step.trim()))
-    .filter((step) => step.length >= 12);
+    .filter((step) => step.length >= 12)
+    .filter((step) => {
+      const signature = step.toLowerCase().replace(/ё/g, "е").replace(/[^а-яa-z0-9]+/gu, " ").trim();
+      if (!signature || seen.has(signature)) return false;
+      seen.add(signature);
+      return true;
+    });
 }
 
 function normalizeRecipes(recipes, portions, ownedIngredients, requestedDifficulty = "") {
@@ -186,7 +193,7 @@ function normalizeRecipes(recipes, portions, ownedIngredients, requestedDifficul
       const steps = cleanRecipeSteps(recipe.steps);
       const recipeText = [recipe.title, recipe.subtitle, ...steps].filter(Boolean).join(" ");
       const mentionedOwned = ownedIngredients.filter((owned) => ingredientMentioned(recipeText, owned));
-      const ingredients = Array.isArray(recipe.ingredients)
+      let ingredients = Array.isArray(recipe.ingredients)
         ? recipe.ingredients.map((item) => {
             const name = String(item?.name || "").trim();
             const amount = String(item?.amount || "").trim();
@@ -202,6 +209,13 @@ function normalizeRecipes(recipes, portions, ownedIngredients, requestedDifficul
           ingredients.push({ name: owned, amount: fallbackAmount(owned, portions) });
         }
       }
+      const seenIngredients = new Set();
+      ingredients = ingredients.filter((item) => {
+        const signature = item.name.toLowerCase().replace(/ё/g, "е").replace(/[^а-яa-z0-9]+/gu, " ").trim();
+        if (!signature || seenIngredients.has(signature)) return false;
+        seenIngredients.add(signature);
+        return true;
+      });
       const hasUnknownIngredient = !ingredients.length || ingredients.some((item) => !ingredientIsOwned(item.name, ownedIngredients));
       const hasMissing = sanitizeList(recipe.missing).some((item) => !isPantryBasic(item));
       const nutrition = safeNutrition(recipe.nutrition);
@@ -964,7 +978,7 @@ async function generateRecipes(request, env) {
     }
   }
 
-  const system = `Ты — строгий редактор современной русской кулинарной книги. Предложи от 1 до 3 действительно существующих и кулинарно осмысленных домашних блюд. Качество важнее количества: если хороших вариантов меньше трёх, верни меньше. Не придумывай блюдо только ради заполнения списка. Пиши только по-русски, без англицизмов, заглушек, служебных слов и выдуманных техник.
+  const system = `Ты — строгий редактор современной русской кулинарной книги. Предложи три разных действительно существующих и кулинарно осмысленных домашних блюда, использующих разные сочетания доступных продуктов. Если исходный набор объективно позволяет приготовить только одно или два нормальных блюда, верни меньше. Не придумывай блюдо только ради заполнения списка. Пиши только по-русски, без англицизмов, заглушек, служебных слов и выдуманных техник.
 ЖЁСТКОЕ ПРАВИЛО: используй только продукты из списка пользователя, а также соль, воду и растительное масло. Нельзя добавлять перец, чеснок, специи, соусы, сахар, муку, молоко, зелень или любой другой продукт, если его нет в списке. Поле missing всегда должно быть пустым массивом. В ingredients перечисли абсолютно всё, что используется в шагах; названия пользовательских продуктов сохраняй максимально близко к исходному списку. Не называй блюдо общими словами вроде «жареные продукты» или «смесь ингредиентов». В amount всегда указывай понятное русское количество: г, мл, ст. л., ч. л. или шт.; слово unit запрещено. Каждый рецепт должен содержать минимум три законченных конкретных шага с температурой или понятным уровнем огня и временем там, где это важно. Не выводи слова subtitle, title, description или step как содержимое полей. Не предлагай опасные способы приготовления.
 Для каждого рецепта оцени КБЖУ НА ОДНУ ПОРЦИЮ по указанным количествам: calories — ккал, protein/fat/carbs — граммы. Значения должны быть реалистичными и согласованными с ингредиентами; это ориентировочная оценка.`;
   const user = `Продукты дома: ${ingredients.join(", ")}.
