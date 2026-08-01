@@ -3,6 +3,11 @@
 Веб-приложение: вводите продукты и кухонную технику, которые у вас есть, — приложение подбирает
 рецепты и показывает пошаговые инструкции, отмечая, каких ингредиентов или техники не хватает.
 
+Приложение открывается сразу, без регистрации — продукты и техника сохраняются в браузере
+(localStorage). Регистрация (email/пароль или через Google) нужна только для того, чтобы сохранить
+инвентарь в аккаунте и открывать его с других устройств; при первом входе локальные данные гостя
+автоматически переносятся в аккаунт.
+
 Приложение развёрнуто на **Cloudflare Workers** (через git-интеграцию "Workers Builds"):
 статический React-фронтенд + serverless API (собранные из Pages Functions в единый Worker) + база
 данных **Cloudflare D1**. После одноразовой настройки (см. ниже) каждый `git push` в подключённую
@@ -16,6 +21,8 @@
   `wrangler deploy`
 - **База данных**: [Cloudflare D1](https://developers.cloudflare.com/d1/) (SQLite-совместимая),
   JWT-авторизация (`jose`), пароли хешируются PBKDF2 через Web Crypto API
+- **Вход через Google**: Google Identity Services на клиенте, ID-токен проверяется на бэкенде через
+  JWKS Google (`jose`) — без клиентского секрета
 - **Источник рецептов**: [Spoonacular API](https://spoonacular.com/food-api) — поиск по ингредиентам
   (`findByIngredients`) и пошаговые инструкции (`/recipes/{id}/information`, включая список техники
   на каждый шаг)
@@ -25,20 +32,24 @@
 ```
 functions/
   api/
-    auth/            register.js, login.js, me.js
-    inventory/        index.js (GET/POST), [id].js (DELETE)
-    recipes/           search.js, [id].js
-  _shared/            jwt.js, password.js, users.js, inventory.js, spoonacular.js,
-                       recipeCache.js, recipeMatching.js, auth.js, apiError.js
+    config.js           публичный GET: {googleClientId} для фронтенда
+    auth/                register.js, login.js, me.js, google.js (Google ID-token)
+    inventory/           index.js (GET/POST), [id].js (DELETE) — только для аккаунтов
+    recipes/              search.js, [id].js — без авторизации, список продуктов/техники
+                          передаётся в теле запроса
+  _shared/               jwt.js, password.js, users.js, inventory.js, spoonacular.js,
+                          recipeCache.js, recipeMatching.js, auth.js, googleAuth.js, apiError.js
 migrations/
-  0001_init.sql        схема D1: users, inventory_items, recipe_cache
+  0001_init.sql           схема D1: users, inventory_items, recipe_cache
 client/
   src/
-    pages/              Login, Register, Inventory, Recipes, RecipeDetail
-    components/         Navbar, InventoryList, RecipeCard, MissingEquipmentBanner, ProtectedRoute
-    context/            AuthContext (JWT в localStorage)
-    api/                обёртки над fetch для backend API
-wrangler.jsonc           конфигурация Worker: имя проекта, entry point, привязка D1
+    pages/                Login, Register, Inventory, Recipes, RecipeDetail
+    components/           Navbar, InventoryList, RecipeCard, MissingEquipmentBanner,
+                          GoogleSignInButton
+    context/              AuthContext (JWT в localStorage, миграция гостевых данных при входе)
+    api/                  обёртки над fetch для backend API + guestInventory.js (localStorage),
+                          inventoryStore.js (выбирает backend/localStorage по статусу входа)
+wrangler.jsonc            конфигурация Worker: имя проекта, entry point, привязка D1, SPA-фолбэк
 ```
 
 ## Локальный запуск
@@ -90,6 +101,29 @@ wrangler.jsonc           конфигурация Worker: имя проекта,
 После этого **любой push в указанную ветку автоматически запускает новую сборку и деплой** — никаких
 дополнительных действий не требуется.
 
+## Вход через Google (опционально)
+
+Без настройки кнопка «Войти через Google» просто не показывается на страницах входа/регистрации —
+всё остальное (email/пароль, гостевой режим) работает как обычно. Чтобы включить:
+
+1. Откройте [Google Cloud Console](https://console.cloud.google.com/) → создайте проект (или
+   выберите существующий).
+2. **APIs & Services → OAuth consent screen** — настройте экран согласия (тип **External**,
+   заполните название приложения и контактный email; для личного использования публиковать
+   приложение не обязательно, можно оставить в статусе Testing и добавить свой email в тестовые
+   пользователи).
+3. **APIs & Services → Credentials → Create Credentials → OAuth client ID**:
+   - **Application type**: Web application
+   - **Authorized JavaScript origins**: `https://everything.ivankamaldinov.workers.dev`
+     (и `http://localhost:5173`, если хотите проверять вход через Google локально)
+4. Скопируйте **Client ID** (выглядит как `...apps.googleusercontent.com`; Client Secret не нужен —
+   используется схема ID-токена без секрета).
+5. Добавьте его как переменную окружения проекта:
+   - **Продакшн**: Cloudflare Dashboard → **Workers & Pages → everything → Settings → Variables
+     and Secrets** → добавьте `GOOGLE_CLIENT_ID` (шифровать как секрет не обязательно, значение не
+     чувствительное) → **Retry deployment**, чтобы подхватилось.
+   - **Локально**: добавьте `GOOGLE_CLIENT_ID=...` в `.dev.vars`.
+
 ## Ключ Spoonacular API
 
 Без ключа приложение полностью работает (регистрация, вход, инвентарь), а разделы «Рецепты»
@@ -105,17 +139,25 @@ Cloudflare Workers (продакшн), см. выше.
 
 ## Как это устроено
 
-- Инвентарь хранится в D1 и привязан к аккаунту пользователя (email + пароль, хэш PBKDF2, сессия —
-  JWT со сроком действия 7 дней).
-- Поиск рецептов: `GET /api/recipes/search` берёт список продуктов пользователя и одним запросом
-  зовёт Spoonacular `findByIngredients`, возвращая карточки с процентом совпадения и списком
-  недостающих ингредиентов.
-- Детали рецепта: `GET /api/recipes/:id` подтягивает `analyzedInstructions` (шаги + техника на
-  каждый шаг), сравнивает требуемую технику со списком пользователя и помечает шаги, для которых
-  чего-то не хватает. Ответы Spoonacular кэшируются в таблице `recipe_cache` (30 дней), чтобы не
-  тратить дневную квоту повторно на один и тот же рецепт.
+- **Гостевой режим:** без входа список продуктов и техники хранится в `localStorage` браузера
+  (`client/src/api/guestInventory.js`). `inventoryStore.js` прозрачно переключается между
+  localStorage (гость) и D1-бэкендом (вход выполнен) — страницы инвентаря/рецептов не знают,
+  откуда пришли данные. При успешном входе/регистрации (`AuthContext.jsx`) гостевые записи
+  автоматически переносятся в аккаунт через `POST /api/inventory` и локальная копия очищается.
+- **Рецепты не требуют авторизации:** `POST /api/recipes/search` и `POST /api/recipes/:id` берут
+  список продуктов/техники прямо из тела запроса (а не из аккаунта на сервере), поэтому работают
+  одинаково для гостей и вошедших пользователей — ключ Spoonacular всё равно остаётся только на
+  сервере. `search` возвращает карточки с процентом совпадения и списком недостающих ингредиентов;
+  `:id` подтягивает `analyzedInstructions` (шаги + техника на каждый шаг) и помечает шаги, для
+  которых не хватает техники. Ответы Spoonacular кэшируются в таблице `recipe_cache` (30 дней),
+  чтобы не тратить дневную квоту повторно на один и тот же рецепт.
+- **Аккаунты:** email + пароль (хэш PBKDF2) или вход через Google (ID-токен проверяется на бэкенде
+  через JWKS Google, без клиентского секрета) — в обоих случаях выдаётся собственный JWT на 7 дней.
+  Инвентарь аккаунта хранится в D1 (`inventory_items`), доступен только через `/api/inventory` под
+  авторизацией.
 - Функции без явного метода (`functions/api/[[catchall]].js`) отдают корректный JSON `404` для
-  несуществующих `/api/*` маршрутов вместо SPA-фолбэка.
+  несуществующих `/api/*` маршрутов вместо SPA-фолбэка; для клиентских маршрутов (`/inventory`,
+  `/recipes/...`) SPA-фолбэк включён через `assets.not_found_handling` в `wrangler.jsonc`.
 
 ## Известные ограничения
 
@@ -126,3 +168,8 @@ Cloudflare Workers (продакшн), см. выше.
   (см. выше) — перевод на лету не реализован.
 - Бесплатный тариф Spoonacular — 150 запросов/день на весь проект; при активном использовании
   несколькими людьми квота может закончиться раньше полуночи (по времени сброса Spoonacular).
+- Гостевые данные хранятся только в текущем браузере (localStorage) — очистка данных сайта или
+  смена браузера/устройства их сотрёт. Единственный способ сохранить их надёжно — зарегистрироваться
+  или войти через Google до того, как это произойдёт.
+- Аккаунт, созданный через Google, не получает пароль — войти в него по email/паролю нельзя (это
+  ожидаемо: `password_hash` для таких аккаунтов — заглушка, которая не совпадёт ни с одним паролем).

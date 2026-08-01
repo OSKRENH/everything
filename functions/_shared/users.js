@@ -41,6 +41,18 @@ export async function authenticateUser(db, email, password) {
   return { id: row.id, email: row.email };
 }
 
+export async function findOrCreateGoogleUser(db, email) {
+  const existing = await db.prepare('SELECT id, email FROM users WHERE email = ?').bind(email).first();
+  if (existing) {
+    return existing;
+  }
+  const result = await db
+    .prepare('INSERT INTO users (email, password_hash) VALUES (?, ?)')
+    .bind(email, 'google-oauth')
+    .run();
+  return { id: result.meta.last_row_id, email };
+}
+
 export async function getUserById(db, id) {
   const row = await db.prepare('SELECT id, email FROM users WHERE id = ?').bind(id).first();
   if (!row) {

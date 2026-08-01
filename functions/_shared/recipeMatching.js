@@ -1,11 +1,9 @@
 import { ApiError } from './apiError.js';
-import { listIngredientNames, listEquipmentNames } from './inventory.js';
 import { findByIngredients, getRecipeInformation } from './spoonacular.js';
 import { getCachedRecipe, setCachedRecipe } from './recipeCache.js';
 
-export async function searchRecipes(db, apiKey, userId, number = 10) {
-  const ingredients = await listIngredientNames(db, userId);
-  if (ingredients.length === 0) {
+export async function searchRecipes(apiKey, ingredients, number = 10) {
+  if (!Array.isArray(ingredients) || ingredients.length === 0) {
     throw new ApiError(400, 'NO_INGREDIENTS', 'Добавьте хотя бы один продукт в инвентарь.');
   }
 
@@ -32,7 +30,7 @@ function normalize(name) {
   return name.trim().toLowerCase();
 }
 
-export async function getRecipeDetail(db, apiKey, userId, recipeId) {
+export async function getRecipeDetail(db, apiKey, equipment, recipeId) {
   let info = await getCachedRecipe(db, recipeId);
   if (!info) {
     info = await getRecipeInformation(apiKey, recipeId);
@@ -47,7 +45,7 @@ export async function getRecipeDetail(db, apiKey, userId, recipeId) {
     }
   }
 
-  const userEquipment = new Set((await listEquipmentNames(db, userId)).map(normalize));
+  const userEquipment = new Set((equipment ?? []).map(normalize));
   const missingEquipment = [...requiredEquipmentSet].filter((eq) => !userEquipment.has(normalize(eq)));
   const missingSet = new Set(missingEquipment.map(normalize));
 

@@ -4,7 +4,8 @@
   "compatibility_date": "2024-11-01",
   "assets": {
     "directory": "./client/dist",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
   },
   "d1_databases": [
     {

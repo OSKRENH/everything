@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import * as inventoryStore from '../api/inventoryStore.js';
 import * as recipesApi from '../api/recipes.api.js';
 import MissingEquipmentBanner from '../components/MissingEquipmentBanner.jsx';
 
@@ -12,8 +13,9 @@ export default function RecipeDetailPage() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    recipesApi
-      .getRecipe(id)
+    inventoryStore
+      .listInventory()
+      .then((inventory) => recipesApi.getRecipe(id, inventory.equipment.map((e) => e.name)))
       .then(setRecipe)
       .catch((err) => setError(err))
       .finally(() => setLoading(false));

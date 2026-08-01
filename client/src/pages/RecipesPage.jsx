@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import * as inventoryStore from '../api/inventoryStore.js';
 import * as recipesApi from '../api/recipes.api.js';
 import RecipeCard from '../components/RecipeCard.jsx';
 
@@ -10,8 +11,9 @@ export default function RecipesPage() {
   function load() {
     setLoading(true);
     setError(null);
-    recipesApi
-      .searchRecipes()
+    inventoryStore
+      .listInventory()
+      .then((inventory) => recipesApi.searchRecipes(inventory.ingredients.map((i) => i.name)))
       .then((data) => setCandidates(data.candidates))
       .catch((err) => setError(err))
       .finally(() => setLoading(false));

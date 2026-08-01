@@ -48,18 +48,3 @@ export async function deleteInventoryItem(db, userId, id) {
   }
 }
 
-export async function listIngredientNames(db, userId) {
-  const { results } = await db
-    .prepare("SELECT name FROM inventory_items WHERE user_id = ? AND type = 'ingredient'")
-    .bind(userId)
-    .all();
-  return results.map((r) => r.name);
-}
-
-export async function listEquipmentNames(db, userId) {
-  const { results } = await db
-    .prepare("SELECT name FROM inventory_items WHERE user_id = ? AND type = 'equipment'")
-    .bind(userId)
-    .all();
-  return results.map((r) => r.name);
-}

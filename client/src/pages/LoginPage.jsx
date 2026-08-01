@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import GoogleSignInButton from '../components/GoogleSignInButton.jsx';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,6 +22,16 @@ export default function LoginPage() {
       setError(err.message);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleGoogleCredential(credential) {
+    setError('');
+    try {
+      await loginWithGoogle(credential);
+      navigate('/inventory');
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -45,6 +56,7 @@ export default function LoginPage() {
       <button type="submit" disabled={submitting}>
         {submitting ? 'Входим…' : 'Войти'}
       </button>
+      <GoogleSignInButton onCredential={handleGoogleCredential} />
       <p>
         Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
       </p>
