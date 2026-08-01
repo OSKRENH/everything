@@ -166,6 +166,53 @@ function fallbackAmount(name = "", portions = 2) {
   return `${portions * 100} г`;
 }
 
+function normalizePortionAmount(name = "", amount = "", portions = 1) {
+  const ingredient = name.toLowerCase().replace(/ё/g, "е");
+  const text = String(amount).trim();
+  const match = text.replace(",", ".").match(/^(\d+(?:\.\d+)?)\s*(кг|г|мл|л|шт\.?|ст\.?\s*л\.?|ч\.?\s*л\.?)$/iu);
+  if (!match) return text;
+  let value = Number(match[1]);
+  let unit = match[2].toLowerCase().replace(/\s+/g, " ");
+  const count = Math.max(1, Number(portions) || 1);
+  if (unit === "кг") {
+    value *= 1000;
+    unit = "г";
+  }
+  if (unit === "л") {
+    value *= 1000;
+    unit = "мл";
+  }
+
+  if (unit === "г") {
+    let cap = 250 * count;
+    if (/куриц|индей|мяс|говяд|свинин|рыб|фарш/.test(ingredient)) cap = 180 * count;
+    else if (/рис|греч|круп|макарон|паст|овсян|булгур|кус-?кус/.test(ingredient)) cap = 100 * count;
+    else if (/сыр/.test(ingredient)) cap = 60 * count;
+    else if (/масл/.test(ingredient)) cap = 20 * count;
+    value = Math.min(value, cap);
+    return `${Math.max(5, Math.round(value / 5) * 5)} г`;
+  }
+  if (unit === "мл") {
+    let cap = 500 * count;
+    if (/соус/.test(ingredient)) cap = 30 * count;
+    else if (/масл/.test(ingredient)) cap = 15 * count;
+    value = Math.min(value, cap);
+    return `${Math.max(5, Math.round(value / 5) * 5)} мл`;
+  }
+  if (/^шт/.test(unit)) {
+    if (/яйц/.test(ingredient)) value = Math.min(value, 3 * count);
+    else if (/лук/.test(ingredient)) value = Math.min(value, 1 * count);
+    return `${Math.max(1, Math.round(value))} шт.`;
+  }
+  if (/^ст/.test(unit)) {
+    if (/соус/.test(ingredient)) value = Math.min(value, 2 * count);
+    else if (/масл/.test(ingredient)) value = Math.min(value, 1.5 * count);
+    return `${Math.max(0.5, Math.round(value * 2) / 2)} ст. л.`;
+  }
+  if (/^ч/.test(unit)) return `${Math.max(0.5, Math.round(value * 2) / 2)} ч. л.`;
+  return text;
+}
+
 function safeNutrition(value) {
   const number = (input, max) => Math.min(max, Math.max(0, Number(input) || 0));
   const nutrition = {
@@ -207,7 +254,8 @@ function normalizeRecipes(recipes, portions, ownedIngredients, requestedDifficul
               || /^(?:unit|units|штука|растительное масло)$/i.test(amount)
               || /[\u3400-\u9fff]/u.test(amount)
               || /^\d+(?:[.,]\d+)?$/u.test(amount);
-            return { name, amount: invalidAmount ? fallbackAmount(name, portions) : amount };
+            const cleanedAmount = invalidAmount ? fallbackAmount(name, portions) : amount;
+            return { name, amount: normalizePortionAmount(name, cleanedAmount, portions) };
           })
         : [];
       for (const owned of mentionedOwned) {
