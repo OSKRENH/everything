@@ -412,6 +412,9 @@ legend { margin-bottom: 12px; }
 .recipe-status.complete { background: var(--acid); padding: 4px 6px; }
 .recipe-status.has-missing { color: var(--accent); }
 .recipe-card-topline { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.recipe-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-bottom: 18px; }
+.recipe-badges .recipe-status { margin-bottom: 0; }
+.recipe-ai-label { display: inline-block; border: 1px solid var(--ink); padding: 3px 6px; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
 .favorite-toggle {
   border: 0;
   background: transparent;
@@ -447,6 +450,12 @@ legend { margin-bottom: 12px; }
 .recipe-side .uses-line { margin-top: 12px; color: var(--soft); font-size: 10px; }
 .open-recipe { display: flex; justify-content: space-between; border: 0; border-top: 1px solid var(--ink); background: transparent; padding: 10px 0 0; margin-top: auto; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; cursor: pointer; }
 .open-recipe:hover { color: var(--accent); }
+.recipe-list-actions { display: grid; justify-items: stretch; padding-top: 20px; }
+.load-more-recipes { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 54px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); padding: 14px 18px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; cursor: pointer; }
+.load-more-recipes:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+.load-more-recipes:disabled { cursor: wait; opacity: .72; }
+.load-more-recipes .pot-loader { filter: invert(1); transform: scale(.65); transform-origin: center; }
+.load-more-message { margin: 10px 0 0; color: var(--soft); font-size: 11px; line-height: 1.45; }
 
 .loading-results { min-height: 400px; }
 .loading-rule { height: 1px; background: var(--line); margin: 34px 0 80px; animation: pulse 1.2s ease-in-out infinite alternate; }
@@ -498,6 +507,7 @@ legend { margin-bottom: 12px; }
 .cook-note p { font-size: 12px; line-height: 1.55; }
 .recipe-source-note { margin: 42px 0 0; padding-top: 16px; border-top: 1px solid var(--line); color: var(--soft); font-size: 10px; line-height: 1.5; }
 .recipe-source-note a { color: var(--ink); text-underline-offset: 3px; }
+.recipe-ai-source { color: var(--ink); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
 
 .auth-overlay { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 20px; }
 .auth-card {

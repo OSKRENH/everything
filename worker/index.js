@@ -168,14 +168,49 @@ function normalizedSignature(value = "") {
   return String(value).toLowerCase().replace(/ё/g, "е").replace(/[^а-яa-z0-9]+/gu, " ").trim();
 }
 
+const RECIPE_TITLE_FILLER_WORDS = new Set([
+  "а", "без", "в", "для", "и", "из", "на", "от", "по", "под", "с", "со",
+  "быстрая", "быстрое", "быстрые", "быстрый",
+  "домашняя", "домашнее", "домашние", "домашний",
+  "классическая", "классическое", "классические", "классический",
+  "китайская", "китайское", "китайские", "китайский",
+  "простая", "простое", "простые", "простой",
+  "традиционная", "традиционное", "традиционные", "традиционный",
+]);
+
+function recipeTitleTokens(value = "") {
+  return normalizedSignature(value).split(" ")
+    .filter((word) => word && !RECIPE_TITLE_FILLER_WORDS.has(word))
+    .map(russianStem)
+    .filter((word) => word.length >= 2);
+}
+
+export function recipeTitlesAreDuplicate(firstTitle = "", secondTitle = "") {
+  const firstSignature = normalizedSignature(firstTitle);
+  const secondSignature = normalizedSignature(secondTitle);
+  if (!firstSignature || !secondSignature) return false;
+  if (firstSignature === secondSignature) return true;
+
+  const first = [...new Set(recipeTitleTokens(firstTitle))];
+  const second = [...new Set(recipeTitleTokens(secondTitle))];
+  if (!first.length || !second.length) return false;
+  if (first.join(" ") === second.join(" ")) return true;
+
+  const secondSet = new Set(second);
+  const shared = first.filter((token) => secondSet.has(token)).length;
+  const shorter = Math.min(first.length, second.length);
+  const union = new Set([...first, ...second]).size;
+  return shorter >= 2 && shared / shorter >= 0.85 && shared / union >= 0.65;
+}
+
 function mergeUniqueRecipes(...groups) {
-  const seen = new Set();
-  return groups.flat().filter((recipe) => {
-    const signature = normalizedSignature(recipe?.title);
-    if (!signature || seen.has(signature)) return false;
-    seen.add(signature);
-    return true;
-  }).slice(0, 3);
+  const unique = [];
+  for (const recipe of groups.flat()) {
+    if (!recipe?.title || unique.some((existing) => recipeTitlesAreDuplicate(existing.title, recipe.title))) continue;
+    unique.push(recipe);
+    if (unique.length === 3) break;
+  }
+  return unique;
 }
 
 function ingredientIsOwned(value = "", ownedIngredients = []) {
@@ -948,7 +983,6 @@ async function findCatalogRecipes(env, { ingredients, equipment, difficulty, por
     ORDER BY CASE WHEN cuisine = 'Россия' THEN 0 ELSE 1 END, cuisine, title
     LIMIT 250
   `).bind(CATALOG_VERSION).all();
-  const excluded = new Set(excludeTitles.map(normalizedSignature));
   const recipes = result.results.map((row) => {
     try {
       return JSON.parse(row.recipe_json);
@@ -956,7 +990,7 @@ async function findCatalogRecipes(env, { ingredients, equipment, difficulty, por
       return null;
     }
   }).filter(Boolean)
-    .filter((recipe) => !excluded.has(normalizedSignature(recipe.title)))
+    .filter((recipe) => !excludeTitles.some((title) => recipeTitlesAreDuplicate(title, recipe.title)))
     .filter((recipe) => catalogRecipeIsAvailable(recipe, ingredients, equipment))
     .map((recipe) => ({
       recipe,
@@ -967,9 +1001,8 @@ async function findCatalogRecipes(env, { ingredients, equipment, difficulty, por
     .sort((first, second) => first.difficultyDistance - second.difficultyDistance
       || second.usedCount - first.usedCount
       || first.rotation - second.rotation)
-    .slice(0, 3)
     .map(({ recipe }) => catalogRecipeForPortions(recipe, ingredients, portions));
-  return recipes;
+  return mergeUniqueRecipes(recipes);
 }
 
 async function listRecipeCatalog(request, env) {
@@ -1335,7 +1368,8 @@ async function generateRecipes(request, env) {
   let sourceAttempt = spoonacularKey(env) ? "no_matching_source_recipe" : "spoonacular_not_configured";
   if (spoonacularKey(env)) {
     try {
-      const sourcedRecipes = await generateFromSpoonacular(env, { ingredients, equipment, difficulty, portions, excludedSourceIds });
+      const sourcedRecipes = (await generateFromSpoonacular(env, { ingredients, equipment, difficulty, portions, excludedSourceIds }))
+        .filter((recipe) => !excludeTitles.some((title) => recipeTitlesAreDuplicate(title, recipe.title)));
       recipes = mergeUniqueRecipes(recipes, sourcedRecipes);
       if (recipes.length >= 3) return json({ recipes, source: "mixed", catalogVersion: CATALOG_VERSION });
     } catch (error) {
@@ -1381,7 +1415,7 @@ ${allExcludedTitles.length ? `Не повторяй недавние вариа�
       }
 
       const generatedRecipes = normalizeRecipes(data.recipes, portions, ingredients, difficulty)
-        .filter((recipe) => !allExcludedTitles.some((title) => normalizedSignature(recipe.title) === normalizedSignature(title)));
+        .filter((recipe) => !allExcludedTitles.some((title) => recipeTitlesAreDuplicate(title, recipe.title)));
       const qualityReview = reviewRecipeQuality(generatedRecipes, ingredients);
       const coherentRecipes = qualityReview.filter(({ issues }) => issues.length === 0).map(({ recipe }) => recipe);
       recipes = mergeUniqueRecipes(recipes, coherentRecipes);
