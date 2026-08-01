@@ -888,12 +888,14 @@ async function generateRecipes(request, env) {
   const portions = Math.min(8, Math.max(1, Number(body.portions) || 2));
   if (!ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
 
+  let sourceAttempt = spoonacularKey(env) ? "no_matching_source_recipe" : "spoonacular_not_configured";
   if (spoonacularKey(env)) {
     try {
       const sourcedRecipes = await generateFromSpoonacular(env, { ingredients, equipment, minutes, portions });
       if (sourcedRecipes.length) return json({ recipes: sourcedRecipes, source: "spoonacular" });
     } catch (error) {
-      console.warn("spoonacular_generation_failed", error instanceof Error ? error.message : String(error));
+      sourceAttempt = error instanceof Error ? error.message : String(error);
+      console.warn("spoonacular_generation_failed", sourceAttempt);
     }
   }
 
@@ -919,7 +921,7 @@ async function generateRecipes(request, env) {
     if (!Array.isArray(data.recipes) || !data.recipes.length) throw new Error("Incomplete recipes");
     const recipes = normalizeRecipes(data.recipes, portions, ingredients);
     if (!recipes.length) throw new Error("Recipes failed quality checks");
-    return json({ recipes });
+    return json({ recipes, source: "workers-ai", sourceAttempt });
   } catch (error) {
     console.error("recipe_generation_failed", error instanceof Error ? error.message : String(error));
     return json({ error: "Не удалось составить меню" }, 503);
