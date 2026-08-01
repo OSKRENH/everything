@@ -1,8 +1,0 @@
-name = "kutno"
-pages_build_output_dir = "client/dist"
-compatibility_date = "2024-11-01"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "kutno-db"
-database_id = "4f513285-291f-4c05-84e3-c232068e0b57"
