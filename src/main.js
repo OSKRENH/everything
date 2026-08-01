@@ -1418,3 +1418,4 @@ document.addEventListener("keydown", (event) => {
 
 render();
 restoreSession();
+if ((currentView === "catalog" || currentView === "swipe") && !catalogRecipes.length) loadCatalog();
