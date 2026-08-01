@@ -82,3 +82,42 @@ test("повторяет генерацию, если продукт не пом
   assert.equal(body.source, "workers-ai");
   assert.match(body.recipes[0].steps.join(" "), /выложить сыр.+сковороду/iu);
 });
+
+test("повторяет генерацию, если количество в шагах расходится со списком ингредиентов", async () => {
+  const drafts = [
+    recipe([
+      "Натереть 200 г сыра на крупной тёрке.",
+      "Разогреть сухую сковороду на среднем огне.",
+      "Выложить сыр тонким слоем на сковороду и готовить 2 минуты, пока он не расплавится.",
+      "Снять готовый сыр лопаткой и подавать горячим.",
+    ]),
+    recipe([
+      "Натереть сыр на крупной тёрке.",
+      "Разогреть сухую сковороду на среднем огне.",
+      "Выложить сыр тонким слоем на сковороду и готовить 2 минуты, пока он не расплавится.",
+      "Снять готовый сыр лопаткой и подавать горячим.",
+    ]),
+  ];
+  let calls = 0;
+  const env = {
+    AI: {
+      async run() {
+        const draft = drafts[Math.min(calls, drafts.length - 1)];
+        calls += 1;
+        return aiResponse({ recipes: [draft] });
+      },
+    },
+    ASSETS: { fetch: () => new Response("not found", { status: 404 }) },
+  };
+
+  const response = await worker.fetch(new Request("https://kutno.ru/api/generate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ingredients: ["сыр"], equipment: ["сковорода", "тёрка", "лопатка"], portions: 2 }),
+  }), env);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(calls, 2);
+  assert.doesNotMatch(body.recipes[0].steps.join(" "), /200\s*г/iu);
+});

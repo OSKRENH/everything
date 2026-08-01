@@ -126,7 +126,7 @@ async function runStructuredAi(env, { messages, schema, schemaName, maxTokens, t
       },
     },
     max_tokens: maxTokens,
-    reasoning_effort: "low",
+    reasoning_effort: "medium",
     temperature,
   });
 }
@@ -204,6 +204,7 @@ function fallbackAmount(name = "", portions = 2) {
 function normalizePortionAmount(name = "", amount = "", portions = 1) {
   const ingredient = name.toLowerCase().replace(/ё/g, "е");
   const text = String(amount).trim();
+  if (/сол/.test(ingredient)) return "по вкусу";
   const match = text.replace(",", ".").match(/^(\d+(?:\.\d+)?)\s*(кг|г|мл|л|шт\.?|ст\.?\s*л\.?|ч\.?\s*л\.?)$/iu);
   if (!match) return text;
   let value = Number(match[1]);
@@ -275,11 +276,20 @@ function cleanRecipeSteps(value) {
 }
 
 const STEP_ACTION = /(?:очист|нареж|пореж|измельч|натер|натр|разбей|взбей|смеш|перемеш|соедин|вылож|полож|добав|перелож|помест|опуст|засып|всып|влей|налей|залей|разогр|обжар|жар|свар|вар|туш|запек|выпек|готов|кипят|довед|расплав|накрой|остав|сним|пода|посол|остуд|процед)/iu;
-const ACTIVE_HEAT_ACTION = /(?:обжар|жар|свар|вар|туш|запек|выпек|готов|кипят|довед|расплав)/iu;
+const ACTIVE_HEAT_ACTION = /(?:обжар|жар|свар|вар|туш|запек|выпек|готов(?:ить|ьте|им|ят|ится)|кипят|довед|расплав)/iu;
 const TRANSFER_ACTION = /(?:вылож|полож|добав|перелож|помест|опуст|засып|всып|влей|налей|залей|разбей|вылей)/iu;
 const COOKING_TARGET = /(?:сковород|кастрюл|сотейн|противен|духовк|форм|казан|вок|мис|тарел|вод|масл)/iu;
 const TIME_OR_DONENESS = /(?:\d+(?:[.,]\d+)?\s*(?:сек|мин|час)|до\s+[а-я]|пока\s+[а-я]|до\s+готовности)/iu;
 const FINISH_ACTION = /(?:сним|пода|разлож|перелож|остуд|готов|до\s+[а-я]|пока\s+[а-я])/iu;
+const FOOD_AMOUNT = /\d+(?:[.,]\d+)?\s*(?:кг|г|мл|л|шт\.?|ст\.?\s*л\.?|ч\.?\s*л\.?)/giu;
+
+function amountSignature(value = "") {
+  return String(value)
+    .toLowerCase()
+    .replace(",", ".")
+    .replace(/\s+/g, "")
+    .replaceAll(".", "");
+}
 
 function recipeQualityIssues(recipe, ownedIngredients) {
   const steps = cleanRecipeSteps(recipe?.steps);
@@ -295,6 +305,15 @@ function recipeQualityIssues(recipe, ownedIngredients) {
     .filter((name) => name && !isPantryBasic(name) && !ingredientMentioned(stepText, name));
   if (unusedIngredients.length) {
     issues.push(`в шагах не использованы ингредиенты: ${unusedIngredients.join(", ")}`);
+  }
+
+  const declaredAmounts = new Set((Array.isArray(recipe?.ingredients) ? recipe.ingredients : [])
+    .map((item) => amountSignature(item?.amount))
+    .filter(Boolean));
+  const stepAmounts = [...stepText.matchAll(FOOD_AMOUNT)].map((match) => match[0]);
+  const inconsistentAmounts = [...new Set(stepAmounts.filter((amount) => !declaredAmounts.has(amountSignature(amount))))];
+  if (inconsistentAmounts.length) {
+    issues.push(`количества в шагах не совпадают со списком ингредиентов: ${inconsistentAmounts.join(", ")}`);
   }
 
   const firstActiveHeatStep = steps.findIndex((step) => ACTIVE_HEAT_ACTION.test(step));
@@ -1329,6 +1348,7 @@ async function generateRecipes(request, env) {
 
   const system = `Ты — строгий редактор современной русской кулинарной книги. Предложи до трёх разных действительно существующих и кулинарно осмысленных домашних блюд, использующих разные сочетания доступных продуктов. Если исходный набор объективно позволяет приготовить только одно или два нормальных блюда, верни меньше. Не придумывай блюдо только ради заполнения списка. Пиши только по-русски, без англицизмов, заглушек, служебных слов и выдуманных техник.
 ЖЁСТКОЕ ПРАВИЛО: используй только продукты из списка пользователя, а также соль, воду и растительное масло. Нельзя добавлять перец, чеснок, специи, соусы, сахар, муку, молоко, зелень или любой другой продукт, если его нет в списке. Поле missing всегда должно быть пустым массивом. В ingredients перечисли абсолютно всё, что используется в шагах; названия пользовательских продуктов сохраняй максимально близко к исходному списку. Не называй блюдо общими словами вроде «жареные продукты» или «смесь ингредиентов». В amount всегда указывай понятное русское количество: г, мл, ст. л., ч. л. или шт.; слово unit запрещено. Каждый рецепт должен содержать минимум три законченных конкретных шага с температурой или понятным уровнем огня и временем там, где это важно. Не выводи слова subtitle, title, description или step как содержимое полей. Не предлагай опасные способы приготовления.
+РАЗУМНЫЕ КОЛИЧЕСТВА: сыр — не более 60 г на порцию, мясо или рыба — не более 180 г на порцию, сухая крупа или макароны — не более 100 г на порцию, масло — не более 1 ст. л. на порцию. Соль указывай только «по вкусу». Количества продуктов лучше не повторять в шагах; если повторяешь, они обязаны дословно совпадать с ingredients.
 СВЯЗНОСТЬ ШАГОВ: каждый шаг должен ясно отвечать, что взять, куда поместить, что сделать и какого результата дождаться. Нельзя пропускать перенос продукта в посуду: после шага «разогреть сковороду» обязательно должен быть шаг «выложить или влить продукт на сковороду», и только затем «готовить». Не используй местоимения без понятного объекта. Последний шаг должен явно завершать приготовление или подачу. Перед ответом мысленно пройди рецепт от первого шага до последнего и исправь любой разрыв в последовательности.
 Для каждого рецепта оцени КБЖУ НА ОДНУ ПОРЦИЮ по указанным количествам: calories — ккал, protein/fat/carbs — граммы. Значения должны быть реалистичными и согласованными с ингредиентами; это ориентировочная оценка.`;
   const user = `Продукты дома: ${ingredients.join(", ")}.
