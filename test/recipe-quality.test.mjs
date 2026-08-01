@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import worker from "../worker/index.js";
+import worker, { recipeTitlesAreDuplicate } from "../worker/index.js";
 
 function recipe(steps) {
   return {
@@ -32,6 +32,12 @@ function aiResponse(value) {
     ],
   };
 }
+
+test("считает варианты одного блюда дублями, даже если добавлено описание кухни", () => {
+  assert.equal(recipeTitlesAreDuplicate("Китайский жареный рис с яйцом", "Жареный рис с яйцом"), true);
+  assert.equal(recipeTitlesAreDuplicate("Домашняя шакшука", "Шакшука"), true);
+  assert.equal(recipeTitlesAreDuplicate("Жареный рис с яйцом", "Шакшука"), false);
+});
 
 test("повторяет генерацию, если продукт не помещён в посуду перед нагревом", async () => {
   const drafts = [
