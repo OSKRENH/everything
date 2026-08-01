@@ -168,6 +168,57 @@ const fallbackRecipes = [
   },
 ];
 
+function scaleFallbackAmount(amount, portions) {
+  const text = String(amount || "").trim();
+  if (!text || /по вкусу/i.test(text)) return text;
+  const match = text.replace(",", ".").match(/^(\d+)?([½¼¾])?\s*(.*)$/u);
+  if (!match || (!match[1] && !match[2])) return text;
+  const fractions = { "½": 0.5, "¼": 0.25, "¾": 0.75 };
+  const base = Number(match[1] || 0) + (fractions[match[2]] || 0);
+  const unit = match[3].trim();
+  let value = base * (Math.max(1, Number(portions) || 1) / 2);
+  if (/^(?:г|мл)(?:\.|\s|$)/i.test(unit)) value = Math.max(5, Math.round(value / 5) * 5);
+  else if (/шт/i.test(unit)) value = Math.max(1, Math.round(value));
+  else value = Math.max(0.5, Math.round(value * 2) / 2);
+  const display = Number.isInteger(value) ? String(value) : String(value).replace(".", ",");
+  return `${display} ${unit}`.trim();
+}
+
+function scaledFallbackRecipe(recipe, portions) {
+  return {
+    ...recipe,
+    portions,
+    ingredients: recipe.ingredients.map((item) => ({
+      ...item,
+      amount: scaleFallbackAmount(item.amount, portions),
+    })),
+  };
+}
+
+function normalizeStoredFavorite(recipe) {
+  if (!recipe) return recipe;
+  const dedupe = (items, signature) => {
+    const seen = new Set();
+    return (Array.isArray(items) ? items : []).filter((item) => {
+      const key = signature(item);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+  let normalizedRecipe = {
+    ...recipe,
+    ingredients: dedupe(recipe.ingredients, (item) => normalize(String(item?.name || ""))),
+    steps: dedupe(recipe.steps, (step) => normalize(String(step || "")).replace(/[^а-яa-z0-9]+/gu, " ").trim()),
+  };
+  if (normalizedRecipe.source?.type !== "curated") return normalizedRecipe;
+  const template = fallbackRecipes.find((item) => normalize(item.title) === normalize(String(normalizedRecipe.title || "")));
+  if (!template) return normalizedRecipe;
+  const stillUsesTemplateAmounts = template.ingredients.every((item, index) => normalizedRecipe.ingredients[index]?.amount === item.amount);
+  if (stillUsesTemplateAmounts) normalizedRecipe = scaledFallbackRecipe(normalizedRecipe, Number(normalizedRecipe.portions) || 2);
+  return normalizedRecipe;
+}
+
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -182,7 +233,7 @@ function loadState() {
 function loadFavoriteRecipes() {
   try {
     const saved = JSON.parse(localStorage.getItem(FAVORITES_KEY));
-    return Array.isArray(saved) ? saved.slice(0, 100) : [];
+    return Array.isArray(saved) ? saved.slice(0, 100).map(normalizeStoredFavorite) : [];
   } catch {
     return [];
   }
@@ -310,7 +361,7 @@ async function restoreFavorites() {
     const response = await fetch("/api/favorites");
     if (!response.ok) return;
     const data = await response.json();
-    const remote = Array.isArray(data.favorites) ? data.favorites : [];
+    const remote = Array.isArray(data.favorites) ? data.favorites.map(normalizeStoredFavorite) : [];
     const localById = new Map(favoriteRecipes.map((recipe) => [recipeId(recipe), recipe]));
     const remoteById = new Map(remote.map((recipe) => [recipeId(recipe), recipe]));
     favoriteRecipes = [...remote, ...favoriteRecipes.filter((recipe) => !remoteById.has(recipeId(recipe)))].slice(0, 100);
@@ -702,6 +753,10 @@ function renderRecipeCard(recipe, index, source = "recipes") {
   const uses = Array.isArray(recipe.uses) ? recipe.uses : [];
   const favorite = isFavorite(recipe);
   const calories = Number(recipe.nutrition?.calories) || 0;
+  const subtitle = String(recipe.subtitle || recipe.why || "").trim();
+  const why = String(recipe.why || "").trim();
+  const comparable = (value) => normalize(value).replace(/[^а-яa-z0-9]+/gu, " ").trim();
+  const showWhy = why && comparable(why) !== comparable(subtitle);
   return `
     <article class="recipe-entry">
       <div class="recipe-number">${String(index + 1).padStart(2, "0")}</div>
@@ -711,7 +766,7 @@ function renderRecipeCard(recipe, index, source = "recipes") {
           <button class="favorite-toggle ${favorite ? "active" : ""}" data-toggle-favorite-source="${source}" data-recipe-index="${index}" aria-pressed="${favorite}" aria-label="${favorite ? "Убрать из избранного" : "Сохранить в избранное"}">${favorite ? "♥" : "♡"}</button>
         </div>
         <h3><button class="recipe-title-button" data-open-recipe="${index}" data-recipe-source="${source}">${escapeHtml(recipe.title)}</button></h3>
-        <p class="recipe-subtitle">${escapeHtml(recipe.subtitle || recipe.why)}</p>
+        ${subtitle ? `<p class="recipe-subtitle">${escapeHtml(subtitle)}</p>` : ""}
         <div class="recipe-meta">
           <span>${Number(recipe.minutes) || 30} мин</span>
           <span>${escapeHtml(recipe.difficulty || "просто")}</span>
@@ -720,7 +775,7 @@ function renderRecipeCard(recipe, index, source = "recipes") {
         </div>
       </div>
       <div class="recipe-side">
-        <p>${escapeHtml(recipe.why)}</p>
+        ${showWhy ? `<p>${escapeHtml(why)}</p>` : ""}
         ${uses.length ? `<p class="uses-line">Используем: ${uses.map(escapeHtml).join(", ")}</p>` : ""}
         <button class="open-recipe" data-open-recipe="${index}" data-recipe-source="${source}">Открыть рецепт <span aria-hidden="true">→</span></button>
       </div>
@@ -853,25 +908,38 @@ function getFallbackSuggestions() {
     const uses = recipe.required.filter((item) => have.some((owned) => owned.includes(item) || item.includes(owned)));
     const missing = recipe.required.filter((item) => !uses.includes(item));
     const match = Math.round((uses.length / recipe.required.length) * 100);
-    return {
+    return scaledFallbackRecipe({
       ...recipe,
       uses,
       missing,
       match,
-      portions: state.portions,
       nutrition: fallbackNutrition[recipe.title],
       source: {
         name: "Кутно",
         type: "curated",
         note: "Рецепт из проверенной базовой коллекции Кутно",
       },
-    };
+    }, state.portions);
   });
   return scored
     .filter((item) => item.missing.length === 0 && item.ingredients.every((ingredient) => ingredientIsAvailable(ingredient.name)))
     .sort((a, b) => Number(difficultyValue(a.difficulty) === state.difficulty) * -1
       - Number(difficultyValue(b.difficulty) === state.difficulty) * -1
       || b.match - a.match || a.minutes - b.minutes)
+    .slice(0, 3);
+}
+
+function mergeUniqueRecipes(primary, additions, excludedTitles = []) {
+  const excluded = new Set(excludedTitles.map((title) => normalize(String(title || ""))));
+  const seen = new Set();
+  return [...primary, ...additions]
+    .filter((recipe) => recipe?.title)
+    .filter((recipe) => {
+      const title = normalize(String(recipe.title));
+      if (seen.has(title) || (excluded.has(title) && !primary.includes(recipe))) return false;
+      seen.add(title);
+      return true;
+    })
     .slice(0, 3);
 }
 
@@ -904,7 +972,7 @@ async function generateRecipes() {
     }
     const data = await response.json();
     if (!Array.isArray(data.recipes) || !data.recipes.length) throw new Error("Не найдено подходящих вариантов");
-    recipes = data.recipes.slice(0, 3);
+    recipes = mergeUniqueRecipes(data.recipes, getFallbackSuggestions(), excludeTitles);
     recentRecipeTitles = [...new Set([...excludeTitles, ...recipes.map((recipe) => recipe.title).filter(Boolean)])].slice(-12);
     recentSourceIds = [...new Set([...excludeSourceIds, ...recipes.map((recipe) => Number(recipe.source?.id)).filter(Number.isFinite)])].slice(-20);
   } catch (error) {
