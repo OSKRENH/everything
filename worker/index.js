@@ -777,7 +777,7 @@ async function generateFromSpoonacular(env, { ingredients, equipment, minutes, p
   const searchUrl = new URL("https://api.spoonacular.com/recipes/findByIngredients");
   searchUrl.searchParams.set("apiKey", apiKey);
   searchUrl.searchParams.set("ingredients", translations.map((item) => item.english).join(","));
-  searchUrl.searchParams.set("number", "30");
+  searchUrl.searchParams.set("number", "12");
   searchUrl.searchParams.set("ranking", "1");
   searchUrl.searchParams.set("ignorePantry", "false");
   const searchResponse = await fetch(searchUrl, { headers: { accept: "application/json" } });
