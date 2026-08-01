@@ -243,6 +243,8 @@ let state = loadState();
 let recipes = [];
 let favoriteRecipes = loadFavoriteRecipes();
 let isLoading = false;
+let isLoadingMore = false;
+let loadMoreMessage = "";
 let activeRecipe = null;
 let generationError = "";
 let authUser = null;
@@ -753,6 +755,13 @@ function renderResults() {
       </div>
       <div class="recipe-list">
         ${recipes.map((recipe, index) => renderRecipeCard(recipe, index, "recipes")).join("")}
+        <div class="recipe-list-actions">
+          <button class="load-more-recipes" data-action="load-more" ${isLoadingMore ? "disabled" : ""}>
+            <span>${isLoadingMore ? "Загружаем" : "Загрузить ещё"}</span>
+            ${isLoadingMore ? renderPotLoader("pot-loader-small") : `<span aria-hidden="true">↓</span>`}
+          </button>
+          ${loadMoreMessage ? `<p class="load-more-message" role="status">${escapeHtml(loadMoreMessage)}</p>` : ""}
+        </div>
       </div>
     </section>`;
 }
@@ -967,12 +976,16 @@ function renderRecipeCard(recipe, index, source = "recipes") {
   const why = String(recipe.why || "").trim();
   const comparable = (value) => normalize(value).replace(/[^а-яa-z0-9]+/gu, " ").trim();
   const showWhy = why && comparable(why) !== comparable(subtitle);
+  const generatedByAi = recipe.source?.type === "generated";
   return `
     <article class="recipe-entry">
       <div class="recipe-number">${String(index + 1).padStart(2, "0")}</div>
       <div class="recipe-main">
         <div class="recipe-card-topline">
-          <div class="recipe-status complete">Все продукты есть</div>
+          <div class="recipe-badges">
+            <div class="recipe-status complete">Все продукты есть</div>
+            ${generatedByAi ? `<span class="recipe-ai-label">Сгенерировано ИИ</span>` : ""}
+          </div>
           <button class="favorite-toggle ${favorite ? "active" : ""}" data-toggle-favorite-source="${source}" data-recipe-index="${index}" aria-pressed="${favorite}" aria-label="${favorite ? "Убрать из избранного" : "Сохранить в избранное"}">${favorite ? "♥" : "♡"}</button>
         </div>
         <h3><button class="recipe-title-button" data-open-recipe="${index}" data-recipe-source="${source}">${escapeHtml(recipe.title)}</button></h3>
@@ -1081,6 +1094,7 @@ function renderRecipeOverlay(recipe) {
           </section>
         </div>
         <p class="recipe-source-note">
+          ${recipe.source?.type === "generated" ? `<strong class="recipe-ai-source">Сгенерировано ИИ.</strong> ` : ""}
           ${recipe.source?.url ? `<a href="${escapeHtml(recipe.source.url)}" target="_blank" rel="noopener noreferrer">Источник — ${escapeHtml(recipe.source.name || "Spoonacular")}</a>. ` : ""}
           ${escapeHtml(recipe.source?.note || "Рецепт проверен по вашему списку продуктов")}${recipe.nutrition?.estimated ? ". КБЖУ рассчитано приблизительно" : ". КБЖУ получено из базы для одной порции"}.
         </p>
@@ -1142,27 +1156,62 @@ function getFallbackSuggestions() {
     .slice(0, 3);
 }
 
-function mergeUniqueRecipes(primary, additions, excludedTitles = []) {
-  const excluded = new Set(excludedTitles.map((title) => normalize(String(title || ""))));
-  const seen = new Set();
-  return [...primary, ...additions]
-    .filter((recipe) => recipe?.title)
-    .filter((recipe) => {
-      const title = normalize(String(recipe.title));
-      if (seen.has(title) || (excluded.has(title) && !primary.includes(recipe))) return false;
-      seen.add(title);
-      return true;
-    })
-    .slice(0, 3);
+const RECIPE_TITLE_FILLER_WORDS = new Set([
+  "а", "без", "в", "для", "и", "из", "на", "от", "по", "под", "с", "со",
+  "быстрая", "быстрое", "быстрые", "быстрый", "домашняя", "домашнее", "домашние", "домашний",
+  "классическая", "классическое", "классические", "классический",
+  "китайская", "китайское", "китайские", "китайский", "простая", "простое", "простые", "простой",
+  "традиционная", "традиционное", "традиционные", "традиционный",
+]);
+
+function recipeTitleTokens(value = "") {
+  return normalize(String(value || "")).replace(/[^а-яa-z0-9]+/gu, " ").trim().split(" ")
+    .filter((word) => word && !RECIPE_TITLE_FILLER_WORDS.has(word))
+    .map((word) => word.length <= 3 ? word : word.replace(/(?:иями|ями|ами|его|ого|ему|ому|ыми|ими|ой|ый|ий|ая|яя|ое|ее|ые|ие|ую|юю|ов|ев|ам|ям|ах|ях|ом|ем|у|ю|а|я|ы|и|е|о)$/u, ""))
+    .filter((word) => word.length >= 2);
 }
 
-async function generateRecipes() {
-  if (!state.ingredients.length || isLoading) return;
+function recipeTitlesAreDuplicate(firstTitle = "", secondTitle = "") {
+  const firstSignature = normalize(String(firstTitle || "")).replace(/[^а-яa-z0-9]+/gu, " ").trim();
+  const secondSignature = normalize(String(secondTitle || "")).replace(/[^а-яa-z0-9]+/gu, " ").trim();
+  if (!firstSignature || !secondSignature) return false;
+  if (firstSignature === secondSignature) return true;
+  const first = [...new Set(recipeTitleTokens(firstTitle))];
+  const second = [...new Set(recipeTitleTokens(secondTitle))];
+  if (!first.length || !second.length) return false;
+  if (first.join(" ") === second.join(" ")) return true;
+  const secondSet = new Set(second);
+  const shared = first.filter((token) => secondSet.has(token)).length;
+  const shorter = Math.min(first.length, second.length);
+  const union = new Set([...first, ...second]).size;
+  return shorter >= 2 && shared / shorter >= 0.85 && shared / union >= 0.65;
+}
+
+function mergeUniqueRecipes(primary, additions, excludedTitles = [], limit = 3) {
+  const unique = [];
+  for (const recipe of [...primary, ...additions]) {
+    if (!recipe?.title) continue;
+    const isPrimary = primary.includes(recipe);
+    if (!isPrimary && excludedTitles.some((title) => recipeTitlesAreDuplicate(title, recipe.title))) continue;
+    if (unique.some((existing) => recipeTitlesAreDuplicate(existing.title, recipe.title))) continue;
+    unique.push(recipe);
+    if (unique.length === limit) break;
+  }
+  return unique;
+}
+
+async function generateRecipes({ append = false } = {}) {
+  if (!state.ingredients.length || isLoading || isLoadingMore) return;
+  const existingRecipes = append ? [...recipes] : [];
   const excludeTitles = [...new Set([...recentRecipeTitles, ...recipes.map((recipe) => recipe.title).filter(Boolean)])].slice(-12);
   const excludeSourceIds = [...new Set([...recentSourceIds, ...recipes.map((recipe) => Number(recipe.source?.id)).filter(Number.isFinite)])].slice(-20);
-  isLoading = true;
-  recipes = [];
+  if (append) isLoadingMore = true;
+  else {
+    isLoading = true;
+    recipes = [];
+  }
   generationError = "";
+  loadMoreMessage = "";
   render();
 
   try {
@@ -1185,19 +1234,31 @@ async function generateRecipes() {
     }
     const data = await response.json();
     if (!Array.isArray(data.recipes) || !data.recipes.length) throw new Error("Не найдено подходящих вариантов");
-    recipes = mergeUniqueRecipes(data.recipes, getFallbackSuggestions(), excludeTitles);
-    recentRecipeTitles = [...new Set([...excludeTitles, ...recipes.map((recipe) => recipe.title).filter(Boolean)])].slice(-12);
+    const incoming = mergeUniqueRecipes(data.recipes, getFallbackSuggestions(), excludeTitles);
+    if (append) {
+      recipes = mergeUniqueRecipes(existingRecipes, incoming, [], existingRecipes.length + 3);
+      if (recipes.length === existingRecipes.length) loadMoreMessage = "Новых подходящих рецептов пока не нашлось";
+    } else {
+      recipes = incoming;
+    }
+    recentRecipeTitles = [...new Set([...excludeTitles, ...recipes.map((recipe) => recipe.title).filter(Boolean)])].slice(-24);
     recentSourceIds = [...new Set([...excludeSourceIds, ...recipes.map((recipe) => Number(recipe.source?.id)).filter(Number.isFinite)])].slice(-20);
   } catch (error) {
     const safeFallbacks = getFallbackSuggestions();
-    recipes = safeFallbacks;
-    if (!safeFallbacks.length) {
+    if (append) {
+      recipes = mergeUniqueRecipes(existingRecipes, safeFallbacks, excludeTitles, existingRecipes.length + 3);
+      loadMoreMessage = recipes.length > existingRecipes.length ? "" : "Не удалось найти новые варианты. Попробуйте ещё раз";
+    } else {
+      recipes = safeFallbacks;
+    }
+    if (!append && !safeFallbacks.length) {
       generationError = error instanceof Error ? error.message : "Попробуйте ещё раз";
     }
   } finally {
     isLoading = false;
+    isLoadingMore = false;
     render();
-    requestAnimationFrame(() => document.querySelector("#results")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    if (!append) requestAnimationFrame(() => document.querySelector("#results")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 }
 
@@ -1391,6 +1452,7 @@ app.addEventListener("click", (event) => {
   }
   if (target.dataset.action === "load-catalog") loadCatalog(true);
   if (target.dataset.action === "generate") generateRecipes();
+  if (target.dataset.action === "load-more") generateRecipes({ append: true });
   if (target.dataset.action === "clear-all") {
     state = { ...defaults, equipment: [...defaults.equipment] };
     recipes = [];
