@@ -1,4 +1,5 @@
 import "./styles.css";
+import { ingredientCatalog } from "./ingredients.js";
 
 const STORAGE_KEY = "kutno-kitchen-v2";
 
@@ -189,6 +190,8 @@ let remoteSaveTimer = null;
 let googleClientPromise = null;
 let googleConfigPromise = null;
 let googleConfigured = false;
+let ingredientSuggestions = [];
+let activeSuggestionIndex = -1;
 
 const app = document.querySelector("#app");
 
@@ -360,7 +363,85 @@ function equipmentName(id) {
   return equipmentOptions.find(([value]) => value === id)?.[1] || id;
 }
 
+function currentIngredientQuery(value) {
+  return normalize(String(value).split(/[,;\n]+/).at(-1) || "");
+}
+
+function findIngredientSuggestions(value) {
+  const query = currentIngredientQuery(value);
+  if (query.length < 2) return [];
+
+  const selected = new Set(state.ingredients.map(normalize));
+  return ingredientCatalog
+    .map((name) => {
+      const normalizedName = normalize(name);
+      const matchIndex = normalizedName.indexOf(query);
+      if (matchIndex < 0 || selected.has(normalizedName)) return null;
+
+      const wordStartsWithQuery = normalizedName.split(/[\s-]+/).some((word) => word.startsWith(query));
+      const matchGroup = normalizedName.startsWith(query) ? 0 : wordStartsWithQuery ? 1 : 2;
+      const sauceBonus = normalizedName.includes("соус") ? -0.2 : 0;
+      return { name, score: matchGroup * 100 + matchIndex + sauceBonus + normalizedName.length / 1000 };
+    })
+    .filter(Boolean)
+    .sort((first, second) => first.score - second.score || first.name.localeCompare(second.name, "ru"))
+    .slice(0, 6)
+    .map(({ name }) => name);
+}
+
+function paintSuggestionSelection() {
+  const input = document.querySelector("#ingredient-input");
+  const options = [...document.querySelectorAll(".ingredient-suggestion")];
+  options.forEach((option, index) => {
+    const isActive = index === activeSuggestionIndex;
+    option.classList.toggle("active", isActive);
+    option.setAttribute("aria-selected", String(isActive));
+  });
+  const activeOption = options[activeSuggestionIndex];
+  if (input) {
+    if (activeOption) input.setAttribute("aria-activedescendant", activeOption.id);
+    else input.removeAttribute("aria-activedescendant");
+  }
+  activeOption?.scrollIntoView({ block: "nearest" });
+}
+
+function updateIngredientSuggestions(value) {
+  const input = document.querySelector("#ingredient-input");
+  const list = document.querySelector("#ingredient-suggestions");
+  if (!input || !list) return;
+
+  ingredientSuggestions = findIngredientSuggestions(value);
+  activeSuggestionIndex = ingredientSuggestions.length ? 0 : -1;
+  input.setAttribute("aria-expanded", String(ingredientSuggestions.length > 0));
+  input.removeAttribute("aria-activedescendant");
+  list.hidden = !ingredientSuggestions.length;
+  list.innerHTML = ingredientSuggestions.map((name, index) => `
+    <button
+      type="button"
+      id="ingredient-suggestion-${index}"
+      class="ingredient-suggestion ${index === activeSuggestionIndex ? "active" : ""}"
+      role="option"
+      aria-selected="${index === activeSuggestionIndex}"
+      data-suggest-ingredient="${escapeHtml(name)}"
+    >
+      <span>${escapeHtml(name)}</span>
+      <span>добавить</span>
+    </button>`).join("");
+}
+
+function chooseIngredientSuggestion(name) {
+  const input = document.querySelector("#ingredient-input");
+  if (!input || !name) return;
+  const completedValues = input.value.split(/[,;\n]+/).slice(0, -1);
+  ingredientSuggestions = [];
+  activeSuggestionIndex = -1;
+  addIngredients([...completedValues, name]);
+  requestAnimationFrame(() => document.querySelector("#ingredient-input")?.focus({ preventScroll: true }));
+}
+
 function render() {
+  ingredientSuggestions = [];
+  activeSuggestionIndex = -1;
   app.innerHTML = `
     <div class="page-shell">
       <header class="site-header">
@@ -386,9 +467,10 @@ function render() {
               <div class="section-content">
                 <label for="ingredient-input">Продукты</label>
                 <form id="ingredient-form" class="ingredient-form">
-                  <input id="ingredient-input" autocomplete="off" placeholder="Например: курица, рис, лук" aria-describedby="ingredient-hint">
+                  <input id="ingredient-input" autocomplete="off" placeholder="Например: курица, рис, лук" aria-describedby="ingredient-hint" role="combobox" aria-autocomplete="list" aria-controls="ingredient-suggestions" aria-expanded="false">
                   <button type="submit" aria-label="Добавить продукты">Добавить</button>
                 </form>
+                <div id="ingredient-suggestions" class="ingredient-suggestions" role="listbox" aria-label="Подходящие продукты" hidden></div>
                 <p id="ingredient-hint" class="microcopy">Можно перечислить несколько продуктов через запятую.</p>
                 <div class="selected-ingredients" aria-live="polite">
                   ${state.ingredients.length
@@ -657,8 +739,68 @@ app.addEventListener("submit", (event) => {
   if (event.target.id === "ingredient-form") {
     event.preventDefault();
     const input = event.target.querySelector("input");
-    addIngredients([input.value]);
+    if (ingredientSuggestions.length && activeSuggestionIndex >= 0) {
+      chooseIngredientSuggestion(ingredientSuggestions[activeSuggestionIndex]);
+    } else {
+      addIngredients([input.value]);
+    }
   }
+});
+
+app.addEventListener("input", (event) => {
+  if (event.target.id === "ingredient-input") updateIngredientSuggestions(event.target.value);
+});
+
+app.addEventListener("focusin", (event) => {
+  if (event.target.id === "ingredient-input") updateIngredientSuggestions(event.target.value);
+});
+
+app.addEventListener("focusout", (event) => {
+  if (event.target.id !== "ingredient-input") return;
+  setTimeout(() => {
+    const input = document.querySelector("#ingredient-input");
+    const list = document.querySelector("#ingredient-suggestions");
+    if (!input || !list || document.activeElement === input) return;
+    ingredientSuggestions = [];
+    activeSuggestionIndex = -1;
+    input.setAttribute("aria-expanded", "false");
+    input.removeAttribute("aria-activedescendant");
+    list.hidden = true;
+    list.replaceChildren();
+  }, 100);
+});
+
+app.addEventListener("keydown", (event) => {
+  if (event.target.id !== "ingredient-input" || !ingredientSuggestions.length) return;
+
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    const direction = event.key === "ArrowDown" ? 1 : -1;
+    activeSuggestionIndex = (activeSuggestionIndex + direction + ingredientSuggestions.length) % ingredientSuggestions.length;
+    paintSuggestionSelection();
+  }
+  if (event.key === "Enter" && activeSuggestionIndex >= 0) {
+    event.preventDefault();
+    chooseIngredientSuggestion(ingredientSuggestions[activeSuggestionIndex]);
+  }
+  if (event.key === "Escape") {
+    ingredientSuggestions = [];
+    activeSuggestionIndex = -1;
+    event.target.setAttribute("aria-expanded", "false");
+    event.target.removeAttribute("aria-activedescendant");
+    const list = document.querySelector("#ingredient-suggestions");
+    if (list) {
+      list.hidden = true;
+      list.replaceChildren();
+    }
+  }
+});
+
+app.addEventListener("pointerdown", (event) => {
+  const suggestion = event.target.closest("[data-suggest-ingredient]");
+  if (!suggestion) return;
+  event.preventDefault();
+  chooseIngredientSuggestion(suggestion.dataset.suggestIngredient);
 });
 
 async function logout() {
@@ -676,6 +818,7 @@ app.addEventListener("click", (event) => {
   const target = event.target.closest("button");
   if (!target) return;
 
+  if (target.dataset.suggestIngredient) chooseIngredientSuggestion(target.dataset.suggestIngredient);
   if (target.dataset.addIngredient) addIngredients([target.dataset.addIngredient]);
   if (target.dataset.removeIngredient) {
     state.ingredients = state.ingredients.filter((item) => item !== target.dataset.removeIngredient);
