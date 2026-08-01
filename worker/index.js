@@ -111,6 +111,32 @@ function isPantryBasic(value = "") {
   return pantryBasics.some((item) => normalized.includes(item));
 }
 
+function russianStem(value = "") {
+  const normalized = String(value).toLowerCase().replace(/ё/g, "е").replace(/[^а-яa-z0-9]/g, "");
+  if (normalized.length <= 3) return normalized;
+  return normalized.replace(/(?:иями|ями|ами|его|ого|ему|ому|ыми|ими|ой|ый|ий|ая|яя|ое|ее|ые|ие|ую|юю|ов|ев|ам|ям|ах|ях|ом|ем|у|ю|а|я|ы|и|е|о)$/u, "");
+}
+
+function ingredientMentioned(text = "", ingredient = "") {
+  const words = String(text).toLowerCase().replace(/ё/g, "е").split(/[^а-яa-z0-9]+/u).map(russianStem).filter(Boolean);
+  const needles = String(ingredient).toLowerCase().replace(/ё/g, "е").split(/[^а-яa-z0-9]+/u).map(russianStem).filter((word) => word.length >= 2);
+  if (!needles.length) return false;
+  return needles.every((needle) => words.some((word) => word === needle
+    || (needle.length >= 4 && word.length >= 4 && (word.startsWith(needle) || needle.startsWith(word)))));
+}
+
+function normalizeDifficulty(value = "", fallback = "легко") {
+  const normalized = String(value).toLowerCase().replace(/ё/g, "е").trim();
+  if (/слож|труд|hard/.test(normalized)) return "сложно";
+  if (/обыч|сред|medium|normal/.test(normalized)) return "обычно";
+  if (/лег|прост|easy/.test(normalized)) return "легко";
+  return fallback;
+}
+
+function difficultyRank(value) {
+  return { "легко": 0, "обычно": 1, "сложно": 2 }[normalizeDifficulty(value)] ?? 0;
+}
+
 function ingredientIsOwned(value = "", ownedIngredients = []) {
   const normalized = value.toLowerCase().replace(/ё/g, "е");
   if (isPantryBasic(normalized)) return true;
@@ -122,6 +148,7 @@ function ingredientIsOwned(value = "", ownedIngredients = []) {
 
 function fallbackAmount(name = "", portions = 2) {
   const value = name.toLowerCase().replace(/ё/g, "е");
+  if (value.includes("соус")) return `${Math.max(1, portions)} ст. л.`;
   if (value.includes("яйц")) return `${Math.max(2, portions)} шт.`;
   if (value.includes("лук") || value.includes("помидор") || value.includes("картоф")) return `${Math.max(1, Math.ceil(portions / 2))} шт.`;
   if (value.includes("рис") || value.includes("греч") || value.includes("макарон") || value.includes("паст")) return `${portions * 90} г`;
@@ -149,9 +176,13 @@ function cleanRecipeSteps(value) {
     .filter((step) => step.length >= 12);
 }
 
-function normalizeRecipes(recipes, portions, ownedIngredients) {
+function normalizeRecipes(recipes, portions, ownedIngredients, requestedDifficulty = "") {
+  const seen = new Set();
   return recipes
     .map((recipe) => {
+      const steps = cleanRecipeSteps(recipe.steps);
+      const recipeText = [recipe.title, recipe.subtitle, ...steps].filter(Boolean).join(" ");
+      const mentionedOwned = ownedIngredients.filter((owned) => ingredientMentioned(recipeText, owned));
       const ingredients = Array.isArray(recipe.ingredients)
         ? recipe.ingredients.map((item) => ({
             name: String(item?.name || "").trim(),
@@ -160,18 +191,27 @@ function normalizeRecipes(recipes, portions, ownedIngredients) {
               : String(item.amount).trim(),
           }))
         : [];
+      for (const owned of mentionedOwned) {
+        if (!ingredients.some((item) => ingredientIsOwned(item.name, [owned]) && !isPantryBasic(item.name))) {
+          ingredients.push({ name: owned, amount: fallbackAmount(owned, portions) });
+        }
+      }
       const hasUnknownIngredient = !ingredients.length || ingredients.some((item) => !ingredientIsOwned(item.name, ownedIngredients));
       const hasMissing = sanitizeList(recipe.missing).some((item) => !isPantryBasic(item));
-      const steps = cleanRecipeSteps(recipe.steps);
       const nutrition = safeNutrition(recipe.nutrition);
       const title = String(recipe.title || "").trim();
       const looksGeneric = /^(?:жареные|тушеные|вареные) (?:продукты|ингредиенты|овощи)$/i.test(title);
       if (hasUnknownIngredient || hasMissing || steps.length < 3 || !nutrition || title.length < 4 || looksGeneric) return null;
-      const uses = ownedIngredients.filter((owned) =>
-        ingredients.some((item) => ingredientIsOwned(item.name, [owned])),
-      );
+      const uses = ownedIngredients
+        .filter((owned) => ingredients.some((item) => !isPantryBasic(item.name) && ingredientIsOwned(item.name, [owned])))
+        .sort((first, second) => Number(!ingredientMentioned(title, first)) - Number(!ingredientMentioned(title, second)));
+      const difficulty = normalizeDifficulty(recipe.difficulty, requestedDifficulty || "легко");
+      const signature = `${title.toLowerCase().replace(/ё/g, "е")}|${uses.slice().sort().join("|")}`;
+      if (seen.has(signature)) return null;
+      seen.add(signature);
       return {
         ...recipe,
+        difficulty,
         match: 100,
         missing: [],
         uses,
@@ -309,7 +349,7 @@ function sanitizeKitchen(value) {
   return {
     ingredients: sanitizeList(value?.ingredients),
     equipment: sanitizeList(value?.equipment, 12).filter((item) => equipmentIds.includes(item)),
-    minutes: String([15, 30, 60].includes(Number(value?.minutes)) ? Number(value.minutes) : 30),
+    difficulty: normalizeDifficulty(value?.difficulty, "легко"),
     portions: Math.min(8, Math.max(1, Number(value?.portions) || 2)),
   };
 }
@@ -769,7 +809,16 @@ function spoonacularRecipeSchemaFor(ingredients, sourceIndexes) {
   return schema;
 }
 
-async function generateFromSpoonacular(env, { ingredients, equipment, minutes, portions }) {
+function sourceDifficulty(recipe) {
+  const minutes = Math.max(1, Number(recipe?.readyInMinutes) || 45);
+  const stepCount = sourceRecipeSteps(recipe).length;
+  const ingredientCount = Array.isArray(recipe?.extendedIngredients) ? recipe.extendedIngredients.length : 0;
+  if (minutes >= 90 || stepCount >= 10 || ingredientCount >= 14) return "сложно";
+  if (minutes >= 45 || stepCount >= 7 || ingredientCount >= 9) return "обычно";
+  return "легко";
+}
+
+async function generateFromSpoonacular(env, { ingredients, equipment, difficulty, portions, excludedSourceIds = [] }) {
   const apiKey = spoonacularKey(env);
   if (!apiKey) return [];
 
@@ -794,6 +843,7 @@ async function generateFromSpoonacular(env, { ingredients, equipment, minutes, p
       });
       return { ...item, nonPantryMissed: missed, strictMatch: missed.length === 0, missesCoreTitleIngredient };
     })
+    .filter((item) => !excludedSourceIds.includes(Number(item.id)))
     .filter((item) => (!item.missesCoreTitleIngredient || Number(item.usedIngredientCount || 0) >= 5)
       && item.nonPantryMissed.length <= 2
       && Number(item.usedIngredientCount || 0) >= 2
@@ -819,7 +869,8 @@ async function generateFromSpoonacular(env, { ingredients, equipment, minutes, p
       return {
         id: Number(recipe.id),
         title: String(recipe.title || "").slice(0, 160),
-        readyInMinutes: Number(recipe.readyInMinutes) || minutes,
+        readyInMinutes: Number(recipe.readyInMinutes) || 45,
+        difficulty: sourceDifficulty(recipe),
         servings: Number(recipe.servings) || portions,
         sourceName: String(recipe.sourceName || recipe.creditsText || "Spoonacular").slice(0, 100),
         sourceUrl: String(recipe.sourceUrl || recipe.spoonacularSourceUrl || ""),
@@ -830,10 +881,11 @@ async function generateFromSpoonacular(env, { ingredients, equipment, minutes, p
       };
     })
     .filter((recipe) => recipe.title
-      && recipe.readyInMinutes <= minutes
       && recipe.ingredients.length >= 2
       && recipe.steps.length >= 3
       && recipe.nutrition)
+    .sort((first, second) => Math.abs(difficultyRank(first.difficulty) - difficultyRank(difficulty))
+      - Math.abs(difficultyRank(second.difficulty) - difficultyRank(difficulty)))
     .slice(0, 3)
     .map((recipe, sourceIndex) => ({ ...recipe, sourceIndex }));
   if (!candidates.length) return [];
@@ -842,11 +894,11 @@ async function generateFromSpoonacular(env, { ingredients, equipment, minutes, p
     messages: [
       {
         role: "system",
-        content: `Ты — кулинарный переводчик и редактор. Переведи предоставленные рецепты на естественный русский язык, не меняя их основную технику. Используй только продукты пользователя плюс соль, воду и растительное масло. Названия небазовых ингредиентов в итоговом ingredients должны дословно совпадать со списком пользователя. Масштабируй количества на ${portions} порции. Не добавляй продукты, которых нет у пользователя. Поле omittedIngredients содержит отсутствующие добавки: полностью исключи их из ингредиентов и шагов. Если после их исключения блюдо теряет смысл, пропусти рецепт. Каждый sourceIndex сохрани без изменения. КБЖУ скопируй из sourceNutrition без пересчёта.`,
+        content: `Ты — кулинарный переводчик и редактор. Переведи предоставленные рецепты на естественный русский язык, не меняя их основную технику. Используй только продукты пользователя плюс соль, воду и растительное масло. Названия небазовых ингредиентов в итоговом ingredients должны дословно совпадать со списком пользователя. Масштабируй количества на ${portions} порции. Не добавляй продукты, которых нет у пользователя. Поле omittedIngredients содержит отсутствующие добавки: полностью исключи их из ингредиентов и шагов. Если после их исключения блюдо теряет смысл, пропусти рецепт. Каждый sourceIndex сохрани без изменения. Сложность сохрани из исходного поля difficulty. КБЖУ скопируй из sourceNutrition без пересчёта.`,
       },
       {
         role: "user",
-        content: `Продукты пользователя: ${ingredients.join(", ")}\nИнвентарь: ${equipment.join(", ") || "базовая кухня"}\nМаксимальное время: ${minutes} минут\nИсходные рецепты:\n${JSON.stringify(candidates)}`,
+        content: `Продукты пользователя: ${ingredients.join(", ")}\nИнвентарь: ${equipment.join(", ") || "базовая кухня"}\nЖелаемая сложность: ${difficulty}\nИсходные рецепты:\n${JSON.stringify(candidates)}`,
       },
     ],
     guided_json: spoonacularRecipeSchemaFor(ingredients, candidates.map((item) => item.sourceIndex)),
@@ -854,17 +906,19 @@ async function generateFromSpoonacular(env, { ingredients, equipment, minutes, p
     temperature: 0.05,
   });
   const data = parseAiResult(result);
-  const normalized = normalizeRecipes(Array.isArray(data.recipes) ? data.recipes : [], portions, ingredients);
+  const normalized = normalizeRecipes(Array.isArray(data.recipes) ? data.recipes : [], portions, ingredients, difficulty);
   return normalized.map((recipe) => {
     const source = candidates.find((candidate) => candidate.sourceIndex === Number(recipe.sourceIndex));
     if (!source) return null;
     return {
       ...recipe,
-      minutes: Math.min(minutes, Number(recipe.minutes) || source.readyInMinutes),
+      minutes: Number(source.readyInMinutes) || Number(recipe.minutes) || 45,
+      difficulty: source.difficulty,
       ingredients: source.ingredients.map(({ name, amount }) => ({ name, amount })),
       uses: ingredients.filter((owned) => source.ingredients.some((item) => ingredientIsOwned(item.name, [owned]))),
       nutrition: source.nutrition,
       source: {
+        id: source.id,
         name: source.sourceName || "Spoonacular",
         type: "spoonacular",
         note: "Рецепт найден в кулинарной базе Spoonacular и адаптирован на русский язык",
@@ -884,14 +938,19 @@ async function generateRecipes(request, env) {
 
   const ingredients = sanitizeList(body.ingredients);
   const equipment = sanitizeList(body.equipment, 12);
-  const minutes = Math.min(120, Math.max(10, Number(body.minutes) || 30));
+  const difficulty = normalizeDifficulty(body.difficulty, "легко");
   const portions = Math.min(8, Math.max(1, Number(body.portions) || 2));
+  const excludeTitles = sanitizeList(body.excludeTitles, 12, 120);
+  const excludedSourceIds = Array.isArray(body.excludeSourceIds)
+    ? body.excludeSourceIds.map(Number).filter(Number.isFinite).slice(0, 20)
+    : [];
+  const variation = Math.min(999999, Math.max(0, Number(body.variation) || 0));
   if (!ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
 
   let sourceAttempt = spoonacularKey(env) ? "no_matching_source_recipe" : "spoonacular_not_configured";
   if (spoonacularKey(env)) {
     try {
-      const sourcedRecipes = await generateFromSpoonacular(env, { ingredients, equipment, minutes, portions });
+      const sourcedRecipes = await generateFromSpoonacular(env, { ingredients, equipment, difficulty, portions, excludedSourceIds });
       if (sourcedRecipes.length) return json({ recipes: sourcedRecipes, source: "spoonacular" });
     } catch (error) {
       sourceAttempt = error instanceof Error ? error.message : String(error);
@@ -904,8 +963,10 @@ async function generateRecipes(request, env) {
 Для каждого рецепта оцени КБЖУ НА ОДНУ ПОРЦИЮ по указанным количествам: calories — ккал, protein/fat/carbs — граммы. Значения должны быть реалистичными и согласованными с ингредиентами; это ориентировочная оценка.`;
   const user = `Продукты дома: ${ingredients.join(", ")}.
 Инвентарь: ${equipment.length ? equipment.join(", ") : "обычная базовая кухня"}.
-Время: до ${minutes} минут. Порций: ${portions}.
-Никаких покупок и замен: каждый небазовый ингредиент обязан дословно соответствовать продукту из списка. Расположи блюда от самого подходящего. Количество ингредиентов укажи на ${portions} порции. match для каждого блюда — 100. В uses перечисли использованные продукты пользователя, missing — пустой массив. Лучше вернуть один хороший узнаваемый рецепт, чем три нелепых.`;
+Желаемая сложность приготовления: ${difficulty}. Порций: ${portions}.
+${excludeTitles.length ? `Не повторяй недавние варианты: ${excludeTitles.join(", ")}.` : ""}
+Номер вариации запроса: ${variation}.
+Никаких покупок и замен: каждый небазовый ингредиент обязан дословно соответствовать продукту из списка. Расположи блюда от самого подходящего. Количество ингредиентов укажи на ${portions} порции. В ingredients перечисли только продукты, реально участвующие в шагах, и обязательно добавь туда каждый продукт, упомянутый в шагах. match для каждого блюда — 100. В uses перечисли только использованные продукты пользователя, missing — пустой массив. Лучше вернуть один хороший узнаваемый рецепт, чем три нелепых.`;
 
   try {
     const result = await env.AI.run(MODEL, {
@@ -915,11 +976,12 @@ async function generateRecipes(request, env) {
       ],
       guided_json: recipeSchemaFor(ingredients),
       max_tokens: 2800,
-      temperature: 0.15,
+      temperature: 0.45,
     });
     const data = parseAiResult(result);
     if (!Array.isArray(data.recipes) || !data.recipes.length) throw new Error("Incomplete recipes");
-    const recipes = normalizeRecipes(data.recipes, portions, ingredients);
+    const recipes = normalizeRecipes(data.recipes, portions, ingredients, difficulty)
+      .filter((recipe) => !excludeTitles.some((title) => ingredientMentioned(recipe.title, title)));
     if (!recipes.length) throw new Error("Recipes failed quality checks");
     return json({ recipes, source: "workers-ai", sourceAttempt });
   } catch (error) {
