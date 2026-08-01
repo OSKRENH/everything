@@ -3,6 +3,7 @@
   "name": "kutno",
   "main": "worker/index.js",
   "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
@@ -18,6 +19,9 @@
       "database_name": "kutno-users"
     }
   ],
+  "vars": {
+    "GOOGLE_CLIENT_ID": "117547932468-2up7s2428581j57pre2fbjpd1h8uc56q.apps.googleusercontent.com"
+  },
   "observability": {
     "enabled": true
   }
