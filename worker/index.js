@@ -1,4 +1,7 @@
+import { createRemoteJWKSet, jwtVerify } from "jose";
+
 const MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
+const GOOGLE_JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
 
 const recipeSchema = {
   type: "object",
@@ -218,7 +221,14 @@ async function ensureDatabase(env) {
         expires_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS google_accounts (
+        google_sub TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`),
       env.DB.prepare("CREATE INDEX IF NOT EXISTS sessions_user_id ON sessions(user_id)"),
+      env.DB.prepare("CREATE INDEX IF NOT EXISTS google_accounts_user_id ON google_accounts(user_id)"),
     ]).catch((error) => {
       schemaPromise = null;
       throw error;
@@ -287,6 +297,90 @@ async function createSession(env, user) {
     .bind(tokenHash, user.id, Date.now() + SESSION_TTL * 1000)
     .run();
   return token;
+}
+
+async function verifyGoogleCredential(credential, clientId) {
+  if (!credential || credential.length > 8192 || !clientId) throw new Error("Invalid Google credential");
+  const { payload } = await jwtVerify(credential, GOOGLE_JWKS, {
+    audience: clientId,
+    issuer: ["https://accounts.google.com", "accounts.google.com"],
+    algorithms: ["RS256"],
+    clockTolerance: 5,
+  });
+  const email = String(payload.email || "").trim().toLowerCase().slice(0, 160);
+  const name = String(payload.name || email.split("@")[0] || "Пользователь").trim().slice(0, 60);
+  const googleSub = String(payload.sub || "").trim().slice(0, 255);
+  if (!googleSub || !email || payload.email_verified !== true) throw new Error("Google email is not verified");
+  return {
+    googleSub,
+    email,
+    name,
+    googleIsAuthoritative: email.endsWith("@gmail.com") || (payload.email_verified === true && Boolean(payload.hd)),
+  };
+}
+
+async function findGoogleUser(env, googleSub) {
+  return env.DB.prepare(`
+    SELECT users.* FROM google_accounts
+    JOIN users ON users.id = google_accounts.user_id
+    WHERE google_accounts.google_sub = ?
+  `).bind(googleSub).first();
+}
+
+async function createGoogleOnlyUser(env, profile) {
+  const salt = new Uint8Array(16);
+  const impossiblePassword = new Uint8Array(32);
+  crypto.getRandomValues(salt);
+  crypto.getRandomValues(impossiblePassword);
+  const user = { id: crypto.randomUUID(), name: profile.name, email: profile.email };
+  await env.DB.prepare(`INSERT INTO users (id, email, name, password_hash, password_salt, kitchen_json, created_at)
+    VALUES (?, ?, ?, ?, ?, '{}', ?)`)
+    .bind(
+      user.id,
+      user.email,
+      user.name,
+      bytesToBase64(impossiblePassword),
+      bytesToBase64(salt),
+      Date.now(),
+    )
+    .run();
+  return user;
+}
+
+async function googleLogin(request, env) {
+  await ensureDatabase(env);
+  const body = await request.json().catch(() => ({}));
+  let profile;
+  try {
+    profile = await verifyGoogleCredential(String(body.credential || ""), env.GOOGLE_CLIENT_ID);
+  } catch (error) {
+    console.warn("google_auth_failed", error instanceof Error ? error.message : String(error));
+    return json({ error: "Google не подтвердил вход. Попробуйте ещё раз." }, 401);
+  }
+
+  let user = await findGoogleUser(env, profile.googleSub);
+  if (!user) {
+    const existing = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(profile.email).first();
+    if (existing && !profile.googleIsAuthoritative) {
+      return json({ error: "Этот адрес уже связан с другим способом входа" }, 409);
+    }
+    user = existing || await createGoogleOnlyUser(env, profile);
+    try {
+      await env.DB.prepare("INSERT INTO google_accounts (google_sub, user_id, created_at) VALUES (?, ?, ?)")
+        .bind(profile.googleSub, user.id, Date.now())
+        .run();
+    } catch {
+      user = await findGoogleUser(env, profile.googleSub);
+      if (!user) return json({ error: "Не получилось связать аккаунт Google" }, 409);
+    }
+  }
+
+  const token = await createSession(env, user);
+  return json(
+    { user: publicUser(user), kitchen: parseKitchen(user.kitchen_json) },
+    200,
+    { "set-cookie": sessionCookie(token) },
+  );
 }
 
 async function register(request, env) {
@@ -401,6 +495,14 @@ async function generateRecipes(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if (url.pathname === "/api/config" && request.method === "GET") {
+      return json({ googleClientId: env.GOOGLE_CLIENT_ID });
+    }
+
+    if (url.pathname === "/api/auth/google" && request.method === "POST") {
+      return googleLogin(request, env);
+    }
 
     if (url.pathname === "/api/auth/register" && request.method === "POST") {
       return register(request, env);
