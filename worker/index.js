@@ -858,6 +858,31 @@ async function findCatalogRecipes(env, { ingredients, equipment, difficulty, por
   return recipes;
 }
 
+async function listRecipeCatalog(request, env) {
+  await ensureRecipeCatalog(env);
+  const url = new URL(request.url);
+  const portions = Math.min(8, Math.max(1, Number(url.searchParams.get("portions")) || 2));
+  const result = await env.DB.prepare(`
+    SELECT recipe_json FROM recipes
+    WHERE catalog_version = ?
+    ORDER BY cuisine, title
+    LIMIT 250
+  `).bind(CATALOG_VERSION).all();
+  const recipes = result.results.map((row) => {
+    try {
+      const recipe = JSON.parse(row.recipe_json);
+      return {
+        ...catalogRecipeForPortions(recipe, [], portions),
+        match: null,
+        why: `Классическое блюдо кухни: ${recipe.cuisine}`,
+      };
+    } catch {
+      return null;
+    }
+  }).filter(Boolean);
+  return json({ recipes, catalogVersion: CATALOG_VERSION, total: recipes.length });
+}
+
 function hashText(value = "") {
   let hash = 2166136261;
   for (const character of String(value)) {
@@ -1293,6 +1318,10 @@ export default {
 
     if (url.pathname === "/api/generate" && request.method === "POST") {
       return generateRecipes(request, env);
+    }
+
+    if (url.pathname === "/api/catalog" && request.method === "GET") {
+      return listRecipeCatalog(request, env);
     }
 
     if (url.pathname === "/api/health") {
