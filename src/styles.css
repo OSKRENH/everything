@@ -16,14 +16,17 @@
 
 * { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
   background: var(--paper);
+  overflow-x: hidden;
 }
+
+#app { width: 100%; overflow: clip; }
 
 button, input { font: inherit; }
 button { color: inherit; }
@@ -71,7 +74,18 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
   cursor: pointer;
 }
 .text-button:disabled { opacity: .28; cursor: default; }
-.header-clear { justify-self: end; font-size: 13px; }
+.header-actions { justify-self: end; display: flex; align-items: center; gap: 22px; }
+.header-clear { font-size: 13px; }
+.account-button {
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: transparent;
+  padding: 8px 14px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
 
 .intro-grid {
   display: grid;
@@ -118,6 +132,7 @@ h1 { font-size: clamp(70px, 7.1vw, 124px); line-height: .91; }
   border-bottom: 1px solid var(--ink);
 }
 .section-index { color: var(--soft); padding-top: 3px; }
+.section-content { min-width: 0; }
 .section-content > label, .field-label { display: block; margin-bottom: 16px; }
 
 .ingredient-form {
@@ -181,7 +196,7 @@ h1 { font-size: clamp(70px, 7.1vw, 124px); line-height: .91; }
 .equipment-option.active { font-weight: 600; }
 .equipment-mark { color: var(--accent); font-size: 9px; }
 
-.preference-columns { display: grid; grid-template-columns: 1fr .72fr 1.2fr; align-items: end; gap: 20px; }
+.preference-columns { display: grid; grid-template-columns: 1fr .72fr; align-items: end; gap: 32px; }
 fieldset { border: 0; padding: 0; margin: 0; }
 legend { margin-bottom: 12px; }
 .segmented { display: flex; border-bottom: 1px solid var(--line); }
@@ -198,11 +213,6 @@ legend { margin-bottom: 12px; }
 .stepper { display: grid; grid-template-columns: 28px 34px 28px; align-items: center; border-bottom: 1px solid var(--line); }
 .stepper button { border: 0; background: transparent; padding: 7px 0; cursor: pointer; }
 .stepper output { text-align: center; font-size: 13px; }
-.strict-option { display: flex; align-items: center; gap: 9px; font-size: 12px; cursor: pointer; padding-bottom: 8px; }
-.strict-option input { position: absolute; opacity: 0; pointer-events: none; }
-.checkmark { width: 15px; height: 15px; border: 1px solid var(--ink); display: inline-grid; place-items: center; }
-.strict-option input:checked + .checkmark::after { content: ""; width: 7px; height: 7px; background: var(--accent); }
-
 .primary-action {
   width: 100%;
   display: flex;
@@ -223,6 +233,13 @@ legend { margin-bottom: 12px; }
 .primary-action:disabled { background: #d8d6ce; color: #83827c; cursor: not-allowed; }
 .primary-action span:last-child { font-size: 20px; }
 .action-note { text-align: right; font-size: 10px; color: var(--soft); margin: 8px 0 0; }
+.save-status { margin: 12px 0 0; color: var(--soft); font-size: 10px; line-height: 1.45; text-align: right; }
+.save-status button { border: 0; background: transparent; padding: 0; color: var(--ink); text-decoration: underline; cursor: pointer; }
+
+.generation-error { border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); padding: 34px 0 38px; margin-bottom: 100px; }
+.generation-error > span { font-family: "Prata", Georgia, serif; font-size: 30px; }
+.generation-error p { color: var(--soft); font-size: 13px; }
+.generation-error button { border: 0; background: var(--ink); color: white; padding: 12px 17px; margin-top: 8px; cursor: pointer; }
 
 .manifesto-strip {
   display: grid;
@@ -296,6 +313,35 @@ legend { margin-bottom: 12px; }
 .cook-note span { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--accent); }
 .cook-note p { font-size: 12px; line-height: 1.55; }
 
+.auth-overlay { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 20px; }
+.auth-card {
+  position: relative;
+  width: min(100%, 510px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: var(--paper);
+  padding: 34px 38px 38px;
+  animation: auth-in .24s ease-out;
+}
+@keyframes auth-in { from { transform: translateY(12px); opacity: 0; } }
+.auth-close { position: absolute; right: 22px; top: 18px; border: 0; background: transparent; font-size: 24px; cursor: pointer; }
+.auth-card .eyebrow { margin: 0 0 40px; }
+.auth-card h2 { margin: 0; max-width: 420px; font-family: "Prata", Georgia, serif; font-size: 52px; font-weight: 400; line-height: .98; letter-spacing: -.05em; }
+.auth-lead { max-width: 390px; margin: 20px 0 30px; color: var(--soft); font-size: 13px; line-height: 1.55; }
+.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--line); margin-bottom: 25px; }
+.auth-tabs button { border: 0; background: transparent; padding: 10px 0; color: var(--soft); text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .09em; cursor: pointer; }
+.auth-tabs button.active { color: var(--ink); border-bottom: 2px solid var(--ink); }
+.auth-form { display: grid; gap: 18px; }
+.auth-form label { display: grid; gap: 8px; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+.auth-form input { width: 100%; border: 0; border-bottom: 1px solid var(--ink); border-radius: 0; background: transparent; padding: 8px 0 11px; font-size: 16px; text-transform: none; letter-spacing: 0; }
+.auth-primary, .auth-secondary { width: 100%; border: 0; padding: 15px 18px; cursor: pointer; text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
+.auth-primary { margin-top: 8px; background: var(--ink); color: white; }
+.auth-primary:disabled { opacity: .5; cursor: wait; }
+.auth-secondary { margin-top: 10px; background: transparent; border: 1px solid var(--line); }
+.auth-error { margin: 0; color: var(--accent); font-size: 12px; line-height: 1.45; }
+.account-card h2 { font-size: 60px; }
+.account-summary { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 18px 0; margin: 30px 0; color: var(--soft); font-size: 12px; line-height: 1.7; }
+
 footer { display: flex; justify-content: space-between; border-top: 1px solid var(--ink); padding: 24px 0 50px; font-size: 11px; }
 footer span:first-child { font-family: "Prata", Georgia, serif; font-size: 18px; }
 
@@ -310,19 +356,27 @@ footer span:first-child { font-family: "Prata", Georgia, serif; font-size: 18px;
 }
 
 @media (max-width: 700px) {
-  .page-shell { padding: 0 18px; }
+  .page-shell { width: 100%; padding: 0 16px; }
   .site-header { min-height: 80px; grid-template-columns: 1fr auto; }
   .header-note { display: none; }
   .wordmark { font-size: 28px; }
-  .intro-grid { padding: 46px 0 70px; }
-  h1 { font-size: clamp(58px, 19vw, 86px); }
+  .header-actions { gap: 0; }
+  .header-clear { display: none; }
+  .account-button { padding: 7px 12px; font-size: 10px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .intro-grid { width: 100%; padding: 42px 0 68px; gap: 48px; }
+  h1 { max-width: 100%; font-size: clamp(46px, 13.5vw, 60px); line-height: .96; overflow-wrap: normal; }
   .eyebrow { margin-bottom: 26px; }
-  .form-section { grid-template-columns: 34px 1fr; gap: 10px; }
+  .intro-footnote { margin-top: 42px; font-size: 12px; }
+  .kitchen-form { min-width: 0; }
+  .form-section { width: 100%; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; }
+  .ingredient-form { grid-template-columns: minmax(0, 1fr) auto; }
+  .ingredient-form input { min-width: 0; padding-right: 8px; font-size: 23px; }
+  .ingredient-form button { padding-left: 8px; font-size: 10px; }
+  .microcopy { line-height: 1.45; }
   .equipment-grid { grid-template-columns: repeat(2, 1fr); }
   .equipment-option:nth-child(3n+2), .equipment-option:nth-child(3n+3) { border-left: 0; padding-left: 4px; }
   .equipment-option:nth-child(even) { border-left: 1px solid var(--line); padding-left: 10px; }
-  .preference-columns { grid-template-columns: 1fr 1fr; }
-  .strict-option { grid-column: 1 / -1; margin-top: 10px; }
+  .preference-columns { grid-template-columns: minmax(0, 1fr) minmax(0, .75fr); gap: 18px; }
   .manifesto-strip { grid-template-columns: 1fr; margin-bottom: 70px; }
   .manifesto-strip div + div { border-left: 0; border-top: 1px solid var(--ink); padding-left: 0; }
   .results-section { padding-bottom: 75px; }
@@ -337,6 +391,10 @@ footer span:first-child { font-family: "Prata", Georgia, serif; font-size: 18px;
   .sheet-grid { grid-template-columns: 1fr; gap: 50px; }
   .steps-list p { font-size: 19px; }
   footer span:last-child { max-width: 180px; text-align: right; }
+  .auth-overlay { padding: 10px; align-items: end; }
+  .auth-card { width: 100%; max-height: calc(100dvh - 20px); padding: 28px 22px 26px; }
+  .auth-card .eyebrow { margin-bottom: 32px; }
+  .auth-card h2, .account-card h2 { font-size: 43px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
