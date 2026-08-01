@@ -1,5 +1,4 @@
-import { config } from '../config.js';
-import { ApiError } from '../utils/ApiError.js';
+import { ApiError } from './apiError.js';
 
 const BASE_URL = 'https://api.spoonacular.com';
 
@@ -9,19 +8,15 @@ export class SpoonacularKeyMissingError extends ApiError {
   }
 }
 
-function ensureKey() {
-  if (!config.hasSpoonacularKey) {
+async function request(apiKey, pathname, params) {
+  if (!apiKey) {
     throw new SpoonacularKeyMissingError();
   }
-}
-
-async function request(pathname, params) {
-  ensureKey();
   const url = new URL(BASE_URL + pathname);
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, String(value));
   }
-  url.searchParams.set('apiKey', config.spoonacularApiKey);
+  url.searchParams.set('apiKey', apiKey);
 
   let response;
   try {
@@ -37,8 +32,8 @@ async function request(pathname, params) {
   return response.json();
 }
 
-export function findByIngredients(ingredients, number = 10) {
-  return request('/recipes/findByIngredients', {
+export function findByIngredients(apiKey, ingredients, number = 10) {
+  return request(apiKey, '/recipes/findByIngredients', {
     ingredients: ingredients.join(','),
     number,
     ranking: 2,
@@ -46,8 +41,8 @@ export function findByIngredients(ingredients, number = 10) {
   });
 }
 
-export function getRecipeInformation(recipeId) {
-  return request(`/recipes/${recipeId}/information`, {
+export function getRecipeInformation(apiKey, recipeId) {
+  return request(apiKey, `/recipes/${recipeId}/information`, {
     includeNutrition: false,
   });
 }

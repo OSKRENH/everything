@@ -1,7 +1,7 @@
 node_modules/
-server/data/*.db
-server/data/*.db-journal
-server/.env
 client/dist/
+.wrangler/
+.dev.vars
+.dev.vars.*
 *.log
 .DS_Store

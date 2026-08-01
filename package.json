@@ -1,14 +1,21 @@
 {
-  "name": "everything",
+  "name": "kutno",
   "private": true,
   "workspaces": [
-    "server",
     "client"
   ],
   "scripts": {
-    "dev": "concurrently -n server,client -c blue,green \"npm run dev -w server\" \"npm run dev -w client\""
+    "build": "npm run build -w client",
+    "dev": "npm run build -w client && concurrently -n vite,worker -c green,blue \"npm run dev -w client\" \"wrangler pages dev client/dist --port 8788\"",
+    "deploy": "npm run build -w client && wrangler pages deploy client/dist",
+    "db:migrate:local": "wrangler d1 execute kutno-db --local --file=migrations/0001_init.sql",
+    "db:migrate:remote": "wrangler d1 execute kutno-db --remote --file=migrations/0001_init.sql"
+  },
+  "dependencies": {
+    "jose": "^6.2.6"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.1.0",
+    "wrangler": "^4.118.0"
   }
 }

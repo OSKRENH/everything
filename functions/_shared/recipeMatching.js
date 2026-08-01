@@ -1,17 +1,17 @@
-import { ApiError } from '../utils/ApiError.js';
-import { listIngredientNames, listEquipmentNames } from './inventory.service.js';
-import { findByIngredients, getRecipeInformation } from './spoonacular.client.js';
-import { getCachedRecipe, setCachedRecipe } from './recipeCache.service.js';
+import { ApiError } from './apiError.js';
+import { listIngredientNames, listEquipmentNames } from './inventory.js';
+import { findByIngredients, getRecipeInformation } from './spoonacular.js';
+import { getCachedRecipe, setCachedRecipe } from './recipeCache.js';
 
-export async function searchRecipes(userId, number = 10) {
-  const ingredients = listIngredientNames(userId);
+export async function searchRecipes(db, apiKey, userId, number = 10) {
+  const ingredients = await listIngredientNames(db, userId);
   if (ingredients.length === 0) {
     throw new ApiError(400, 'NO_INGREDIENTS', 'Добавьте хотя бы один продукт в инвентарь.');
   }
 
-  const results = await findByIngredients(ingredients, number);
+  const results = await findByIngredients(apiKey, ingredients, number);
 
-  const candidates = results.map((r) => {
+  return results.map((r) => {
     const used = r.usedIngredientCount ?? r.usedIngredients?.length ?? 0;
     const missed = r.missedIngredientCount ?? r.missedIngredients?.length ?? 0;
     const total = used + missed;
@@ -26,19 +26,17 @@ export async function searchRecipes(userId, number = 10) {
       missedIngredients: (r.missedIngredients ?? []).map((i) => ({ id: i.id, name: i.name })),
     };
   });
-
-  return candidates;
 }
 
 function normalize(name) {
   return name.trim().toLowerCase();
 }
 
-export async function getRecipeDetail(userId, recipeId) {
-  let info = getCachedRecipe(recipeId);
+export async function getRecipeDetail(db, apiKey, userId, recipeId) {
+  let info = await getCachedRecipe(db, recipeId);
   if (!info) {
-    info = await getRecipeInformation(recipeId);
-    setCachedRecipe(recipeId, info);
+    info = await getRecipeInformation(apiKey, recipeId);
+    await setCachedRecipe(db, recipeId, info);
   }
 
   const steps = info.analyzedInstructions?.[0]?.steps ?? [];
@@ -49,7 +47,7 @@ export async function getRecipeDetail(userId, recipeId) {
     }
   }
 
-  const userEquipment = new Set(listEquipmentNames(userId).map(normalize));
+  const userEquipment = new Set((await listEquipmentNames(db, userId)).map(normalize));
   const missingEquipment = [...requiredEquipmentSet].filter((eq) => !userEquipment.has(normalize(eq)));
   const missingSet = new Set(missingEquipment.map(normalize));
 

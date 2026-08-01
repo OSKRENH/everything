@@ -1,6 +1,5 @@
-import { db } from '../db/index.js';
-import { hashPassword, comparePassword } from '../utils/password.js';
-import { ApiError } from '../utils/ApiError.js';
+import { ApiError } from './apiError.js';
+import { hashPassword, comparePassword } from './password.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -13,21 +12,25 @@ export function validateCredentials(email, password) {
   }
 }
 
-export async function createUser(email, password) {
+export async function createUser(db, email, password) {
   validateCredentials(email, password);
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  const existing = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
   if (existing) {
     throw new ApiError(409, 'EMAIL_TAKEN', 'Этот email уже зарегистрирован.');
   }
   const passwordHash = await hashPassword(password);
-  const result = db
+  const result = await db
     .prepare('INSERT INTO users (email, password_hash) VALUES (?, ?)')
-    .run(email, passwordHash);
-  return { id: result.lastInsertRowid, email };
+    .bind(email, passwordHash)
+    .run();
+  return { id: result.meta.last_row_id, email };
 }
 
-export async function authenticateUser(email, password) {
-  const row = db.prepare('SELECT id, email, password_hash FROM users WHERE email = ?').get(email);
+export async function authenticateUser(db, email, password) {
+  const row = await db
+    .prepare('SELECT id, email, password_hash FROM users WHERE email = ?')
+    .bind(email)
+    .first();
   if (!row) {
     throw new ApiError(401, 'INVALID_CREDENTIALS', 'Неверный email или пароль.');
   }
@@ -38,8 +41,8 @@ export async function authenticateUser(email, password) {
   return { id: row.id, email: row.email };
 }
 
-export function getUserById(id) {
-  const row = db.prepare('SELECT id, email FROM users WHERE id = ?').get(id);
+export async function getUserById(db, id) {
+  const row = await db.prepare('SELECT id, email FROM users WHERE id = ?').bind(id).first();
   if (!row) {
     throw new ApiError(404, 'NOT_FOUND', 'Пользователь не найден.');
   }
