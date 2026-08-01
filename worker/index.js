@@ -598,7 +598,26 @@ function isAllowedSourcePantryItem(value = "") {
   const normalized = String(value).toLowerCase().replace(/[^a-z\s-]/g, " ").replace(/\s+/g, " ").trim();
   return /^(?:sea )?salt$/.test(normalized)
     || /^(?:cold |hot |warm |boiling )?water$/.test(normalized)
+    || normalized === "oil"
     || /^(?:(?:extra virgin )?olive|vegetable|sunflower|cooking|neutral) oil$/.test(normalized);
+}
+
+function normalizeEnglishIngredient(value = "") {
+  return String(value).toLowerCase().replace(/[^a-z\s-]/g, " ").replace(/\s+/g, " ").trim()
+    .split(/[\s-]+/)
+    .map((word) => word.length > 4 && word.endsWith("es") ? word.slice(0, -2) : word.length > 3 && word.endsWith("s") ? word.slice(0, -1) : word)
+    .join(" ");
+}
+
+function englishIngredientIsOwned(value, translations) {
+  if (isAllowedSourcePantryItem(value)) return true;
+  const normalized = normalizeEnglishIngredient(value);
+  return translations.some((item) => {
+    const translated = normalizeEnglishIngredient(item.english);
+    if (!translated) return false;
+    return normalized.includes(translated) || translated.includes(normalized)
+      || translated.split(" ").every((token) => normalized.split(" ").includes(token));
+  });
 }
 
 async function translateIngredientsForSpoonacular(env, ingredients) {
@@ -649,6 +668,26 @@ function sourceNutrition(recipe) {
   return nutrition.calories > 0 ? nutrition : null;
 }
 
+function adaptedSourceNutrition(recipe, translations, strictMatch) {
+  if (strictMatch) return sourceNutrition(recipe);
+  const ingredients = Array.isArray(recipe?.nutrition?.ingredients) ? recipe.nutrition.ingredients : [];
+  if (!ingredients.length) return null;
+  const selected = ingredients.filter((item) => englishIngredientIsOwned(item?.name, translations));
+  if (!selected.length) return null;
+  const nutrientAmount = (ingredient, name) => Number((Array.isArray(ingredient?.nutrients) ? ingredient.nutrients : [])
+    .find((item) => String(item?.name || "").toLowerCase() === name)?.amount) || 0;
+  const servings = Math.max(1, Number(recipe?.servings) || 1);
+  const sum = (name) => selected.reduce((total, ingredient) => total + nutrientAmount(ingredient, name), 0) / servings;
+  const nutrition = {
+    calories: Math.round(sum("calories")),
+    protein: Math.round(sum("protein") * 10) / 10,
+    fat: Math.round(sum("fat") * 10) / 10,
+    carbs: Math.round(sum("carbohydrates") * 10) / 10,
+    estimated: false,
+  };
+  return nutrition.calories > 0 ? nutrition : null;
+}
+
 function sourceRecipeSteps(recipe) {
   const groups = Array.isArray(recipe?.analyzedInstructions) ? recipe.analyzedInstructions : [];
   return groups.flatMap((group) => Array.isArray(group?.steps) ? group.steps : [])
@@ -680,36 +719,50 @@ async function generateFromSpoonacular(env, { ingredients, equipment, minutes, p
   const searchResponse = await fetch(searchUrl, { headers: { accept: "application/json" } });
   if (!searchResponse.ok) throw new Error(`Spoonacular search failed: ${searchResponse.status}`);
   const searchResults = await searchResponse.json();
-  const strictMatches = (Array.isArray(searchResults) ? searchResults : [])
-    .filter((item) => (Array.isArray(item?.missedIngredients) ? item.missedIngredients : [])
-      .every((missing) => isAllowedSourcePantryItem(missing?.name)))
+  const sourceMatches = (Array.isArray(searchResults) ? searchResults : [])
+    .map((item) => {
+      const missed = (Array.isArray(item?.missedIngredients) ? item.missedIngredients : [])
+        .filter((missing) => !isAllowedSourcePantryItem(missing?.name));
+      return { ...item, nonPantryMissed: missed, strictMatch: missed.length === 0 };
+    })
+    .filter((item) => item.nonPantryMissed.length <= 2)
+    .sort((first, second) => first.nonPantryMissed.length - second.nonPantryMissed.length
+      || Number(second.usedIngredientCount || 0) - Number(first.usedIngredientCount || 0))
     .slice(0, 6);
-  if (!strictMatches.length) return [];
+  if (!sourceMatches.length) return [];
 
   const infoUrl = new URL("https://api.spoonacular.com/recipes/informationBulk");
   infoUrl.searchParams.set("apiKey", apiKey);
-  infoUrl.searchParams.set("ids", strictMatches.map((item) => item.id).join(","));
+  infoUrl.searchParams.set("ids", sourceMatches.map((item) => item.id).join(","));
   infoUrl.searchParams.set("includeNutrition", "true");
   const infoResponse = await fetch(infoUrl, { headers: { accept: "application/json" } });
   if (!infoResponse.ok) throw new Error(`Spoonacular details failed: ${infoResponse.status}`);
   const details = await infoResponse.json();
   const candidates = (Array.isArray(details) ? details : [])
-    .map((recipe) => ({
-      id: Number(recipe.id),
-      title: String(recipe.title || "").slice(0, 160),
-      readyInMinutes: Number(recipe.readyInMinutes) || minutes,
-      servings: Number(recipe.servings) || portions,
-      sourceName: String(recipe.sourceName || recipe.creditsText || "Spoonacular").slice(0, 100),
-      sourceUrl: String(recipe.sourceUrl || recipe.spoonacularSourceUrl || ""),
-      ingredients: (Array.isArray(recipe.extendedIngredients) ? recipe.extendedIngredients : []).slice(0, 30).map((item) => ({
-        name: String(item.nameClean || item.name || "").slice(0, 100),
-        amount: Number(item.amount) || 0,
-        unit: String(item.unit || "").slice(0, 30),
-        original: String(item.original || "").slice(0, 180),
-      })),
-      steps: sourceRecipeSteps(recipe),
-      nutrition: sourceNutrition(recipe),
-    }))
+    .map((recipe) => {
+      const searchMatch = sourceMatches.find((item) => Number(item.id) === Number(recipe.id));
+      const sourceIngredients = (Array.isArray(recipe.extendedIngredients) ? recipe.extendedIngredients : [])
+        .filter((item) => englishIngredientIsOwned(item.nameClean || item.name, translations))
+        .slice(0, 30)
+        .map((item) => ({
+          name: String(item.nameClean || item.name || "").slice(0, 100),
+          amount: Number(item.amount) || 0,
+          unit: String(item.unit || "").slice(0, 30),
+          original: String(item.original || "").slice(0, 180),
+        }));
+      return {
+        id: Number(recipe.id),
+        title: String(recipe.title || "").slice(0, 160),
+        readyInMinutes: Number(recipe.readyInMinutes) || minutes,
+        servings: Number(recipe.servings) || portions,
+        sourceName: String(recipe.sourceName || recipe.creditsText || "Spoonacular").slice(0, 100),
+        sourceUrl: String(recipe.sourceUrl || recipe.spoonacularSourceUrl || ""),
+        ingredients: sourceIngredients,
+        omittedIngredients: (searchMatch?.nonPantryMissed || []).map((item) => String(item?.name || "").slice(0, 100)),
+        steps: sourceRecipeSteps(recipe),
+        nutrition: adaptedSourceNutrition(recipe, translations, Boolean(searchMatch?.strictMatch)),
+      };
+    })
     .filter((recipe) => recipe.title && recipe.steps.length >= 3 && recipe.nutrition)
     .slice(0, 3)
     .map((recipe, sourceIndex) => ({ ...recipe, sourceIndex }));
@@ -719,7 +772,7 @@ async function generateFromSpoonacular(env, { ingredients, equipment, minutes, p
     messages: [
       {
         role: "system",
-        content: `Ты — кулинарный переводчик и редактор. Переведи предоставленные рецепты на естественный русский язык, не меняя их суть и технику. Используй только продукты пользователя плюс соль, воду и растительное масло. Названия небазовых ингредиентов в итоговом ingredients должны дословно совпадать со списком пользователя. Масштабируй количества на ${portions} порции. Не добавляй продукты, которых нет у пользователя. Если исходный рецепт невозможно передать без другого продукта, пропусти его. Каждый sourceIndex сохрани без изменения. КБЖУ скопируй из sourceNutrition без пересчёта.`,
+        content: `Ты — кулинарный переводчик и редактор. Переведи предоставленные рецепты на естественный русский язык, не меняя их основную технику. Используй только продукты пользователя плюс соль, воду и растительное масло. Названия небазовых ингредиентов в итоговом ingredients должны дословно совпадать со списком пользователя. Масштабируй количества на ${portions} порции. Не добавляй продукты, которых нет у пользователя. Поле omittedIngredients содержит отсутствующие добавки: полностью исключи их из ингредиентов и шагов. Если после их исключения блюдо теряет смысл, пропусти рецепт. Каждый sourceIndex сохрани без изменения. КБЖУ скопируй из sourceNutrition без пересчёта.`,
       },
       {
         role: "user",
