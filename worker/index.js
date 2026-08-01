@@ -8,7 +8,7 @@ const recipeSchema = {
   properties: {
     recipes: {
       type: "array",
-      minItems: 3,
+      minItems: 1,
       maxItems: 3,
       items: {
         type: "object",
@@ -37,9 +37,19 @@ const recipeSchema = {
             },
           },
           steps: { type: "array", minItems: 3, items: { type: "string" } },
+          nutrition: {
+            type: "object",
+            properties: {
+              calories: { type: "integer", minimum: 1 },
+              protein: { type: "number", minimum: 0 },
+              fat: { type: "number", minimum: 0 },
+              carbs: { type: "number", minimum: 0 },
+            },
+            required: ["calories", "protein", "fat", "carbs"],
+          },
           tip: { type: "string" },
         },
-        required: ["title", "subtitle", "minutes", "difficulty", "match", "missing", "uses", "equipment", "why", "ingredients", "steps", "tip"],
+        required: ["title", "subtitle", "minutes", "difficulty", "match", "missing", "uses", "equipment", "why", "ingredients", "steps", "nutrition", "tip"],
       },
     },
   },
@@ -120,6 +130,25 @@ function fallbackAmount(name = "", portions = 2) {
   return `${portions * 100} г`;
 }
 
+function safeNutrition(value) {
+  const number = (input, max) => Math.min(max, Math.max(0, Number(input) || 0));
+  const nutrition = {
+    calories: Math.round(number(value?.calories, 3000)),
+    protein: Math.round(number(value?.protein, 300) * 10) / 10,
+    fat: Math.round(number(value?.fat, 300) * 10) / 10,
+    carbs: Math.round(number(value?.carbs, 600) * 10) / 10,
+    estimated: true,
+  };
+  return nutrition.calories > 0 ? nutrition : null;
+}
+
+function cleanRecipeSteps(value) {
+  const placeholders = /^(?:(?:sub)?title|description|step\s*\d*|шаг\s*\d*|null|undefined)$/i;
+  return sanitizeList(value, 12, 400)
+    .filter((step) => !placeholders.test(step.trim()))
+    .filter((step) => step.length >= 12);
+}
+
 function normalizeRecipes(recipes, portions, ownedIngredients) {
   return recipes
     .map((recipe) => {
@@ -133,7 +162,11 @@ function normalizeRecipes(recipes, portions, ownedIngredients) {
         : [];
       const hasUnknownIngredient = !ingredients.length || ingredients.some((item) => !ingredientIsOwned(item.name, ownedIngredients));
       const hasMissing = sanitizeList(recipe.missing).some((item) => !isPantryBasic(item));
-      if (hasUnknownIngredient || hasMissing) return null;
+      const steps = cleanRecipeSteps(recipe.steps);
+      const nutrition = safeNutrition(recipe.nutrition);
+      const title = String(recipe.title || "").trim();
+      const looksGeneric = /^(?:жареные|тушеные|вареные) (?:продукты|ингредиенты|овощи)$/i.test(title);
+      if (hasUnknownIngredient || hasMissing || steps.length < 3 || !nutrition || title.length < 4 || looksGeneric) return null;
       const uses = ownedIngredients.filter((owned) =>
         ingredients.some((item) => ingredientIsOwned(item.name, [owned])),
       );
@@ -144,7 +177,14 @@ function normalizeRecipes(recipes, portions, ownedIngredients) {
         uses,
         equipment: sanitizeList(recipe.equipment, 12),
         ingredients,
-        steps: sanitizeList(recipe.steps, 12, 400),
+        steps,
+        nutrition,
+        portions,
+        source: {
+          name: "Кутно",
+          type: "generated",
+          note: "Рецепт составлен моделью и проверен по вашему списку продуктов",
+        },
         why: String(recipe.why || "Все продукты для этого блюда уже есть дома"),
       };
     })
@@ -154,7 +194,6 @@ function normalizeRecipes(recipes, portions, ownedIngredients) {
 
 const SESSION_COOKIE = "kutno_session";
 const SESSION_TTL = 60 * 60 * 24 * 30;
-let schemaPromise;
 
 function bytesToBase64(bytes) {
   let value = "";
@@ -204,9 +243,8 @@ function safeEqual(first, second) {
 
 async function ensureDatabase(env) {
   if (!env.DB) throw new Error("Database binding is unavailable");
-  if (!schemaPromise) {
-    schemaPromise = env.DB.batch([
-      env.DB.prepare(`CREATE TABLE IF NOT EXISTS users (
+  await env.DB.batch([
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         email TEXT NOT NULL UNIQUE,
         name TEXT NOT NULL,
@@ -215,26 +253,30 @@ async function ensureDatabase(env) {
         kitchen_json TEXT NOT NULL DEFAULT '{}',
         created_at INTEGER NOT NULL
       )`),
-      env.DB.prepare(`CREATE TABLE IF NOT EXISTS sessions (
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS sessions (
         token_hash TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
         expires_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )`),
-      env.DB.prepare(`CREATE TABLE IF NOT EXISTS google_accounts (
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS google_accounts (
         google_sub TEXT PRIMARY KEY,
         user_id TEXT NOT NULL UNIQUE,
         created_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )`),
-      env.DB.prepare("CREATE INDEX IF NOT EXISTS sessions_user_id ON sessions(user_id)"),
-      env.DB.prepare("CREATE INDEX IF NOT EXISTS google_accounts_user_id ON google_accounts(user_id)"),
-    ]).catch((error) => {
-      schemaPromise = null;
-      throw error;
-    });
-  }
-  await schemaPromise;
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS favorites (
+        id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        recipe_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (id, user_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS sessions_user_id ON sessions(user_id)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS google_accounts_user_id ON google_accounts(user_id)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS favorites_user_id ON favorites(user_id, created_at DESC)"),
+  ]);
 }
 
 function cookieValue(request, name) {
@@ -450,6 +492,96 @@ async function saveKitchen(request, env) {
   return json({ ok: true, kitchen });
 }
 
+function stableRecipeId(recipe) {
+  const signature = [
+    String(recipe?.title || "").trim().toLowerCase().replace(/ё/g, "е"),
+    ...(Array.isArray(recipe?.ingredients) ? recipe.ingredients : [])
+      .map((item) => String(item?.name || "").trim().toLowerCase().replace(/ё/g, "е"))
+      .sort(),
+  ].join("|");
+  let hash = 2166136261;
+  for (let index = 0; index < signature.length; index += 1) {
+    hash ^= signature.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `r-${(hash >>> 0).toString(36)}`;
+}
+
+function sanitizeFavoriteRecipe(value) {
+  const ingredients = Array.isArray(value?.ingredients)
+    ? value.ingredients.slice(0, 30).map((item) => ({
+        name: String(item?.name || "").trim().slice(0, 100),
+        amount: String(item?.amount || "").trim().slice(0, 60),
+      })).filter((item) => item.name && item.amount)
+    : [];
+  const steps = cleanRecipeSteps(value?.steps);
+  const nutrition = safeNutrition(value?.nutrition);
+  const title = String(value?.title || "").trim().slice(0, 120);
+  if (!title || !ingredients.length || steps.length < 2 || !nutrition) return null;
+  const recipe = {
+    title,
+    subtitle: String(value?.subtitle || "").trim().slice(0, 180),
+    minutes: Math.min(240, Math.max(1, Number(value?.minutes) || 30)),
+    portions: Math.min(8, Math.max(1, Number(value?.portions) || 2)),
+    difficulty: String(value?.difficulty || "просто").trim().slice(0, 40),
+    match: 100,
+    missing: [],
+    uses: sanitizeList(value?.uses, 30, 80),
+    equipment: sanitizeList(value?.equipment, 20, 80),
+    why: String(value?.why || "").trim().slice(0, 300),
+    ingredients,
+    steps,
+    nutrition,
+    tip: String(value?.tip || "").trim().slice(0, 300),
+    source: {
+      name: String(value?.source?.name || "Кутно").trim().slice(0, 80),
+      type: String(value?.source?.type || "generated").trim().slice(0, 40),
+      note: String(value?.source?.note || "").trim().slice(0, 200),
+    },
+  };
+  return { id: stableRecipeId(recipe), ...recipe };
+}
+
+async function listFavorites(request, env) {
+  const session = await currentSession(request, env);
+  if (!session) return json({ error: "Войдите в аккаунт" }, 401);
+  const result = await env.DB.prepare(`
+    SELECT recipe_json FROM favorites
+    WHERE user_id = ? ORDER BY created_at DESC LIMIT 100
+  `).bind(session.user.id).all();
+  const favorites = result.results.map((row) => {
+    try {
+      return JSON.parse(row.recipe_json);
+    } catch {
+      return null;
+    }
+  }).filter(Boolean);
+  return json({ favorites });
+}
+
+async function saveFavorite(request, env) {
+  const session = await currentSession(request, env);
+  if (!session) return json({ error: "Войдите в аккаунт" }, 401);
+  const body = await request.json().catch(() => ({}));
+  const recipe = sanitizeFavoriteRecipe(body.recipe);
+  if (!recipe) return json({ error: "Некорректный рецепт" }, 400);
+  await env.DB.prepare(`
+    INSERT INTO favorites (id, user_id, recipe_json, created_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(id, user_id) DO UPDATE SET recipe_json = excluded.recipe_json, created_at = excluded.created_at
+  `).bind(recipe.id, session.user.id, JSON.stringify(recipe), Date.now()).run();
+  return json({ favorite: recipe }, 201);
+}
+
+async function deleteFavorite(request, env, id) {
+  const session = await currentSession(request, env);
+  if (!session) return json({ error: "Войдите в аккаунт" }, 401);
+  await env.DB.prepare("DELETE FROM favorites WHERE id = ? AND user_id = ?")
+    .bind(String(id || "").slice(0, 80), session.user.id)
+    .run();
+  return json({ ok: true });
+}
+
 async function generateRecipes(request, env) {
   let body;
   try {
@@ -464,12 +596,13 @@ async function generateRecipes(request, env) {
   const portions = Math.min(8, Math.max(1, Number(body.portions) || 2));
   if (!ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
 
-  const system = `Ты — внимательный редактор современной русской кулинарной книги. Составь ровно 3 реалистичных домашних рецепта. Пиши только по-русски, без англицизмов и выдуманных техник.
-ЖЁСТКОЕ ПРАВИЛО: используй только продукты из списка пользователя, а также соль, воду и растительное масло. Нельзя добавлять перец, чеснок, специи, соусы, сахар, муку, молоко, зелень или любой другой продукт, если его нет в списке. Поле missing всегда должно быть пустым массивом. В ingredients перечисли абсолютно всё, что используется в шагах; названия пользовательских продуктов сохраняй максимально близко к исходному списку. Если продуктов мало, сделай три разные техники или варианта из них, но ничего не выдумывай. В amount всегда указывай понятное русское количество: г, мл, ст. л., ч. л. или шт.; слово unit запрещено. Не предлагай опасные способы приготовления. Каждый шаг должен быть коротким, конкретным и выполнимым.`;
+  const system = `Ты — строгий редактор современной русской кулинарной книги. Предложи от 1 до 3 действительно существующих и кулинарно осмысленных домашних блюд. Качество важнее количества: если хороших вариантов меньше трёх, верни меньше. Не придумывай блюдо только ради заполнения списка. Пиши только по-русски, без англицизмов, заглушек, служебных слов и выдуманных техник.
+ЖЁСТКОЕ ПРАВИЛО: используй только продукты из списка пользователя, а также соль, воду и растительное масло. Нельзя добавлять перец, чеснок, специи, соусы, сахар, муку, молоко, зелень или любой другой продукт, если его нет в списке. Поле missing всегда должно быть пустым массивом. В ingredients перечисли абсолютно всё, что используется в шагах; названия пользовательских продуктов сохраняй максимально близко к исходному списку. Не называй блюдо общими словами вроде «жареные продукты» или «смесь ингредиентов». В amount всегда указывай понятное русское количество: г, мл, ст. л., ч. л. или шт.; слово unit запрещено. Каждый рецепт должен содержать минимум три законченных конкретных шага с температурой или понятным уровнем огня и временем там, где это важно. Не выводи слова subtitle, title, description или step как содержимое полей. Не предлагай опасные способы приготовления.
+Для каждого рецепта оцени КБЖУ НА ОДНУ ПОРЦИЮ по указанным количествам: calories — ккал, protein/fat/carbs — граммы. Значения должны быть реалистичными и согласованными с ингредиентами; это ориентировочная оценка.`;
   const user = `Продукты дома: ${ingredients.join(", ")}.
 Инвентарь: ${equipment.length ? equipment.join(", ") : "обычная базовая кухня"}.
 Время: до ${minutes} минут. Порций: ${portions}.
-Никаких покупок и замен: каждый небазовый ингредиент обязан дословно соответствовать продукту из списка. Расположи блюда от самого подходящего. Количество ингредиентов укажи на ${portions} порции. match для каждого блюда — 100. В uses перечисли использованные продукты пользователя, missing — пустой массив.`;
+Никаких покупок и замен: каждый небазовый ингредиент обязан дословно соответствовать продукту из списка. Расположи блюда от самого подходящего. Количество ингредиентов укажи на ${portions} порции. match для каждого блюда — 100. В uses перечисли использованные продукты пользователя, missing — пустой массив. Лучше вернуть один хороший узнаваемый рецепт, чем три нелепых.`;
 
   try {
     const result = await env.AI.run(MODEL, {
@@ -478,13 +611,13 @@ async function generateRecipes(request, env) {
         { role: "user", content: user },
       ],
       guided_json: recipeSchemaFor(ingredients),
-      max_tokens: 2200,
-      temperature: 0.25,
+      max_tokens: 2800,
+      temperature: 0.15,
     });
     const data = parseAiResult(result);
-    if (!Array.isArray(data.recipes) || data.recipes.length < 3) throw new Error("Incomplete recipes");
+    if (!Array.isArray(data.recipes) || !data.recipes.length) throw new Error("Incomplete recipes");
     const recipes = normalizeRecipes(data.recipes, portions, ingredients);
-    if (recipes.length < 3) throw new Error("Recipes contained unavailable ingredients");
+    if (!recipes.length) throw new Error("Recipes failed quality checks");
     return json({ recipes });
   } catch (error) {
     console.error("recipe_generation_failed", error instanceof Error ? error.message : String(error));
@@ -522,6 +655,18 @@ export default {
 
     if (url.pathname === "/api/kitchen" && request.method === "PUT") {
       return saveKitchen(request, env);
+    }
+
+    if (url.pathname === "/api/favorites" && request.method === "GET") {
+      return listFavorites(request, env);
+    }
+
+    if (url.pathname === "/api/favorites" && request.method === "POST") {
+      return saveFavorite(request, env);
+    }
+
+    if (url.pathname.startsWith("/api/favorites/") && request.method === "DELETE") {
+      return deleteFavorite(request, env, decodeURIComponent(url.pathname.slice("/api/favorites/".length)));
     }
 
     if (url.pathname === "/api/generate" && request.method === "POST") {
