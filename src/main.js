@@ -802,7 +802,10 @@ function renderRecipeOverlay(recipe) {
             ${recipe.tip ? `<aside class="cook-note"><span>На заметку</span><p>${escapeHtml(recipe.tip)}</p></aside>` : ""}
           </section>
         </div>
-        <p class="recipe-source-note">${escapeHtml(recipe.source?.note || "Рецепт проверен по вашему списку продуктов")}${recipe.nutrition?.estimated ? ". КБЖУ рассчитано приблизительно" : ""}.</p>
+        <p class="recipe-source-note">
+          ${recipe.source?.url ? `<a href="${escapeHtml(recipe.source.url)}" target="_blank" rel="noopener noreferrer">Источник — ${escapeHtml(recipe.source.name || "Spoonacular")}</a>. ` : ""}
+          ${escapeHtml(recipe.source?.note || "Рецепт проверен по вашему списку продуктов")}${recipe.nutrition?.estimated ? ". КБЖУ рассчитано приблизительно" : ". КБЖУ получено из базы для одной порции"}.
+        </p>
       </article>
     </div>`;
 }
