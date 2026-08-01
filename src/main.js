@@ -183,10 +183,12 @@ let activeRecipe = null;
 let generationError = "";
 let authUser = null;
 let authModalOpen = false;
-let authMode = "register";
 let authError = "";
 let authBusy = false;
 let remoteSaveTimer = null;
+let googleClientPromise = null;
+let googleConfigPromise = null;
+let googleConfigured = false;
 
 const app = document.querySelector("#app");
 
@@ -250,6 +252,98 @@ async function restoreSession() {
     render();
   } catch {
     // Приложение продолжает работать с локально сохранённой кухней.
+  }
+}
+
+function loadGoogleClient() {
+  if (window.google?.accounts?.id) return Promise.resolve(window.google);
+  if (googleClientPromise) return googleClientPromise;
+  googleClientPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+    const script = existing || document.createElement("script");
+    const timeout = setTimeout(() => reject(new Error("Google client timeout")), 12000);
+    script.addEventListener("load", () => {
+      clearTimeout(timeout);
+      window.google?.accounts?.id ? resolve(window.google) : reject(new Error("Google client unavailable"));
+    }, { once: true });
+    script.addEventListener("error", () => {
+      clearTimeout(timeout);
+      reject(new Error("Google client failed to load"));
+    }, { once: true });
+    if (!existing) {
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      document.head.append(script);
+    }
+  });
+  return googleClientPromise;
+}
+
+function getGoogleConfig() {
+  if (!googleConfigPromise) {
+    googleConfigPromise = fetch("/api/config")
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Config unavailable")))
+      .then((data) => {
+        if (!data.googleClientId) throw new Error("Google Client ID missing");
+        return data.googleClientId;
+      });
+  }
+  return googleConfigPromise;
+}
+
+async function mountGoogleButton() {
+  const container = document.querySelector("#google-signin-button");
+  if (!container || authBusy) return;
+  try {
+    const [google, clientId] = await Promise.all([loadGoogleClient(), getGoogleConfig()]);
+    if (!document.body.contains(container)) return;
+    if (!googleConfigured) {
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredential,
+        ux_mode: "popup",
+        use_fedcm_for_button: true,
+      });
+      googleConfigured = true;
+    }
+    container.replaceChildren();
+    google.accounts.id.renderButton(container, {
+      type: "standard",
+      theme: "outline",
+      size: "large",
+      text: "continue_with",
+      shape: "pill",
+      logo_alignment: "left",
+      width: Math.min(400, Math.max(260, container.clientWidth)),
+      locale: "ru",
+    });
+  } catch {
+    container.innerHTML = `<p class="google-load-error">Не удалось загрузить вход Google. Проверьте блокировщик контента и обновите страницу.</p>`;
+  }
+}
+
+async function handleGoogleCredential(response) {
+  if (authBusy || !response?.credential) return;
+  authBusy = true;
+  authError = "";
+  render();
+  try {
+    const authResponse = await fetch("/api/auth/google", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ credential: response.credential }),
+    });
+    const data = await authResponse.json();
+    if (!authResponse.ok) throw new Error(data.error || "Не получилось войти через Google");
+    authUser = data.user;
+    if (!applyRemoteKitchen(data.kitchen)) await syncKitchen();
+    authModalOpen = false;
+  } catch (error) {
+    authError = error instanceof Error ? error.message : "Попробуйте ещё раз";
+  } finally {
+    authBusy = false;
+    render();
   }
 }
 
@@ -360,6 +454,7 @@ function render() {
     ${activeRecipe ? renderRecipeOverlay(activeRecipe) : ""}
     ${authModalOpen ? renderAuthOverlay() : ""}
   `;
+  if (authModalOpen && !authUser && !authBusy) requestAnimationFrame(mountGoogleButton);
 }
 
 function renderResults() {
@@ -439,25 +534,18 @@ function renderAuthOverlay() {
     </div>`;
   }
 
-  const registering = authMode === "register";
   return `<div class="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="account-title">
     <button class="overlay-backdrop" data-action="close-auth" aria-label="Закрыть"></button>
     <section class="auth-card">
       <button class="auth-close" data-action="close-auth" aria-label="Закрыть">×</button>
-      <p class="eyebrow">${registering ? "Новая кухня" : "С возвращением"}</p>
-      <h2 id="account-title">${registering ? "Сохранить кухню" : "Войти в Кутно"}</h2>
+      <p class="eyebrow">Один аккаунт для всей кухни</p>
+      <h2 id="account-title">Войти в Кутно</h2>
       <p class="auth-lead">Продукты и инвентарь будут доступны на телефоне и компьютере.</p>
-      <div class="auth-tabs">
-        <button class="${registering ? "active" : ""}" data-auth-mode="register">Регистрация</button>
-        <button class="${!registering ? "active" : ""}" data-auth-mode="login">Вход</button>
+      <div class="google-signin-wrap">
+        <div id="google-signin-button" aria-live="polite">${authBusy ? "Проверяем аккаунт…" : "Загружаем Google…"}</div>
       </div>
-      <form id="auth-form" class="auth-form">
-        ${registering ? `<label>Имя<input name="name" autocomplete="name" required maxlength="60" placeholder="Как к вам обращаться"></label>` : ""}
-        <label>Почта<input name="email" type="email" autocomplete="email" required maxlength="160" placeholder="name@example.com"></label>
-        <label>Пароль<input name="password" type="password" autocomplete="${registering ? "new-password" : "current-password"}" required minlength="8" maxlength="128" placeholder="Не меньше 8 символов"></label>
-        ${authError ? `<p class="auth-error" role="alert">${escapeHtml(authError)}</p>` : ""}
-        <button class="auth-primary" type="submit" ${authBusy ? "disabled" : ""}>${authBusy ? "Подождите…" : registering ? "Создать аккаунт" : "Войти"}</button>
-      </form>
+      ${authError ? `<p class="auth-error" role="alert">${escapeHtml(authError)}</p>` : ""}
+      <p class="google-auth-note">Google передаст Кутно только имя, адрес почты и идентификатор аккаунта. Пароль Google остаётся у Google.</p>
     </section>
   </div>`;
 }
@@ -570,43 +658,14 @@ app.addEventListener("submit", (event) => {
     event.preventDefault();
     const input = event.target.querySelector("input");
     addIngredients([input.value]);
-    return;
-  }
-  if (event.target.id === "auth-form") {
-    event.preventDefault();
-    submitAuth(new FormData(event.target));
   }
 });
-
-async function submitAuth(formData) {
-  if (authBusy) return;
-  authBusy = true;
-  authError = "";
-  render();
-  try {
-    const payload = Object.fromEntries(formData.entries());
-    const response = await fetch(`/api/auth/${authMode}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Не получилось войти");
-    authUser = data.user;
-    if (!applyRemoteKitchen(data.kitchen)) await syncKitchen();
-    authModalOpen = false;
-  } catch (error) {
-    authError = error instanceof Error ? error.message : "Попробуйте ещё раз";
-  } finally {
-    authBusy = false;
-    render();
-  }
-}
 
 async function logout() {
   try {
     await fetch("/api/auth/logout", { method: "POST" });
   } finally {
+    window.google?.accounts?.id?.disableAutoSelect();
     authUser = null;
     authModalOpen = false;
     render();
@@ -660,11 +719,6 @@ app.addEventListener("click", (event) => {
     render();
   }
   if (target.dataset.action === "logout") logout();
-  if (target.dataset.authMode) {
-    authMode = target.dataset.authMode;
-    authError = "";
-    render();
-  }
   if (target.dataset.openRecipe !== undefined) {
     activeRecipe = recipes[Number(target.dataset.openRecipe)];
     render();
