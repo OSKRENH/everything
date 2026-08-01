@@ -615,6 +615,9 @@ function renderKitchenView() {
       <div class="intro-copy">
         <p class="eyebrow">Рецепты из того, что уже дома</p>
         <h1 id="main-title">Сначала —<br>что есть<br>на кухне?</h1>
+        <figure class="section-illustration kitchen-illustration" aria-hidden="true">
+          <img src="/illustrations/kitchen-hero.webp" alt="">
+        </figure>
         <p class="intro-footnote"><span>①</span> Соль, воду и масло можно не указывать — мы считаем их базовыми.</p>
       </div>
 
@@ -818,7 +821,12 @@ function renderCatalogView() {
   return `<section class="archive-page" aria-labelledby="catalog-title">
     <header class="archive-heading">
       <div><p class="eyebrow">Редакционная коллекция / ${catalogRecipes.length.toString().padStart(2, "0")}</p><h1 id="catalog-title">База<br>рецептов</h1></div>
-      <p>Известные блюда разных стран в традиционной формуле — без случайных замен и выдуманных шагов.</p>
+      <div class="archive-visual">
+        <p>Известные блюда разных стран в традиционной формуле — без случайных замен и выдуманных шагов.</p>
+        <figure class="section-illustration base-illustration" aria-hidden="true">
+          <img src="/illustrations/base-hero.webp" alt="">
+        </figure>
+      </div>
     </header>
     <div class="catalog-tools">
       <label class="catalog-search"><span>Поиск</span><input data-catalog-search value="${escapeHtml(catalogQuery)}" placeholder="Блюдо, кухня или продукт"></label>
@@ -853,7 +861,14 @@ function renderSwipeView() {
   const recipe = swipeRecipes[swipeIndex];
   const nextRecipe = swipeRecipes[swipeIndex + 1];
   return `<section class="swipe-page" aria-labelledby="swipe-title">
-    <header class="swipe-heading"><p class="eyebrow">Влево — пропустить · вправо — сохранить</p><h1 id="swipe-title">АМ <span class="am-heart">❤️</span></h1><p>Можно нажимать кнопки снизу. Название открывает полный рецепт.</p></header>
+    <header class="swipe-heading">
+      <p class="eyebrow">Влево — пропустить · вправо — сохранить</p>
+      <h1 id="swipe-title">АМ <span class="am-heart">❤️</span></h1>
+      <p>Можно нажимать кнопки снизу. Название открывает полный рецепт.</p>
+      <figure class="section-illustration swipe-illustration" aria-hidden="true">
+        <img src="/illustrations/am-heart-hero.webp" alt="">
+      </figure>
+    </header>
     <div class="swipe-stage">
       ${recipe ? `${nextRecipe ? renderSwipeCard(nextRecipe, "behind") : ""}${renderSwipeCard(recipe)}` : `<div class="swipe-finished"><span>Колода закончилась</span><h2>Вы посмотрели все рецепты</h2><p>Сохранённые блюда уже лежат в избранном.</p><button data-action="restart-swipe">Начать заново</button></div>`}
     </div>
