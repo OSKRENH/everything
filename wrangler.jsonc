@@ -12,6 +12,12 @@
   "ai": {
     "binding": "AI"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "kutno-users"
+    }
+  ],
   "observability": {
     "enabled": true
   }
