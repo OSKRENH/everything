@@ -98,7 +98,7 @@ function sanitizeList(value, max = 40, maxLength = 80) {
 
 function parseAiResult(result) {
   const value = result?.response ?? result;
-  if (typeof value === "object" && value?.recipes) return value;
+  if (typeof value === "object" && value) return value;
   if (typeof value !== "string") throw new Error("Unexpected AI response");
   const cleaned = value.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   return JSON.parse(cleaned);
@@ -137,7 +137,7 @@ function safeNutrition(value) {
     protein: Math.round(number(value?.protein, 300) * 10) / 10,
     fat: Math.round(number(value?.fat, 300) * 10) / 10,
     carbs: Math.round(number(value?.carbs, 600) * 10) / 10,
-    estimated: true,
+    estimated: value?.estimated !== false,
   };
   return nutrition.calories > 0 ? nutrition : null;
 }
@@ -518,6 +518,13 @@ function sanitizeFavoriteRecipe(value) {
   const nutrition = safeNutrition(value?.nutrition);
   const title = String(value?.title || "").trim().slice(0, 120);
   if (!title || !ingredients.length || steps.length < 2 || !nutrition) return null;
+  let sourceUrl = "";
+  try {
+    const candidate = new URL(String(value?.source?.url || ""));
+    if (candidate.protocol === "https:") sourceUrl = candidate.toString().slice(0, 500);
+  } catch {
+    sourceUrl = "";
+  }
   const recipe = {
     title,
     subtitle: String(value?.subtitle || "").trim().slice(0, 180),
@@ -537,6 +544,7 @@ function sanitizeFavoriteRecipe(value) {
       name: String(value?.source?.name || "Кутно").trim().slice(0, 80),
       type: String(value?.source?.type || "generated").trim().slice(0, 40),
       note: String(value?.source?.note || "").trim().slice(0, 200),
+      url: sourceUrl,
     },
   };
   return { id: stableRecipeId(recipe), ...recipe };
@@ -582,6 +590,165 @@ async function deleteFavorite(request, env, id) {
   return json({ ok: true });
 }
 
+function spoonacularKey(env) {
+  return env.SPOONACULAR_API_KEY || env.SPOONACULAR_KEY || env.SPOONACULAR_API || "";
+}
+
+function isAllowedSourcePantryItem(value = "") {
+  const normalized = String(value).toLowerCase().replace(/[^a-z\s-]/g, " ").replace(/\s+/g, " ").trim();
+  return /^(?:sea )?salt$/.test(normalized)
+    || /^(?:cold |hot |warm |boiling )?water$/.test(normalized)
+    || /^(?:(?:extra virgin )?olive|vegetable|sunflower|cooking|neutral) oil$/.test(normalized);
+}
+
+async function translateIngredientsForSpoonacular(env, ingredients) {
+  const schema = {
+    type: "object",
+    properties: {
+      translations: {
+        type: "array",
+        minItems: ingredients.length,
+        maxItems: ingredients.length,
+        items: {
+          type: "object",
+          properties: {
+            original: { type: "string", enum: ingredients },
+            english: { type: "string" },
+          },
+          required: ["original", "english"],
+        },
+      },
+    },
+    required: ["translations"],
+  };
+  const result = await env.AI.run(MODEL, {
+    messages: [
+      { role: "system", content: "Переведи названия продуктов с русского на простой английский для поиска в кулинарной базе. Не добавляй пояснения, бренды или количество. Сохрани каждое исходное название в original." },
+      { role: "user", content: ingredients.join("\n") },
+    ],
+    guided_json: schema,
+    max_tokens: 700,
+    temperature: 0,
+  });
+  const data = parseAiResult(result);
+  const translations = Array.isArray(data.translations) ? data.translations : [];
+  const byOriginal = new Map(translations.map((item) => [String(item?.original || ""), String(item?.english || "").trim()]));
+  return ingredients.map((original) => ({ original, english: byOriginal.get(original) || original })).filter((item) => item.english);
+}
+
+function sourceNutrition(recipe) {
+  const nutrients = Array.isArray(recipe?.nutrition?.nutrients) ? recipe.nutrition.nutrients : [];
+  const amount = (name) => Number(nutrients.find((item) => String(item?.name || "").toLowerCase() === name)?.amount) || 0;
+  const nutrition = {
+    calories: Math.round(amount("calories")),
+    protein: Math.round(amount("protein") * 10) / 10,
+    fat: Math.round(amount("fat") * 10) / 10,
+    carbs: Math.round(amount("carbohydrates") * 10) / 10,
+    estimated: false,
+  };
+  return nutrition.calories > 0 ? nutrition : null;
+}
+
+function sourceRecipeSteps(recipe) {
+  const groups = Array.isArray(recipe?.analyzedInstructions) ? recipe.analyzedInstructions : [];
+  return groups.flatMap((group) => Array.isArray(group?.steps) ? group.steps : [])
+    .map((item) => String(item?.step || "").replace(/<[^>]*>/g, "").trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function spoonacularRecipeSchemaFor(ingredients, sourceIndexes) {
+  const schema = recipeSchemaFor(ingredients);
+  const recipe = schema.properties.recipes.items;
+  recipe.properties.sourceIndex = { type: "integer", enum: sourceIndexes };
+  recipe.required = [...recipe.required, "sourceIndex"];
+  schema.properties.recipes.maxItems = sourceIndexes.length;
+  return schema;
+}
+
+async function generateFromSpoonacular(env, { ingredients, equipment, minutes, portions }) {
+  const apiKey = spoonacularKey(env);
+  if (!apiKey) return [];
+
+  const translations = await translateIngredientsForSpoonacular(env, ingredients);
+  const searchUrl = new URL("https://api.spoonacular.com/recipes/findByIngredients");
+  searchUrl.searchParams.set("apiKey", apiKey);
+  searchUrl.searchParams.set("ingredients", translations.map((item) => item.english).join(","));
+  searchUrl.searchParams.set("number", "12");
+  searchUrl.searchParams.set("ranking", "2");
+  searchUrl.searchParams.set("ignorePantry", "false");
+  const searchResponse = await fetch(searchUrl, { headers: { accept: "application/json" } });
+  if (!searchResponse.ok) throw new Error(`Spoonacular search failed: ${searchResponse.status}`);
+  const searchResults = await searchResponse.json();
+  const strictMatches = (Array.isArray(searchResults) ? searchResults : [])
+    .filter((item) => (Array.isArray(item?.missedIngredients) ? item.missedIngredients : [])
+      .every((missing) => isAllowedSourcePantryItem(missing?.name)))
+    .slice(0, 6);
+  if (!strictMatches.length) return [];
+
+  const infoUrl = new URL("https://api.spoonacular.com/recipes/informationBulk");
+  infoUrl.searchParams.set("apiKey", apiKey);
+  infoUrl.searchParams.set("ids", strictMatches.map((item) => item.id).join(","));
+  infoUrl.searchParams.set("includeNutrition", "true");
+  const infoResponse = await fetch(infoUrl, { headers: { accept: "application/json" } });
+  if (!infoResponse.ok) throw new Error(`Spoonacular details failed: ${infoResponse.status}`);
+  const details = await infoResponse.json();
+  const candidates = (Array.isArray(details) ? details : [])
+    .map((recipe) => ({
+      id: Number(recipe.id),
+      title: String(recipe.title || "").slice(0, 160),
+      readyInMinutes: Number(recipe.readyInMinutes) || minutes,
+      servings: Number(recipe.servings) || portions,
+      sourceName: String(recipe.sourceName || recipe.creditsText || "Spoonacular").slice(0, 100),
+      sourceUrl: String(recipe.sourceUrl || recipe.spoonacularSourceUrl || ""),
+      ingredients: (Array.isArray(recipe.extendedIngredients) ? recipe.extendedIngredients : []).slice(0, 30).map((item) => ({
+        name: String(item.nameClean || item.name || "").slice(0, 100),
+        amount: Number(item.amount) || 0,
+        unit: String(item.unit || "").slice(0, 30),
+        original: String(item.original || "").slice(0, 180),
+      })),
+      steps: sourceRecipeSteps(recipe),
+      nutrition: sourceNutrition(recipe),
+    }))
+    .filter((recipe) => recipe.title && recipe.steps.length >= 3 && recipe.nutrition)
+    .slice(0, 3)
+    .map((recipe, sourceIndex) => ({ ...recipe, sourceIndex }));
+  if (!candidates.length) return [];
+
+  const result = await env.AI.run(MODEL, {
+    messages: [
+      {
+        role: "system",
+        content: `Ты — кулинарный переводчик и редактор. Переведи предоставленные рецепты на естественный русский язык, не меняя их суть и технику. Используй только продукты пользователя плюс соль, воду и растительное масло. Названия небазовых ингредиентов в итоговом ingredients должны дословно совпадать со списком пользователя. Масштабируй количества на ${portions} порции. Не добавляй продукты, которых нет у пользователя. Если исходный рецепт невозможно передать без другого продукта, пропусти его. Каждый sourceIndex сохрани без изменения. КБЖУ скопируй из sourceNutrition без пересчёта.`,
+      },
+      {
+        role: "user",
+        content: `Продукты пользователя: ${ingredients.join(", ")}\nИнвентарь: ${equipment.join(", ") || "базовая кухня"}\nМаксимальное время: ${minutes} минут\nИсходные рецепты:\n${JSON.stringify(candidates)}`,
+      },
+    ],
+    guided_json: spoonacularRecipeSchemaFor(ingredients, candidates.map((item) => item.sourceIndex)),
+    max_tokens: 3000,
+    temperature: 0.05,
+  });
+  const data = parseAiResult(result);
+  const normalized = normalizeRecipes(Array.isArray(data.recipes) ? data.recipes : [], portions, ingredients);
+  return normalized.map((recipe) => {
+    const source = candidates.find((candidate) => candidate.sourceIndex === Number(recipe.sourceIndex));
+    if (!source) return null;
+    return {
+      ...recipe,
+      minutes: Math.min(minutes, Number(recipe.minutes) || source.readyInMinutes),
+      nutrition: source.nutrition,
+      source: {
+        name: source.sourceName || "Spoonacular",
+        type: "spoonacular",
+        note: "Рецепт найден в кулинарной базе Spoonacular и адаптирован на русский язык",
+        url: /^https:\/\//i.test(source.sourceUrl) ? source.sourceUrl : "",
+      },
+    };
+  }).filter(Boolean).slice(0, 3);
+}
+
 async function generateRecipes(request, env) {
   let body;
   try {
@@ -595,6 +762,15 @@ async function generateRecipes(request, env) {
   const minutes = Math.min(120, Math.max(10, Number(body.minutes) || 30));
   const portions = Math.min(8, Math.max(1, Number(body.portions) || 2));
   if (!ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
+
+  if (spoonacularKey(env)) {
+    try {
+      const sourcedRecipes = await generateFromSpoonacular(env, { ingredients, equipment, minutes, portions });
+      if (sourcedRecipes.length) return json({ recipes: sourcedRecipes, source: "spoonacular" });
+    } catch (error) {
+      console.warn("spoonacular_generation_failed", error instanceof Error ? error.message : String(error));
+    }
+  }
 
   const system = `Ты — строгий редактор современной русской кулинарной книги. Предложи от 1 до 3 действительно существующих и кулинарно осмысленных домашних блюд. Качество важнее количества: если хороших вариантов меньше трёх, верни меньше. Не придумывай блюдо только ради заполнения списка. Пиши только по-русски, без англицизмов, заглушек, служебных слов и выдуманных техник.
 ЖЁСТКОЕ ПРАВИЛО: используй только продукты из списка пользователя, а также соль, воду и растительное масло. Нельзя добавлять перец, чеснок, специи, соусы, сахар, муку, молоко, зелень или любой другой продукт, если его нет в списке. Поле missing всегда должно быть пустым массивом. В ingredients перечисли абсолютно всё, что используется в шагах; названия пользовательских продуктов сохраняй максимально близко к исходному списку. Не называй блюдо общими словами вроде «жареные продукты» или «смесь ингредиентов». В amount всегда указывай понятное русское количество: г, мл, ст. л., ч. л. или шт.; слово unit запрещено. Каждый рецепт должен содержать минимум три законченных конкретных шага с температурой или понятным уровнем огня и временем там, где это важно. Не выводи слова subtitle, title, description или step как содержимое полей. Не предлагай опасные способы приготовления.
@@ -631,6 +807,13 @@ export default {
 
     if (url.pathname === "/api/config" && request.method === "GET") {
       return json({ googleClientId: env.GOOGLE_CLIENT_ID });
+    }
+
+    if (url.pathname === "/api/source-status" && request.method === "GET") {
+      return json({
+        spoonacularConfigured: Boolean(spoonacularKey(env)),
+        source: spoonacularKey(env) ? "spoonacular" : "workers-ai",
+      });
     }
 
     if (url.pathname === "/api/auth/google" && request.method === "POST") {
