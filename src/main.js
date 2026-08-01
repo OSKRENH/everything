@@ -510,6 +510,11 @@ function addIngredients(values) {
 
 function getFallbackSuggestions() {
   const have = state.ingredients.map(normalize);
+  const ingredientIsAvailable = (name) => {
+    const value = normalize(name);
+    if (["соль", "вода", "масло"].some((basic) => value.includes(basic))) return true;
+    return have.some((owned) => value.includes(owned) || owned.includes(value));
+  };
   const scored = fallbackRecipes.map((recipe) => {
     const uses = recipe.required.filter((item) => have.some((owned) => owned.includes(item) || item.includes(owned)));
     const missing = recipe.required.filter((item) => !uses.includes(item));
@@ -517,7 +522,7 @@ function getFallbackSuggestions() {
     return { ...recipe, uses, missing, match };
   });
   return scored
-    .filter((item) => item.missing.length === 0)
+    .filter((item) => item.missing.length === 0 && item.ingredients.every((ingredient) => ingredientIsAvailable(ingredient.name)))
     .sort((a, b) => b.match - a.match || a.minutes - b.minutes)
     .slice(0, 3);
 }
