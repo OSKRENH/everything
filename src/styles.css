@@ -215,9 +215,7 @@ h1 { font-size: var(--display-title-size); line-height: .91; }
   padding-right: 10px;
   padding-left: 10px;
 }
-.ingredient-basics { display: flex; gap: 7px; margin: 10px 0 0; color: var(--soft); font-size: 11px; line-height: 1.45; }
-.ingredient-basics span { flex: 0 0 auto; color: var(--ink); }
-.microcopy { margin: 5px 0 18px; color: var(--soft); font-size: 11px; }
+.microcopy { margin: 10px 0 18px; color: var(--soft); font-size: 11px; line-height: 1.45; }
 .selected-ingredients, .quick-row { display: flex; flex-wrap: wrap; gap: 7px; }
 .selected-ingredients { min-height: 34px; margin-bottom: 13px; }
 .selected-ingredients.is-collapsed { max-height: 75px; overflow: hidden; }

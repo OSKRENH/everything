@@ -615,6 +615,7 @@ function renderPotLoader(className = "") {
 function renderKitchenView() {
   const ingredientsCollapsible = state.ingredients.length > 8;
   const ingredientsCollapsed = ingredientsCollapsible && !ingredientsExpanded;
+  const sortedIngredients = [...state.ingredients].sort((first, second) => first.localeCompare(second, "ru", { sensitivity: "base" }));
   return `
     <section class="intro-grid" aria-labelledby="main-title">
       <div class="intro-copy">
@@ -631,15 +632,14 @@ function renderKitchenView() {
           <div class="section-content">
             <label for="ingredient-input">Продукты</label>
             <form id="ingredient-form" class="ingredient-form">
-              <input id="ingredient-input" autocomplete="off" placeholder="Курица, рис, лук" aria-describedby="ingredient-basics ingredient-hint" role="combobox" aria-autocomplete="list" aria-controls="ingredient-suggestions" aria-expanded="false">
+              <input id="ingredient-input" autocomplete="off" placeholder="Курица, рис, лук" aria-describedby="ingredient-hint" role="combobox" aria-autocomplete="list" aria-controls="ingredient-suggestions" aria-expanded="false">
               <button type="submit" aria-label="Добавить продукты">Добавить</button>
             </form>
             <div id="ingredient-suggestions" class="ingredient-suggestions" role="listbox" aria-label="Подходящие продукты" hidden></div>
-            <p id="ingredient-basics" class="ingredient-basics"><span>①</span> Соль, воду и масло можно не указывать — мы считаем их базовыми.</p>
-            <p id="ingredient-hint" class="microcopy">Можно перечислить несколько продуктов через запятую.</p>
+            <p id="ingredient-hint" class="microcopy">Можно перечислить несколько продуктов через запятую. Соль, воду и масло можно не указывать — мы считаем их базовыми.</p>
             <div class="selected-ingredients ${ingredientsCollapsed ? "is-collapsed" : ""}" aria-live="polite">
               ${state.ingredients.length
-                ? state.ingredients.map((item) => `<button class="ingredient-tag selected" data-remove-ingredient="${escapeHtml(item)}">${escapeHtml(item)} <span aria-hidden="true">×</span></button>`).join("")
+                ? sortedIngredients.map((item) => `<button class="ingredient-tag selected" data-remove-ingredient="${escapeHtml(item)}">${escapeHtml(item)} <span aria-hidden="true">×</span></button>`).join("")
                 : `<span class="empty-line">Пока пусто — начните с главного продукта</span>`}
             </div>
             ${ingredientsCollapsible ? `<button class="ingredients-toggle" data-action="toggle-ingredients" aria-expanded="${ingredientsExpanded}">${ingredientsExpanded ? "Свернуть" : `Показать все · ${state.ingredients.length}`}</button>` : ""}
