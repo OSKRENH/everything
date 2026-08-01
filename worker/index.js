@@ -87,10 +87,15 @@ function fallbackAmount(name = "", portions = 2) {
   return `${portions * 100} г`;
 }
 
-function normalizeRecipes(recipes, portions) {
+function normalizeRecipes(recipes, portions, ownedIngredients) {
+  const owned = ownedIngredients.map((item) => item.toLowerCase().replace(/ё/g, "е"));
+  const isOwned = (item) => {
+    const value = item.toLowerCase().replace(/ё/g, "е");
+    return owned.some((ingredient) => value.includes(ingredient) || ingredient.includes(value));
+  };
   return recipes.slice(0, 3).map((recipe) => ({
     ...recipe,
-    missing: sanitizeList(recipe.missing).filter((item) => !isPantryBasic(item)),
+    missing: sanitizeList(recipe.missing).filter((item) => !isPantryBasic(item) && !isOwned(item)),
     uses: sanitizeList(recipe.uses),
     equipment: sanitizeList(recipe.equipment, 12),
     ingredients: Array.isArray(recipe.ingredients)
@@ -143,7 +148,7 @@ async function generateRecipes(request, env) {
     });
     const data = parseAiResult(result);
     if (!Array.isArray(data.recipes) || data.recipes.length < 3) throw new Error("Incomplete recipes");
-    return json({ recipes: normalizeRecipes(data.recipes, portions) });
+    return json({ recipes: normalizeRecipes(data.recipes, portions, ingredients) });
   } catch (error) {
     console.error("recipe_generation_failed", error instanceof Error ? error.message : String(error));
     return json({ error: "Не удалось составить меню" }, 503);
