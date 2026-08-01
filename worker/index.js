@@ -74,11 +74,11 @@ function json(data, status = 200, extraHeaders = {}) {
   });
 }
 
-function sanitizeList(value, max = 40) {
+function sanitizeList(value, max = 40, maxLength = 80) {
   if (!Array.isArray(value)) return [];
   return value
     .filter((item) => typeof item === "string")
-    .map((item) => item.trim().slice(0, 80))
+    .map((item) => item.trim().slice(0, maxLength))
     .filter(Boolean)
     .slice(0, max);
 }
@@ -131,14 +131,17 @@ function normalizeRecipes(recipes, portions, ownedIngredients) {
       const hasUnknownIngredient = !ingredients.length || ingredients.some((item) => !ingredientIsOwned(item.name, ownedIngredients));
       const hasMissing = sanitizeList(recipe.missing).some((item) => !isPantryBasic(item));
       if (hasUnknownIngredient || hasMissing) return null;
+      const uses = ownedIngredients.filter((owned) =>
+        ingredients.some((item) => ingredientIsOwned(item.name, [owned])),
+      );
       return {
         ...recipe,
         match: 100,
         missing: [],
-        uses: sanitizeList(recipe.uses).filter((item) => ingredientIsOwned(item, ownedIngredients)),
+        uses,
         equipment: sanitizeList(recipe.equipment, 12),
         ingredients,
-        steps: sanitizeList(recipe.steps, 12),
+        steps: sanitizeList(recipe.steps, 12, 400),
         why: String(recipe.why || "Все продукты для этого блюда уже есть дома"),
       };
     })
