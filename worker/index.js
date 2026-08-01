@@ -1,4 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { CATALOG_VERSION, WORLD_RECIPE_CATALOG } from "./recipe-catalog.js";
 
 const MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 const GOOGLE_JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
@@ -141,6 +142,20 @@ function normalizeDifficulty(value = "", fallback = "легко") {
 
 function difficultyRank(value) {
   return { "легко": 0, "обычно": 1, "сложно": 2 }[normalizeDifficulty(value)] ?? 0;
+}
+
+function normalizedSignature(value = "") {
+  return String(value).toLowerCase().replace(/ё/g, "е").replace(/[^а-яa-z0-9]+/gu, " ").trim();
+}
+
+function mergeUniqueRecipes(...groups) {
+  const seen = new Set();
+  return groups.flat().filter((recipe) => {
+    const signature = normalizedSignature(recipe?.title);
+    if (!signature || seen.has(signature)) return false;
+    seen.add(signature);
+    return true;
+  }).slice(0, 3);
 }
 
 function ingredientIsOwned(value = "", ownedIngredients = []) {
@@ -391,6 +406,48 @@ async function ensureDatabase(env) {
     env.DB.prepare("CREATE INDEX IF NOT EXISTS google_accounts_user_id ON google_accounts(user_id)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS favorites_user_id ON favorites(user_id, created_at DESC)"),
   ]);
+}
+
+async function ensureRecipeCatalog(env) {
+  if (!env.DB) throw new Error("Database binding is unavailable");
+  await env.DB.batch([
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS recipes (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      cuisine TEXT NOT NULL,
+      difficulty TEXT NOT NULL,
+      recipe_json TEXT NOT NULL,
+      catalog_version TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS catalog_meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )`),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS recipes_cuisine ON recipes(cuisine)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS recipes_difficulty ON recipes(difficulty)"),
+  ]);
+
+  const current = await env.DB.prepare("SELECT value FROM catalog_meta WHERE key = 'recipe_catalog_version'").first();
+  if (current?.value === CATALOG_VERSION) return;
+
+  const now = Date.now();
+  const statements = WORLD_RECIPE_CATALOG.map((entry) => env.DB.prepare(`
+    INSERT INTO recipes (id, title, cuisine, difficulty, recipe_json, catalog_version, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title,
+      cuisine = excluded.cuisine,
+      difficulty = excluded.difficulty,
+      recipe_json = excluded.recipe_json,
+      catalog_version = excluded.catalog_version,
+      updated_at = excluded.updated_at
+  `).bind(entry.id, entry.title, entry.cuisine, entry.difficulty, JSON.stringify(entry), CATALOG_VERSION, now));
+  statements.push(env.DB.prepare(`
+    INSERT INTO catalog_meta (key, value) VALUES ('recipe_catalog_version', ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `).bind(CATALOG_VERSION));
+  await env.DB.batch(statements);
 }
 
 function cookieValue(request, name) {
@@ -708,6 +765,108 @@ function spoonacularKey(env) {
   return env.SPOONACULAR_API_KEY || env.SPOONACULAR_KEY || env.SPOONACULAR_API || "";
 }
 
+function catalogIngredientMatches(item, ownedIngredient) {
+  const candidates = [item?.name, ...(Array.isArray(item?.aliases) ? item.aliases : [])].filter(Boolean);
+  return candidates.some((candidate) => ingredientMentioned(candidate, ownedIngredient)
+    || ingredientMentioned(ownedIngredient, candidate)
+    || normalizedSignature(candidate).includes(normalizedSignature(ownedIngredient))
+    || normalizedSignature(ownedIngredient).includes(normalizedSignature(candidate)));
+}
+
+function catalogRecipeIsAvailable(recipe, ownedIngredients, equipment) {
+  const requiredIngredients = Array.isArray(recipe?.ingredients) ? recipe.ingredients : [];
+  const requiredEquipment = Array.isArray(recipe?.equipment) ? recipe.equipment : [];
+  return requiredIngredients.every((item) => item?.pantry === true
+      || ownedIngredients.some((owned) => catalogIngredientMatches(item, owned)))
+    && requiredEquipment.every((required) => equipment.some((owned) => normalizedSignature(owned) === normalizedSignature(required)));
+}
+
+function scaledCatalogAmount(item, portions, baseServings) {
+  if (typeof item?.amount !== "number") return String(item?.amount || "по вкусу");
+  const value = item.amount * portions / Math.max(1, Number(baseServings) || portions);
+  const unit = String(item.unit || "").trim();
+  let rounded = value;
+  if (unit === "г" || unit === "мл") rounded = Math.max(1, Math.round(value / 5) * 5);
+  else if (unit === "шт." || unit === "зубч." || unit === "гол." || unit === "пал.") rounded = Math.max(0.25, Math.round(value * 4) / 4);
+  else rounded = Math.max(0.25, Math.round(value * 4) / 4);
+  const displayed = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(".", ",");
+  return `${displayed} ${unit}`.trim();
+}
+
+function catalogRecipeForPortions(recipe, ownedIngredients, portions) {
+  const uses = ownedIngredients.filter((owned) => recipe.ingredients.some((item) => !item.pantry && catalogIngredientMatches(item, owned)));
+  return {
+    id: `catalog:${recipe.id}`,
+    title: recipe.title,
+    subtitle: recipe.subtitle,
+    cuisine: recipe.cuisine,
+    minutes: Number(recipe.minutes) || 30,
+    difficulty: normalizeDifficulty(recipe.difficulty),
+    match: 100,
+    missing: [],
+    uses,
+    equipment: recipe.equipment,
+    why: `Все обязательные продукты для классического блюда уже есть дома`,
+    ingredients: recipe.ingredients.map((item) => ({
+      name: item.name,
+      amount: scaledCatalogAmount(item, portions, recipe.servings),
+    })),
+    steps: cleanRecipeSteps(recipe.steps),
+    nutrition: { ...safeNutrition(recipe.nutrition), estimated: true },
+    tip: String(recipe.tip || ""),
+    portions,
+    source: {
+      id: `catalog:${recipe.id}`,
+      name: recipe.source?.name || "Кутно · мировая классика",
+      type: "kutno-catalog",
+      note: recipe.source?.note || "Редакционная версия традиционной рецептуры",
+      url: /^https:\/\//i.test(recipe.source?.url || "") ? recipe.source.url : "",
+      license: String(recipe.source?.license || ""),
+    },
+  };
+}
+
+async function findCatalogRecipes(env, { ingredients, equipment, difficulty, portions, excludeTitles, variation }) {
+  await ensureRecipeCatalog(env);
+  const result = await env.DB.prepare(`
+    SELECT recipe_json FROM recipes
+    WHERE catalog_version = ?
+    ORDER BY cuisine, title
+    LIMIT 250
+  `).bind(CATALOG_VERSION).all();
+  const excluded = new Set(excludeTitles.map(normalizedSignature));
+  const recipes = result.results.map((row) => {
+    try {
+      return JSON.parse(row.recipe_json);
+    } catch {
+      return null;
+    }
+  }).filter(Boolean)
+    .filter((recipe) => !excluded.has(normalizedSignature(recipe.title)))
+    .filter((recipe) => catalogRecipeIsAvailable(recipe, ingredients, equipment))
+    .map((recipe) => ({
+      recipe,
+      difficultyDistance: Math.abs(difficultyRank(recipe.difficulty) - difficultyRank(difficulty)),
+      usedCount: ingredients.filter((owned) => recipe.ingredients.some((item) => !item.pantry && catalogIngredientMatches(item, owned))).length,
+      rotation: Math.abs(hashText(`${recipe.id}:${variation}`)) % 1000,
+    }))
+    .sort((first, second) => first.difficultyDistance - second.difficultyDistance
+      || second.usedCount - first.usedCount
+      || first.rotation - second.rotation)
+    .slice(0, 3)
+    .map(({ recipe }) => catalogRecipeForPortions(recipe, ingredients, portions));
+  return recipes;
+}
+
+function hashText(value = "") {
+  let hash = 2166136261;
+  for (const character of String(value)) {
+    hash ^= character.codePointAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash | 0;
+}
+
 function isAllowedSourcePantryItem(value = "") {
   const normalized = String(value).toLowerCase().replace(/[^a-z\s-]/g, " ").replace(/\s+/g, " ").trim();
   return /^(?:sea )?salt$/.test(normalized)
@@ -1021,16 +1180,29 @@ async function generateRecipes(request, env) {
   const variation = Math.min(999999, Math.max(0, Number(body.variation) || 0));
   if (!ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
 
+  let recipes = [];
+  let catalogAttempt = "no_matching_catalog_recipe";
+  try {
+    recipes = await findCatalogRecipes(env, { ingredients, equipment, difficulty, portions, excludeTitles, variation });
+    if (recipes.length >= 3) return json({ recipes, source: "kutno-catalog", catalogVersion: CATALOG_VERSION });
+  } catch (error) {
+    catalogAttempt = error instanceof Error ? error.message : String(error);
+    console.warn("catalog_search_failed", catalogAttempt);
+  }
+
   let sourceAttempt = spoonacularKey(env) ? "no_matching_source_recipe" : "spoonacular_not_configured";
   if (spoonacularKey(env)) {
     try {
       const sourcedRecipes = await generateFromSpoonacular(env, { ingredients, equipment, difficulty, portions, excludedSourceIds });
-      if (sourcedRecipes.length) return json({ recipes: sourcedRecipes, source: "spoonacular" });
+      recipes = mergeUniqueRecipes(recipes, sourcedRecipes);
+      if (recipes.length >= 3) return json({ recipes, source: "mixed", catalogVersion: CATALOG_VERSION });
     } catch (error) {
       sourceAttempt = error instanceof Error ? error.message : String(error);
       console.warn("spoonacular_generation_failed", sourceAttempt);
     }
   }
+
+  const allExcludedTitles = [...new Set([...excludeTitles, ...recipes.map((recipe) => recipe.title)])];
 
   const system = `Ты — строгий редактор современной русской кулинарной книги. Предложи три разных действительно существующих и кулинарно осмысленных домашних блюда, использующих разные сочетания доступных продуктов. Если исходный набор объективно позволяет приготовить только одно или два нормальных блюда, верни меньше. Не придумывай блюдо только ради заполнения списка. Пиши только по-русски, без англицизмов, заглушек, служебных слов и выдуманных техник.
 ЖЁСТКОЕ ПРАВИЛО: используй только продукты из списка пользователя, а также соль, воду и растительное масло. Нельзя добавлять перец, чеснок, специи, соусы, сахар, муку, молоко, зелень или любой другой продукт, если его нет в списке. Поле missing всегда должно быть пустым массивом. В ingredients перечисли абсолютно всё, что используется в шагах; названия пользовательских продуктов сохраняй максимально близко к исходному списку. Не называй блюдо общими словами вроде «жареные продукты» или «смесь ингредиентов». В amount всегда указывай понятное русское количество: г, мл, ст. л., ч. л. или шт.; слово unit запрещено. Каждый рецепт должен содержать минимум три законченных конкретных шага с температурой или понятным уровнем огня и временем там, где это важно. Не выводи слова subtitle, title, description или step как содержимое полей. Не предлагай опасные способы приготовления.
@@ -1038,7 +1210,7 @@ async function generateRecipes(request, env) {
   const user = `Продукты дома: ${ingredients.join(", ")}.
 Инвентарь: ${equipment.length ? equipment.join(", ") : "обычная базовая кухня"}.
 Желаемая сложность приготовления: ${difficulty}. Порций: ${portions}.
-${excludeTitles.length ? `Не повторяй недавние варианты: ${excludeTitles.join(", ")}.` : ""}
+${allExcludedTitles.length ? `Не повторяй недавние варианты: ${allExcludedTitles.join(", ")}.` : ""}
 Номер вариации запроса: ${variation}.
 Никаких покупок и замен: каждый небазовый ингредиент обязан дословно соответствовать продукту из списка. Расположи блюда от самого подходящего. Количество ингредиентов укажи на ${portions} порции. В ingredients перечисли только продукты, реально участвующие в шагах, и обязательно добавь туда каждый продукт, упомянутый в шагах. match для каждого блюда — 100. В uses перечисли только использованные продукты пользователя, missing — пустой массив. Лучше вернуть один хороший узнаваемый рецепт, чем три нелепых.`;
 
@@ -1054,12 +1226,14 @@ ${excludeTitles.length ? `Не повторяй недавние вариант�
     });
     const data = parseAiResult(result);
     if (!Array.isArray(data.recipes) || !data.recipes.length) throw new Error("Incomplete recipes");
-    const recipes = normalizeRecipes(data.recipes, portions, ingredients, difficulty)
-      .filter((recipe) => !excludeTitles.some((title) => ingredientMentioned(recipe.title, title)));
+    const generatedRecipes = normalizeRecipes(data.recipes, portions, ingredients, difficulty)
+      .filter((recipe) => !allExcludedTitles.some((title) => normalizedSignature(recipe.title) === normalizedSignature(title)));
+    recipes = mergeUniqueRecipes(recipes, generatedRecipes);
     if (!recipes.length) throw new Error("Recipes failed quality checks");
-    return json({ recipes, source: "workers-ai", sourceAttempt });
+    return json({ recipes, source: recipes.some((recipe) => recipe.source?.type === "kutno-catalog") ? "mixed" : "workers-ai", sourceAttempt, catalogAttempt, catalogVersion: CATALOG_VERSION });
   } catch (error) {
     console.error("recipe_generation_failed", error instanceof Error ? error.message : String(error));
+    if (recipes.length) return json({ recipes, source: "mixed", sourceAttempt, catalogAttempt, catalogVersion: CATALOG_VERSION });
     return json({ error: "Не удалось составить меню" }, 503);
   }
 }
@@ -1074,8 +1248,10 @@ export default {
 
     if (url.pathname === "/api/source-status" && request.method === "GET") {
       return json({
+        catalogVersion: CATALOG_VERSION,
+        catalogSize: WORLD_RECIPE_CATALOG.length,
         spoonacularConfigured: Boolean(spoonacularKey(env)),
-        source: spoonacularKey(env) ? "spoonacular" : "workers-ai",
+        source: "kutno-catalog",
       });
     }
 
