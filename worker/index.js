@@ -1,7 +1,8 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { CATALOG_VERSION, INGREDIENT_GLOSSARY, WORLD_RECIPE_CATALOG } from "./recipe-catalog.js";
 
-const MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
+const MODEL = "@cf/openai/gpt-oss-120b";
+const MAX_RECIPE_GENERATION_ATTEMPTS = 2;
 const GOOGLE_JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
 
 const recipeSchema = {
@@ -79,7 +80,7 @@ function recipeSchemaFor(ingredients) {
 
 function generatedRecipeSchemaFor(ingredients) {
   const schema = recipeSchemaFor(ingredients);
-  schema.properties.recipes.minItems = ingredients.length >= 5 ? 3 : ingredients.length >= 3 ? 2 : 1;
+  schema.properties.recipes.minItems = 1;
   return schema;
 }
 
@@ -104,11 +105,30 @@ function sanitizeList(value, max = 40, maxLength = 80) {
 }
 
 function parseAiResult(result) {
-  const value = result?.response ?? result;
+  const value = result?.response
+    ?? result?.output_text
+    ?? result?.choices?.[0]?.message?.content
+    ?? result;
   if (typeof value === "object" && value) return value;
   if (typeof value !== "string") throw new Error("Unexpected AI response");
   const cleaned = value.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   return JSON.parse(cleaned);
+}
+
+async function runStructuredAi(env, { messages, schema, schemaName, maxTokens, temperature }) {
+  return env.AI.run(MODEL, {
+    messages,
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: schemaName,
+        schema,
+      },
+    },
+    max_tokens: maxTokens,
+    reasoning_effort: "low",
+    temperature,
+  });
 }
 
 const pantryBasics = ["соль", "вод", "масло"];
@@ -252,6 +272,60 @@ function cleanRecipeSteps(value) {
       seen.add(signature);
       return true;
     });
+}
+
+const STEP_ACTION = /(?:очист|нареж|пореж|измельч|натер|натр|разбей|взбей|смеш|перемеш|соедин|вылож|полож|добав|перелож|помест|опуст|засып|всып|влей|налей|залей|разогр|обжар|жар|свар|вар|туш|запек|выпек|готов|кипят|довед|расплав|накрой|остав|сним|пода|посол|остуд|процед)/iu;
+const ACTIVE_HEAT_ACTION = /(?:обжар|жар|свар|вар|туш|запек|выпек|готов|кипят|довед|расплав)/iu;
+const TRANSFER_ACTION = /(?:вылож|полож|добав|перелож|помест|опуст|засып|всып|влей|налей|залей|разбей|вылей)/iu;
+const COOKING_TARGET = /(?:сковород|кастрюл|сотейн|противен|духовк|форм|казан|вок|мис|тарел|вод|масл)/iu;
+const TIME_OR_DONENESS = /(?:\d+(?:[.,]\d+)?\s*(?:сек|мин|час)|до\s+[а-я]|пока\s+[а-я]|до\s+готовности)/iu;
+const FINISH_ACTION = /(?:сним|пода|разлож|перелож|остуд|готов|до\s+[а-я]|пока\s+[а-я])/iu;
+
+function recipeQualityIssues(recipe, ownedIngredients) {
+  const steps = cleanRecipeSteps(recipe?.steps);
+  const issues = [];
+  const stepText = steps.join(" ");
+
+  if (steps.some((step) => !STEP_ACTION.test(step))) {
+    issues.push("каждый шаг должен содержать конкретное кулинарное действие");
+  }
+
+  const unusedIngredients = (Array.isArray(recipe?.ingredients) ? recipe.ingredients : [])
+    .map((item) => String(item?.name || "").trim())
+    .filter((name) => name && !isPantryBasic(name) && !ingredientMentioned(stepText, name));
+  if (unusedIngredients.length) {
+    issues.push(`в шагах не использованы ингредиенты: ${unusedIngredients.join(", ")}`);
+  }
+
+  const firstActiveHeatStep = steps.findIndex((step) => ACTIVE_HEAT_ACTION.test(step));
+  if (firstActiveHeatStep >= 0) {
+    const preparationChain = steps.slice(0, firstActiveHeatStep + 1);
+    const transferredToCookingTarget = preparationChain.some((step) => TRANSFER_ACTION.test(step) && COOKING_TARGET.test(step));
+    if (!transferredToCookingTarget) {
+      issues.push("пропущено помещение продукта в посуду или среду приготовления перед нагревом");
+    }
+
+    const vagueHeatStep = steps.find((step) => ACTIVE_HEAT_ACTION.test(step) && !TIME_OR_DONENESS.test(step));
+    if (vagueHeatStep) {
+      issues.push("для нагрева нужно указать время или понятный признак готовности");
+    }
+  }
+
+  if (steps.length && !FINISH_ACTION.test(steps.at(-1))) {
+    issues.push("последний шаг должен явно завершать приготовление или подачу блюда");
+  }
+
+  const usedOwnedIngredients = ownedIngredients.filter((ingredient) => ingredientMentioned(stepText, ingredient));
+  if (!usedOwnedIngredients.length) issues.push("в шагах не использован ни один продукт пользователя");
+
+  return [...new Set(issues)];
+}
+
+function reviewRecipeQuality(recipes, ownedIngredients) {
+  return recipes.map((recipe) => ({
+    recipe,
+    issues: recipeQualityIssues(recipe, ownedIngredients),
+  }));
 }
 
 function normalizeRecipes(recipes, portions, ownedIngredients, requestedDifficulty = "") {
@@ -1023,13 +1097,14 @@ async function translateIngredientsForSpoonacular(env, ingredients) {
     },
     required: ["translations"],
   };
-  const result = await env.AI.run(MODEL, {
+  const result = await runStructuredAi(env, {
     messages: [
       { role: "system", content: "Переведи названия продуктов с русского на простой английский для поиска в кулинарной базе. Не добавляй пояснения, бренды или количество. Сохрани каждое исходное название в original." },
       { role: "user", content: ingredients.join("\n") },
     ],
-    guided_json: schema,
-    max_tokens: 700,
+    schema,
+    schemaName: "ingredient_translations",
+    maxTokens: 700,
     temperature: 0,
   });
   const data = parseAiResult(result);
@@ -1169,7 +1244,7 @@ async function generateFromSpoonacular(env, { ingredients, equipment, difficulty
     .map((recipe, sourceIndex) => ({ ...recipe, sourceIndex }));
   if (!candidates.length) return [];
 
-  const result = await env.AI.run(MODEL, {
+  const result = await runStructuredAi(env, {
     messages: [
       {
         role: "system",
@@ -1180,12 +1255,14 @@ async function generateFromSpoonacular(env, { ingredients, equipment, difficulty
         content: `Продукты пользователя: ${ingredients.join(", ")}\nИнвентарь: ${equipment.join(", ") || "базовая кухня"}\nЖелаемая сложность: ${difficulty}\nИсходные рецепты:\n${JSON.stringify(candidates)}`,
       },
     ],
-    guided_json: spoonacularRecipeSchemaFor(ingredients, candidates.map((item) => item.sourceIndex)),
-    max_tokens: 3000,
+    schema: spoonacularRecipeSchemaFor(ingredients, candidates.map((item) => item.sourceIndex)),
+    schemaName: "adapted_source_recipes",
+    maxTokens: 3000,
     temperature: 0.05,
   });
   const data = parseAiResult(result);
-  const normalized = normalizeRecipes(Array.isArray(data.recipes) ? data.recipes : [], portions, ingredients, difficulty);
+  const normalized = normalizeRecipes(Array.isArray(data.recipes) ? data.recipes : [], portions, ingredients, difficulty)
+    .filter((recipe) => recipeQualityIssues(recipe, ingredients).length === 0);
   return normalized.map((recipe) => {
     const source = candidates.find((candidate) => candidate.sourceIndex === Number(recipe.sourceIndex));
     if (!source) return null;
@@ -1250,8 +1327,9 @@ async function generateRecipes(request, env) {
 
   const allExcludedTitles = [...new Set([...excludeTitles, ...recipes.map((recipe) => recipe.title)])];
 
-  const system = `Ты — строгий редактор современной русской кулинарной книги. Предложи три разных действительно существующих и кулинарно осмысленных домашних блюда, использующих разные сочетания доступных продуктов. Если исходный набор объективно позволяет приготовить только одно или два нормальных блюда, верни меньше. Не придумывай блюдо только ради заполнения списка. Пиши только по-русски, без англицизмов, заглушек, служебных слов и выдуманных техник.
+  const system = `Ты — строгий редактор современной русской кулинарной книги. Предложи до трёх разных действительно существующих и кулинарно осмысленных домашних блюд, использующих разные сочетания доступных продуктов. Если исходный набор объективно позволяет приготовить только одно или два нормальных блюда, верни меньше. Не придумывай блюдо только ради заполнения списка. Пиши только по-русски, без англицизмов, заглушек, служебных слов и выдуманных техник.
 ЖЁСТКОЕ ПРАВИЛО: используй только продукты из списка пользователя, а также соль, воду и растительное масло. Нельзя добавлять перец, чеснок, специи, соусы, сахар, муку, молоко, зелень или любой другой продукт, если его нет в списке. Поле missing всегда должно быть пустым массивом. В ingredients перечисли абсолютно всё, что используется в шагах; названия пользовательских продуктов сохраняй максимально близко к исходному списку. Не называй блюдо общими словами вроде «жареные продукты» или «смесь ингредиентов». В amount всегда указывай понятное русское количество: г, мл, ст. л., ч. л. или шт.; слово unit запрещено. Каждый рецепт должен содержать минимум три законченных конкретных шага с температурой или понятным уровнем огня и временем там, где это важно. Не выводи слова subtitle, title, description или step как содержимое полей. Не предлагай опасные способы приготовления.
+СВЯЗНОСТЬ ШАГОВ: каждый шаг должен ясно отвечать, что взять, куда поместить, что сделать и какого результата дождаться. Нельзя пропускать перенос продукта в посуду: после шага «разогреть сковороду» обязательно должен быть шаг «выложить или влить продукт на сковороду», и только затем «готовить». Не используй местоимения без понятного объекта. Последний шаг должен явно завершать приготовление или подачу. Перед ответом мысленно пройди рецепт от первого шага до последнего и исправь любой разрыв в последовательности.
 Для каждого рецепта оцени КБЖУ НА ОДНУ ПОРЦИЮ по указанным количествам: calories — ккал, protein/fat/carbs — граммы. Значения должны быть реалистичными и согласованными с ингредиентами; это ориентировочная оценка.`;
   const user = `Продукты дома: ${ingredients.join(", ")}.
 Инвентарь: ${equipment.length ? equipment.join(", ") : "обычная базовая кухня"}.
@@ -1261,22 +1339,49 @@ ${allExcludedTitles.length ? `Не повторяй недавние вариа�
 Никаких покупок и замен: каждый небазовый ингредиент обязан дословно соответствовать продукту из списка. Расположи блюда от самого подходящего. Количество ингредиентов укажи на ${portions} порции. В ingredients перечисли только продукты, реально участвующие в шагах, и обязательно добавь туда каждый продукт, упомянутый в шагах. match для каждого блюда — 100. В uses перечисли только использованные продукты пользователя, missing — пустой массив. Лучше вернуть один хороший узнаваемый рецепт, чем три нелепых.`;
 
   try {
-    const result = await env.AI.run(MODEL, {
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      guided_json: generatedRecipeSchemaFor(ingredients),
-      max_tokens: 2800,
-      temperature: 0.45,
-    });
-    const data = parseAiResult(result);
-    if (!Array.isArray(data.recipes) || !data.recipes.length) throw new Error("Incomplete recipes");
-    const generatedRecipes = normalizeRecipes(data.recipes, portions, ingredients, difficulty)
-      .filter((recipe) => !allExcludedTitles.some((title) => normalizedSignature(recipe.title) === normalizedSignature(title)));
-    recipes = mergeUniqueRecipes(recipes, generatedRecipes);
-    if (!recipes.length) throw new Error("Recipes failed quality checks");
-    return json({ recipes, source: recipes.some((recipe) => recipe.source?.type === "kutno-catalog") ? "mixed" : "workers-ai", sourceAttempt, catalogAttempt, catalogVersion: CATALOG_VERSION });
+    let retryFeedback = "";
+    for (let attempt = 1; attempt <= MAX_RECIPE_GENERATION_ATTEMPTS; attempt += 1) {
+      const retryInstruction = retryFeedback
+        ? `\n\nПредыдущий вариант не прошёл проверку качества:\n${retryFeedback}\nПолностью перепиши проблемные рецепты и устрани все указанные разрывы.`
+        : "";
+      const result = await runStructuredAi(env, {
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: `${user}${retryInstruction}` },
+        ],
+        schema: generatedRecipeSchemaFor(ingredients),
+        schemaName: "generated_recipes",
+        maxTokens: 2800,
+        temperature: attempt === 1 ? 0.35 : 0.15,
+      });
+      const data = parseAiResult(result);
+      if (!Array.isArray(data.recipes) || !data.recipes.length) {
+        retryFeedback = "ответ не содержит ни одного законченного рецепта";
+        continue;
+      }
+
+      const generatedRecipes = normalizeRecipes(data.recipes, portions, ingredients, difficulty)
+        .filter((recipe) => !allExcludedTitles.some((title) => normalizedSignature(recipe.title) === normalizedSignature(title)));
+      const qualityReview = reviewRecipeQuality(generatedRecipes, ingredients);
+      const coherentRecipes = qualityReview.filter(({ issues }) => issues.length === 0).map(({ recipe }) => recipe);
+      recipes = mergeUniqueRecipes(recipes, coherentRecipes);
+      if (recipes.length) {
+        return json({
+          recipes,
+          source: recipes.some((recipe) => recipe.source?.type === "kutno-catalog") ? "mixed" : "workers-ai",
+          sourceAttempt,
+          catalogAttempt,
+          catalogVersion: CATALOG_VERSION,
+        });
+      }
+
+      retryFeedback = qualityReview.length
+        ? qualityReview.map(({ recipe, issues }) => `${recipe.title}: ${issues.join("; ")}`).join("\n")
+        : "рецепты нарушают ограничения по продуктам, количествам или структуре шагов";
+      console.warn("recipe_quality_retry", JSON.stringify({ attempt, retryFeedback }));
+    }
+
+    throw new Error("Recipes failed quality checks after retry");
   } catch (error) {
     console.error("recipe_generation_failed", error instanceof Error ? error.message : String(error));
     if (recipes.length) return json({ recipes, source: "mixed", sourceAttempt, catalogAttempt, catalogVersion: CATALOG_VERSION });
