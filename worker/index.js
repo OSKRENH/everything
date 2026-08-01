@@ -76,6 +76,12 @@ function recipeSchemaFor(ingredients) {
   return schema;
 }
 
+function generatedRecipeSchemaFor(ingredients) {
+  const schema = recipeSchemaFor(ingredients);
+  schema.properties.recipes.minItems = ingredients.length >= 5 ? 3 : ingredients.length >= 3 ? 2 : 1;
+  return schema;
+}
+
 function json(data, status = 200, extraHeaders = {}) {
   return Response.json(data, {
     status,
@@ -994,7 +1000,7 @@ ${excludeTitles.length ? `Не повторяй недавние вариант�
         { role: "system", content: system },
         { role: "user", content: user },
       ],
-      guided_json: recipeSchemaFor(ingredients),
+      guided_json: generatedRecipeSchemaFor(ingredients),
       max_tokens: 2800,
       temperature: 0.45,
     });
