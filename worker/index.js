@@ -1,5 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import { CATALOG_VERSION, WORLD_RECIPE_CATALOG } from "./recipe-catalog.js";
+import { CATALOG_VERSION, INGREDIENT_GLOSSARY, WORLD_RECIPE_CATALOG } from "./recipe-catalog.js";
 
 const MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 const GOOGLE_JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
@@ -683,6 +683,10 @@ function sanitizeFavoriteRecipe(value) {
     ? value.ingredients.slice(0, 30).map((item) => ({
         name: String(item?.name || "").trim().slice(0, 100),
         amount: String(item?.amount || "").trim().slice(0, 60),
+        ...(item?.info && typeof item.info === "object" ? { info: {
+          description: String(item.info.description || "").trim().slice(0, 500),
+          substitutes: String(item.info.substitutes || "").trim().slice(0, 500),
+        } } : {}),
       })).filter((item) => item.name && item.amount)
     : [];
   const steps = cleanRecipeSteps(value?.steps);
@@ -699,6 +703,10 @@ function sanitizeFavoriteRecipe(value) {
   const recipe = {
     title,
     subtitle: String(value?.subtitle || "").trim().slice(0, 180),
+    cuisine: String(value?.cuisine || "").trim().slice(0, 80),
+    flag: String(value?.flag || "").trim().slice(0, 16),
+    course: String(value?.course || "").trim().slice(0, 40),
+    protein: String(value?.protein || "").trim().slice(0, 60),
     minutes: Math.min(240, Math.max(1, Number(value?.minutes) || 30)),
     portions: Math.min(8, Math.max(1, Number(value?.portions) || 2)),
     difficulty: String(value?.difficulty || "просто").trim().slice(0, 40),
@@ -800,6 +808,9 @@ function catalogRecipeForPortions(recipe, ownedIngredients, portions) {
     title: recipe.title,
     subtitle: recipe.subtitle,
     cuisine: recipe.cuisine,
+    flag: recipe.flag || "🌍",
+    course: recipe.course || "основное",
+    protein: recipe.protein || "без мяса",
     minutes: Number(recipe.minutes) || 30,
     difficulty: normalizeDifficulty(recipe.difficulty),
     match: 100,
@@ -807,10 +818,18 @@ function catalogRecipeForPortions(recipe, ownedIngredients, portions) {
     uses,
     equipment: recipe.equipment,
     why: `Все обязательные продукты для классического блюда уже есть дома`,
-    ingredients: recipe.ingredients.map((item) => ({
-      name: item.name,
-      amount: scaledCatalogAmount(item, portions, recipe.servings),
-    })),
+    ingredients: recipe.ingredients.map((item) => {
+      const itemSignature = normalizedSignature(item.name);
+      const glossaryEntry = Object.entries(INGREDIENT_GLOSSARY).find(([name]) => {
+        const glossarySignature = normalizedSignature(name);
+        return itemSignature === glossarySignature || itemSignature.includes(glossarySignature) || glossarySignature.includes(itemSignature);
+      })?.[1];
+      return {
+        name: item.name,
+        amount: scaledCatalogAmount(item, portions, recipe.servings),
+        ...(glossaryEntry ? { info: glossaryEntry } : {}),
+      };
+    }),
     steps: cleanRecipeSteps(recipe.steps),
     nutrition: { ...safeNutrition(recipe.nutrition), estimated: true },
     tip: String(recipe.tip || ""),
@@ -831,7 +850,7 @@ async function findCatalogRecipes(env, { ingredients, equipment, difficulty, por
   const result = await env.DB.prepare(`
     SELECT recipe_json FROM recipes
     WHERE catalog_version = ?
-    ORDER BY cuisine, title
+    ORDER BY CASE WHEN cuisine = 'Россия' THEN 0 ELSE 1 END, cuisine, title
     LIMIT 250
   `).bind(CATALOG_VERSION).all();
   const excluded = new Set(excludeTitles.map(normalizedSignature));
@@ -865,7 +884,7 @@ async function listRecipeCatalog(request, env) {
   const result = await env.DB.prepare(`
     SELECT recipe_json FROM recipes
     WHERE catalog_version = ?
-    ORDER BY cuisine, title
+    ORDER BY CASE WHEN cuisine = 'Россия' THEN 0 ELSE 1 END, cuisine, title
     LIMIT 250
   `).bind(CATALOG_VERSION).all();
   const recipes = result.results.map((row) => {
