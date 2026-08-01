@@ -11,7 +11,7 @@
   --soft: #6f706a;
   --line: #cbc9c0;
   --accent: #e54e35;
-  --acid: #eef75a;
+  --acid: #dce8cf;
   --display-title-size: clamp(62px, 6.5vw, 104px);
 }
 
@@ -136,17 +136,6 @@ h1, .results-heading h2, .sheet-header h2 {
 
 h1 { font-size: var(--display-title-size); line-height: .91; }
 
-.intro-footnote {
-  width: min(360px, 100%);
-  margin: auto 0 0;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
-  color: var(--soft);
-  font-size: 13px;
-  line-height: 1.55;
-}
-.intro-footnote span { color: var(--ink); margin-right: 8px; }
-
 .kitchen-form { border-top: 1px solid var(--ink); }
 .form-section {
   display: grid;
@@ -226,9 +215,28 @@ h1 { font-size: var(--display-title-size); line-height: .91; }
   padding-right: 10px;
   padding-left: 10px;
 }
-.microcopy { margin: 9px 0 18px; color: var(--soft); font-size: 11px; }
+.ingredient-basics { display: flex; gap: 7px; margin: 10px 0 0; color: var(--soft); font-size: 11px; line-height: 1.45; }
+.ingredient-basics span { flex: 0 0 auto; color: var(--ink); }
+.microcopy { margin: 5px 0 18px; color: var(--soft); font-size: 11px; }
 .selected-ingredients, .quick-row { display: flex; flex-wrap: wrap; gap: 7px; }
 .selected-ingredients { min-height: 34px; margin-bottom: 13px; }
+.selected-ingredients.is-collapsed { max-height: 75px; overflow: hidden; }
+.selected-ingredients .ingredient-tag[hidden] { display: none; }
+.ingredients-toggle {
+  display: block;
+  border: 0;
+  background: transparent;
+  margin: -4px 0 14px;
+  padding: 0;
+  color: var(--soft);
+  font-size: 10px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+.ingredients-toggle:hover { color: var(--ink); }
 .empty-line { color: var(--soft); font-size: 13px; padding: 7px 0; }
 .ingredient-tag {
   border: 1px solid var(--line);
@@ -645,7 +653,6 @@ footer span:first-child { font-family: "Prata", Georgia, serif; font-size: 18px;
 @media (max-width: 980px) {
   .intro-grid, .results-section { grid-template-columns: 1fr; gap: 55px; }
   .intro-copy { min-height: auto; }
-  .intro-footnote { margin-top: 48px; }
   .results-heading { position: static; }
   .results-heading h2 br { display: none; }
   .recipe-overlay { grid-template-columns: 35px 1fr; }
@@ -678,11 +685,10 @@ footer span:first-child { font-family: "Prata", Georgia, serif; font-size: 18px;
   .kitchen-illustration img { max-height: 275px; object-fit: contain; }
   h1 { max-width: 100%; font-size: var(--display-title-size); line-height: .96; overflow-wrap: normal; }
   .eyebrow { margin-bottom: 26px; }
-  .intro-footnote { margin-top: 42px; font-size: 12px; }
   .kitchen-form { min-width: 0; }
   .form-section { width: 100%; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; }
   .ingredient-form { grid-template-columns: minmax(0, 1fr) auto; }
-  .ingredient-form input { min-width: 0; padding-right: 8px; font-size: 23px; }
+  .ingredient-form input { min-width: 0; padding-right: 8px; font-size: 21px; }
   .ingredient-form button { padding-left: 8px; font-size: 10px; }
   .ingredient-suggestions { max-height: 222px; }
   .ingredient-suggestion { padding-top: 10px; padding-bottom: 10px; }
