@@ -242,6 +242,7 @@ function loadFavoriteRecipes() {
 let state = loadState();
 let recipes = [];
 let favoriteRecipes = loadFavoriteRecipes();
+let ingredientsExpanded = false;
 let isLoading = false;
 let isLoadingMore = false;
 let loadMoreMessage = "";
@@ -612,6 +613,8 @@ function renderPotLoader(className = "") {
 }
 
 function renderKitchenView() {
+  const ingredientsCollapsible = state.ingredients.length > 8;
+  const ingredientsCollapsed = ingredientsCollapsible && !ingredientsExpanded;
   return `
     <section class="intro-grid" aria-labelledby="main-title">
       <div class="intro-copy">
@@ -620,7 +623,6 @@ function renderKitchenView() {
         <figure class="section-illustration kitchen-illustration" aria-hidden="true">
           <img src="/illustrations/kitchen-hero.webp" alt="">
         </figure>
-        <p class="intro-footnote"><span>①</span> Соль, воду и масло можно не указывать — мы считаем их базовыми.</p>
       </div>
 
       <div class="kitchen-form">
@@ -629,16 +631,18 @@ function renderKitchenView() {
           <div class="section-content">
             <label for="ingredient-input">Продукты</label>
             <form id="ingredient-form" class="ingredient-form">
-              <input id="ingredient-input" autocomplete="off" placeholder="Например: курица, рис, лук" aria-describedby="ingredient-hint" role="combobox" aria-autocomplete="list" aria-controls="ingredient-suggestions" aria-expanded="false">
+              <input id="ingredient-input" autocomplete="off" placeholder="Курица, рис, лук" aria-describedby="ingredient-basics ingredient-hint" role="combobox" aria-autocomplete="list" aria-controls="ingredient-suggestions" aria-expanded="false">
               <button type="submit" aria-label="Добавить продукты">Добавить</button>
             </form>
             <div id="ingredient-suggestions" class="ingredient-suggestions" role="listbox" aria-label="Подходящие продукты" hidden></div>
+            <p id="ingredient-basics" class="ingredient-basics"><span>①</span> Соль, воду и масло можно не указывать — мы считаем их базовыми.</p>
             <p id="ingredient-hint" class="microcopy">Можно перечислить несколько продуктов через запятую.</p>
-            <div class="selected-ingredients" aria-live="polite">
+            <div class="selected-ingredients ${ingredientsCollapsed ? "is-collapsed" : ""}" aria-live="polite">
               ${state.ingredients.length
                 ? state.ingredients.map((item) => `<button class="ingredient-tag selected" data-remove-ingredient="${escapeHtml(item)}">${escapeHtml(item)} <span aria-hidden="true">×</span></button>`).join("")
                 : `<span class="empty-line">Пока пусто — начните с главного продукта</span>`}
             </div>
+            ${ingredientsCollapsible ? `<button class="ingredients-toggle" data-action="toggle-ingredients" aria-expanded="${ingredientsExpanded}">${ingredientsExpanded ? "Свернуть" : `Показать все · ${state.ingredients.length}`}</button>` : ""}
             <div class="quick-row" aria-label="Частые продукты">
               ${quickIngredients.filter((item) => !state.ingredients.includes(normalize(item))).slice(0, 7).map((item) => `<button class="ingredient-tag" data-add-ingredient="${item}">+ ${item}</button>`).join("")}
             </div>
@@ -717,8 +721,22 @@ function render() {
     ${activeRecipe ? renderRecipeOverlay(activeRecipe) : ""}
     ${authModalOpen ? renderAuthOverlay() : ""}
   `;
+  requestAnimationFrame(clampSelectedIngredients);
   if (authModalOpen && !authUser && !authBusy) requestAnimationFrame(mountGoogleButton);
   if (currentView === "swipe" && swipeHintPending && document.querySelector(".swipe-card.front")) swipeHintPending = false;
+}
+
+function clampSelectedIngredients() {
+  const list = document.querySelector(".selected-ingredients.is-collapsed");
+  if (!list) return;
+  const tags = [...list.querySelectorAll(".ingredient-tag.selected")];
+  tags.forEach((tag) => { tag.hidden = false; });
+  const rowTops = [];
+  for (const tag of tags) {
+    const top = tag.offsetTop;
+    if (!rowTops.some((rowTop) => Math.abs(rowTop - top) < 2)) rowTops.push(top);
+    if (rowTops.length > 2) tag.hidden = true;
+  }
 }
 
 function renderResults() {
@@ -807,6 +825,10 @@ function filteredCatalogRecipes() {
     const searchable = [recipe.title, recipe.subtitle, recipe.cuisine, ...(recipe.ingredients || []).map((item) => item.name)].join(" ");
     return cuisineMatches && difficultyMatches && courseMatches && proteinMatches && (!query || normalize(searchable).includes(query));
   });
+}
+
+function orderCatalogRecipes(recipesToOrder) {
+  return [...recipesToOrder].sort((first, second) => Number(first.course === "соус") - Number(second.course === "соус"));
 }
 
 function renderCatalogCard(recipe, index) {
@@ -904,7 +926,7 @@ function renderFavoritesView() {
 }
 
 function resetSwipeDeck() {
-  swipeRecipes = [...catalogRecipes];
+  swipeRecipes = catalogRecipes.filter((recipe) => recipe.course !== "соус");
   const random = new Uint32Array(1);
   for (let index = swipeRecipes.length - 1; index > 0; index -= 1) {
     crypto.getRandomValues(random);
@@ -923,7 +945,7 @@ async function loadCatalog(force = false) {
     const response = await fetch(`/api/catalog?portions=${state.portions}`);
     const data = await response.json();
     if (!response.ok || !Array.isArray(data.recipes)) throw new Error(data.error || "Не удалось открыть базу рецептов");
-    catalogRecipes = data.recipes;
+    catalogRecipes = orderCatalogRecipes(data.recipes);
     resetSwipeDeck();
   } catch (error) {
     catalogError = error instanceof Error ? error.message : "Не удалось открыть базу рецептов";
@@ -1453,8 +1475,13 @@ app.addEventListener("click", (event) => {
   if (target.dataset.action === "load-catalog") loadCatalog(true);
   if (target.dataset.action === "generate") generateRecipes();
   if (target.dataset.action === "load-more") generateRecipes({ append: true });
+  if (target.dataset.action === "toggle-ingredients") {
+    ingredientsExpanded = !ingredientsExpanded;
+    render();
+  }
   if (target.dataset.action === "clear-all") {
     state = { ...defaults, equipment: [...defaults.equipment] };
+    ingredientsExpanded = false;
     recipes = [];
     recentRecipeTitles = [];
     recentSourceIds = [];
@@ -1505,6 +1532,8 @@ document.addEventListener("keydown", (event) => {
     render();
   }
 });
+
+window.addEventListener("resize", () => requestAnimationFrame(clampSelectedIngredients));
 
 render();
 restoreSession();
