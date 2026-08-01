@@ -263,6 +263,8 @@ let catalogLoading = false;
 let catalogError = "";
 let catalogCuisine = "все";
 let catalogDifficulty = "все";
+let catalogCourse = "все";
+let catalogProtein = "все";
 let catalogQuery = "";
 let swipeIndex = 0;
 let swipeBusy = false;
@@ -765,7 +767,16 @@ function renderFavorites() {
 }
 
 function catalogCuisines() {
-  return [...new Set(catalogRecipes.map((recipe) => String(recipe.cuisine || "Другая кухня")))].sort((a, b) => a.localeCompare(b, "ru"));
+  return [...new Set(catalogRecipes.map((recipe) => String(recipe.cuisine || "Другая кухня")))].sort((a, b) => {
+    if (a === "Россия") return -1;
+    if (b === "Россия") return 1;
+    return a.localeCompare(b, "ru");
+  });
+}
+
+function cuisineLabel(cuisine) {
+  const flag = catalogRecipes.find((recipe) => recipe.cuisine === cuisine)?.flag || "🌍";
+  return `${flag} ${cuisine}`;
 }
 
 function filteredCatalogRecipes() {
@@ -773,8 +784,10 @@ function filteredCatalogRecipes() {
   return catalogRecipes.filter((recipe) => {
     const cuisineMatches = catalogCuisine === "все" || recipe.cuisine === catalogCuisine;
     const difficultyMatches = catalogDifficulty === "все" || difficultyValue(recipe.difficulty) === catalogDifficulty;
+    const courseMatches = catalogCourse === "все" || recipe.course === catalogCourse;
+    const proteinMatches = catalogProtein === "все" || recipe.protein === catalogProtein;
     const searchable = [recipe.title, recipe.subtitle, recipe.cuisine, ...(recipe.ingredients || []).map((item) => item.name)].join(" ");
-    return cuisineMatches && difficultyMatches && (!query || normalize(searchable).includes(query));
+    return cuisineMatches && difficultyMatches && courseMatches && proteinMatches && (!query || normalize(searchable).includes(query));
   });
 }
 
@@ -784,12 +797,12 @@ function renderCatalogCard(recipe, index) {
   return `<article class="catalog-card">
     <div class="catalog-card-index">${String(index + 1).padStart(2, "0")}</div>
     <div class="catalog-card-topline">
-      <span>${escapeHtml(recipe.cuisine || "Мировая кухня")}</span>
+      <span>${escapeHtml(`${recipe.flag || "🌍"} ${recipe.cuisine || "Мировая кухня"}`)}</span>
       <button class="favorite-toggle ${favorite ? "active" : ""}" data-toggle-favorite-source="catalog" data-recipe-index="${index}" aria-label="${favorite ? "Убрать из избранного" : "Сохранить в избранное"}">${favorite ? "♥" : "♡"}</button>
     </div>
     <h3><button data-open-recipe="${index}" data-recipe-source="catalog">${escapeHtml(recipe.title)}</button></h3>
     <p>${escapeHtml(recipe.subtitle || "Классический рецепт")}</p>
-    <div class="catalog-card-meta"><span>${Number(recipe.minutes) || 30} мин</span><span>${escapeHtml(recipe.difficulty || "легко")}</span><span>≈ ${Number(recipe.nutrition?.calories) || 0} ккал</span></div>
+    <div class="catalog-card-meta"><span>${escapeHtml(recipe.course || "основное")}</span><span>${escapeHtml(recipe.protein || "без мяса")}</span><span>${Number(recipe.minutes) || 30} мин</span><span>${escapeHtml(recipe.difficulty || "легко")}</span><span>≈ ${Number(recipe.nutrition?.calories) || 0} ккал</span></div>
     <p class="catalog-ingredients">${ingredients.join(" · ")}${(recipe.ingredients || []).length > 5 ? " · …" : ""}</p>
     <button class="catalog-open" data-open-recipe="${index}" data-recipe-source="catalog">Открыть рецепт <span>→</span></button>
   </article>`;
@@ -807,7 +820,9 @@ function renderCatalogView() {
     <div class="catalog-tools">
       <label class="catalog-search"><span>Поиск</span><input data-catalog-search value="${escapeHtml(catalogQuery)}" placeholder="Блюдо, кухня или продукт"></label>
       <div class="catalog-filter"><span>Сложность</span><div>${["все", "легко", "обычно", "сложно"].map((value) => `<button class="${catalogDifficulty === value ? "active" : ""}" data-catalog-difficulty="${value}">${value}</button>`).join("")}</div></div>
-      <div class="catalog-filter cuisine-filter"><span>Кухня</span><div>${["все", ...catalogCuisines()].map((value) => `<button class="${catalogCuisine === value ? "active" : ""}" data-catalog-cuisine="${escapeHtml(value)}">${escapeHtml(value)}</button>`).join("")}</div></div>
+      <div class="catalog-filter"><span>Блюдо</span><div>${["все", "суп", "основное", "салат", "закуска", "завтрак", "выпечка", "соус"].map((value) => `<button class="${catalogCourse === value ? "active" : ""}" data-catalog-course="${value}">${value}</button>`).join("")}</div></div>
+      <div class="catalog-filter"><span>Состав</span><div>${["все", "мясо", "рыба и морепродукты", "без мяса"].map((value) => `<button class="${catalogProtein === value ? "active" : ""}" data-catalog-protein="${value}">${value === "мясо" ? "с мясом" : value}</button>`).join("")}</div></div>
+      <div class="catalog-filter cuisine-filter"><span>Страна</span><div><button class="${catalogCuisine === "все" ? "active" : ""}" data-catalog-cuisine="все">все</button>${catalogCuisines().map((value) => `<button class="${catalogCuisine === value ? "active" : ""}" data-catalog-cuisine="${escapeHtml(value)}">${escapeHtml(cuisineLabel(value))}</button>`).join("")}</div></div>
     </div>
     <div class="catalog-count">Найдено — ${filtered.length.toString().padStart(2, "0")}</div>
     <div class="catalog-grid">${filtered.length ? filtered.map((recipe) => renderCatalogCard(recipe, catalogRecipes.indexOf(recipe))).join("") : `<p class="catalog-empty">Ничего не нашлось. Попробуйте убрать один из фильтров.</p>`}</div>
@@ -820,10 +835,10 @@ function renderSwipeCard(recipe, position = "front") {
     <div class="swipe-stamp swipe-stamp-no">Пропустить</div>
     <div class="swipe-stamp swipe-stamp-yes">В избранное</div>
     <div class="swipe-card-counter">${String(swipeIndex + 1).padStart(2, "0")} / ${catalogRecipes.length.toString().padStart(2, "0")}</div>
-    <p class="swipe-cuisine">${escapeHtml(recipe.cuisine || "Мировая кухня")}</p>
+    <p class="swipe-cuisine">${escapeHtml(`${recipe.flag || "🌍"} ${recipe.cuisine || "Мировая кухня"}`)}</p>
     <h2><button data-open-recipe="${catalogRecipes.indexOf(recipe)}" data-recipe-source="catalog">${escapeHtml(recipe.title)}</button></h2>
     <p class="swipe-subtitle">${escapeHtml(recipe.subtitle || "Классический рецепт")}</p>
-    <div class="swipe-meta"><span>${Number(recipe.minutes) || 30} мин</span><span>${escapeHtml(recipe.difficulty || "легко")}</span><span>≈ ${Number(recipe.nutrition?.calories) || 0} ккал</span></div>
+    <div class="swipe-meta"><span>${escapeHtml(recipe.course || "основное")}</span><span>${escapeHtml(recipe.protein || "без мяса")}</span><span>${Number(recipe.minutes) || 30} мин</span><span>${escapeHtml(recipe.difficulty || "легко")}</span><span>≈ ${Number(recipe.nutrition?.calories) || 0} ккал</span></div>
     <div class="swipe-ingredients"><span>Главное</span><p>${(recipe.ingredients || []).slice(0, 6).map((item) => escapeHtml(item.name)).join(", ")}</p></div>
     ${favorite ? `<div class="swipe-saved">Уже в избранном ♥</div>` : ""}
   </article>`;
@@ -886,14 +901,16 @@ function finishSwipe(direction) {
   if (swipeBusy || !catalogRecipes[swipeIndex]) return;
   swipeBusy = true;
   const card = document.querySelector(".swipe-card.front");
+  const nextCard = document.querySelector(".swipe-card.behind");
   card?.classList.add(direction === "right" ? "fly-right" : "fly-left");
+  nextCard?.classList.add("promoting");
   const recipe = catalogRecipes[swipeIndex];
-  window.setTimeout(async () => {
+  window.setTimeout(() => {
     swipeIndex += 1;
     swipeBusy = false;
-    if (direction === "right" && !isFavorite(recipe)) await toggleFavorite(recipe);
+    if (direction === "right" && !isFavorite(recipe)) toggleFavorite(recipe);
     else render();
-  }, 260);
+  }, 340);
 }
 
 function renderRecipeCard(recipe, index, source = "recipes") {
@@ -984,7 +1001,7 @@ function renderRecipeOverlay(recipe) {
         <header class="sheet-header">
           <p>${escapeHtml(recipe.subtitle || "Рецепт из того, что есть")}</p>
           <h2 id="recipe-title">${escapeHtml(recipe.title)}</h2>
-          <div class="sheet-meta"><span>${recipe.minutes} мин</span><span>${portions} порции</span><span>${escapeHtml(recipe.difficulty || "просто")}</span></div>
+          <div class="sheet-meta">${recipe.cuisine ? `<span>${escapeHtml(`${recipe.flag || "🌍"} ${recipe.cuisine}`)}</span>` : ""}${recipe.course ? `<span>${escapeHtml(recipe.course)}</span>` : ""}${recipe.protein ? `<span>${escapeHtml(recipe.protein)}</span>` : ""}<span>${recipe.minutes} мин</span><span>${portions} порции</span><span>${escapeHtml(recipe.difficulty || "просто")}</span></div>
         </header>
         ${Number(nutrition.calories) ? `<section class="nutrition-block" aria-labelledby="nutrition-title">
           <div class="nutrition-heading">
@@ -1002,7 +1019,10 @@ function renderRecipeOverlay(recipe) {
           <section>
             <h3>Что понадобится</h3>
             <ol class="ingredient-ledger">
-              ${ingredients.map((item) => `<li><span>${escapeHtml(item.name)}</span><b>${escapeHtml(item.amount)}</b></li>`).join("")}
+              ${ingredients.map((item) => `<li class="${item.info ? "has-ingredient-info" : ""}">
+                ${item.info ? `<details class="ingredient-info"><summary>${escapeHtml(item.name)} <span aria-hidden="true">ⓘ</span></summary><div><p>${escapeHtml(item.info.description || "")}</p><p><b>Чем заменить:</b> ${escapeHtml(item.info.substitutes || "Точной замены нет.")}</p></div></details>` : `<span>${escapeHtml(item.name)}</span>`}
+                <b>${escapeHtml(item.amount)}</b>
+              </li>`).join("")}
             </ol>
             ${recipe.equipment?.length ? `<p class="sheet-equipment">Инвентарь — ${recipe.equipment.map(escapeHtml).join(", ")}</p>` : ""}
           </section>
@@ -1306,6 +1326,14 @@ app.addEventListener("click", (event) => {
   }
   if (target.dataset.catalogCuisine) {
     catalogCuisine = target.dataset.catalogCuisine;
+    render();
+  }
+  if (target.dataset.catalogCourse) {
+    catalogCourse = target.dataset.catalogCourse;
+    render();
+  }
+  if (target.dataset.catalogProtein) {
+    catalogProtein = target.dataset.catalogProtein;
     render();
   }
   if (target.dataset.swipe) finishSwipe(target.dataset.swipe);
