@@ -719,7 +719,7 @@ function render({ preserveScroll = true } = {}) {
   app.innerHTML = `
     <div class="page-shell">
       <header class="site-header">
-        <button class="wordmark" data-view="kitchen" aria-label="Кутно, на главную"><img class="wordmark-symbol" src="/kutno-mark.svg" alt=""><img class="wordmark-lettering" src="/kutno-wordmark.png" alt="Кутно"></button>
+        <button class="wordmark" data-view="kitchen" aria-label="Кутно, на главную"><img class="wordmark-symbol" src="/kutno-mark.svg" alt=""><img class="wordmark-lettering" src="/kutno-wordmark.svg" alt="Кутно"></button>
         <nav class="header-nav" aria-label="Разделы Кутно">
           ${[["kitchen", "Кухня"], ["catalog", "База"], ["swipe", "АМ ❤️"], ["favorites", `Избранное${favoriteRecipes.length ? ` · ${favoriteRecipes.length}` : ""}`]].map(([id, label]) => `<button class="${currentView === id ? "active" : ""}" data-view="${id}">${label}</button>`).join("")}
         </nav>
