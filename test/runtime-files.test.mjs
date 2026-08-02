@@ -8,6 +8,7 @@ const runtimeFiles = [
   "worker/entry.js",
   "worker/matching-entry.js",
   "src/ingredient-semantics.js",
+  "src/ingredient-semantics-v2.js",
   "src/kutno-bridge.inject.js",
   "src/matching-engine.inject.js",
   "src/matching-fixes.inject.js",
@@ -47,4 +48,5 @@ test("расширенные Worker-слои делегируют основно
   assert.match(featureWorker, /shared_recipes/);
   assert.match(matchingWorker, /return featureWorker\.fetch\(request, env, ctx\)/);
   assert.match(matchingWorker, /allow-one-purchase/);
+  assert.match(matchingWorker, /ingredient-semantics-v2/);
 });
