@@ -60,7 +60,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
   justify-self: start;
   cursor: pointer;
 }
-.wordmark-symbol { display: block; width: 29px; height: 29px; }
+.wordmark-symbol { display: block; width: 24px; height: 24px; }
 .wordmark-lettering { display: block; width: auto; height: 31px; }
 
 .header-note {
@@ -697,11 +697,11 @@ legend { margin-bottom: 12px; }
   :root { --display-title-size: clamp(44px, 12vw, 50px); }
   .page-shell { width: 100%; padding: 0 16px; }
   .site-header { min-height: 80px; grid-template-columns: 1fr auto; }
-  .header-nav { grid-column: 1 / -1; grid-row: 2; width: calc(100% + 32px); margin-left: -16px; justify-content: flex-start; overflow-x: auto; padding: 9px 16px 11px; border-top: 1px solid var(--line); scrollbar-width: none; }
+  .header-nav { grid-column: 1 / -1; grid-row: 2; width: calc(100% + 32px); margin: 12px 0 0 -16px; justify-content: flex-start; overflow-x: auto; padding: 9px 16px 11px; border-top: 1px solid var(--line); scrollbar-width: none; }
   .header-nav::-webkit-scrollbar { display: none; }
   .header-nav button { flex: 0 0 auto; }
   .wordmark { gap: 7px; }
-  .wordmark-symbol { width: 25px; height: 25px; }
+  .wordmark-symbol { width: 21px; height: 21px; }
   .wordmark-lettering { height: 27px; }
   .header-actions { gap: 0; }
   .header-clear { display: none; }
