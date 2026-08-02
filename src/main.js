@@ -1147,17 +1147,18 @@ function renderSwipeView() {
   if (catalogError) return `<section class="swipe-page"><div class="swipe-heading"><p class="eyebrow">Выбирать можно быстрее</p><h1>АМ <span class="am-heart">❤️</span></h1><button class="archive-retry" data-action="load-catalog">Попробовать ещё раз</button></div></section>`;
   const recipe = swipeRecipes[swipeIndex];
   const nextRecipe = swipeRecipes[swipeIndex + 1];
+  const hasSkippedRecipes = swipeHistory.some((item) => item?.action === "skip");
   return `<section class="swipe-page" aria-labelledby="swipe-title">
     <header class="swipe-heading">
       <p class="eyebrow">Влево — пропустить · вправо — сохранить</p>
       <h1 id="swipe-title">АМ <span class="am-heart">❤️</span></h1>
-      <p>${state.ingredients.length ? "Сначала показываем блюда, которые подходят к вашим продуктам и настройкам кухни." : "Можно нажимать кнопки снизу. Название открывает полный рецепт."}</p>
+      <p>Лента для открытий: продукты и настройки кухни здесь не ограничивают выбор. Название открывает полный рецепт.</p>
       <figure class="section-illustration swipe-illustration" aria-hidden="true">
         <img src="/illustrations/am-heart-hero.webp" alt="">
       </figure>
     </header>
     <div class="swipe-stage">
-      ${recipe ? `${nextRecipe ? renderSwipeCard(nextRecipe, "behind") : ""}${renderSwipeCard(recipe)}` : `<div class="swipe-finished"><span>Колода закончилась</span><h2>Вы посмотрели все рецепты</h2><p>Сохранённые блюда уже лежат в избранном. Пропущенные можно вернуть.</p><button data-action="restart-swipe">Показать заново</button></div>`}
+      ${recipe ? `${nextRecipe ? renderSwipeCard(nextRecipe, "behind") : ""}${renderSwipeCard(recipe)}` : `<div class="swipe-finished"><span>Колода закончилась</span><h2>Вы посмотрели все новые рецепты</h2><p>Сохранённые блюда уже лежат в избранном.${hasSkippedRecipes ? " Пропущенные можно вернуть." : " За полной коллекцией можно зайти в базу."}</p>${hasSkippedRecipes ? `<button data-action="restart-swipe">Вернуть пропущенные</button>` : `<button data-view="catalog">Открыть базу</button>`}</div>`}
     </div>
     ${recipe ? `<div class="swipe-controls"><button class="swipe-no" data-swipe="left" aria-label="Пропустить рецепт"><span>←</span> Пропустить</button><button class="swipe-yes" data-swipe="right" aria-label="Добавить рецепт в избранное">Сохранить <span>♥</span></button></div>` : ""}
   </section>`;
@@ -1180,13 +1181,20 @@ function renderFavoritesView() {
 
 function resetSwipeDeck() {
   const skippedIds = new Set(swipeHistory.filter((item) => item?.action === "skip").map((item) => item.id));
-  const maxMissing = state.searchMode === "plus-one" ? 1 : 0;
-  const base = catalogRecipes.filter((recipe) => recipe.course !== "соус")
-    .filter((recipe) => !state.maxMinutes || Number(recipe.minutes) <= Number(state.maxMinutes))
-    .filter((recipe) => state.course === "все" || recipe.course === state.course || (state.course === "перекус" && ["закуска", "салат"].includes(recipe.course)))
-    .filter((recipe) => !skippedIds.has(recipeId(recipe)));
-  const matched = state.ingredients.length ? base.filter((recipe) => catalogMissingIngredients(recipe).length <= maxMissing) : base;
-  swipeRecipes = matched.length ? matched : base;
+  const savedIds = new Set(favoriteRecipes.map((recipe) => recipeId(recipe)));
+  const cookedIds = new Set(cookingHistory.map((item) => item?.id).filter(Boolean));
+  const likedIds = new Set(cookingHistory.filter((item) => item?.rating === "liked").map((item) => item.id));
+  const dislikedIds = new Set(cookingHistory.filter((item) => item?.rating === "disliked").map((item) => item.id));
+  const positiveExamples = [
+    ...favoriteRecipes,
+    ...catalogRecipes.filter((recipe) => likedIds.has(recipeId(recipe))),
+  ];
+  const negativeExamples = catalogRecipes.filter((recipe) => dislikedIds.has(recipeId(recipe)));
+  swipeRecipes = catalogRecipes
+    .filter((recipe) => recipe.course !== "соус")
+    .filter((recipe) => !skippedIds.has(recipeId(recipe)))
+    .filter((recipe) => !savedIds.has(recipeId(recipe)))
+    .filter((recipe) => !cookedIds.has(recipeId(recipe)));
   const random = new Uint32Array(1);
   for (let index = swipeRecipes.length - 1; index > 0; index -= 1) {
     crypto.getRandomValues(random);
@@ -1194,14 +1202,12 @@ function resetSwipeDeck() {
     [swipeRecipes[index], swipeRecipes[target]] = [swipeRecipes[target], swipeRecipes[index]];
   }
   swipeRecipes.sort((first, second) => {
-    const firstRecord = cookingRecord(first);
-    const secondRecord = cookingRecord(second);
-    const score = (recipe, record) => recipePriorityScore(recipe) * 20
-      - catalogMissingIngredients(recipe).length * 8
-      + Number(difficultyValue(recipe.difficulty) === state.difficulty) * 4
-      + Number(record?.rating === "liked") * 12
-      - Number(record?.rating === "disliked") * 40;
-    return score(second, secondRecord) - score(first, firstRecord);
+    const similarity = (recipe, examples) => examples.reduce((score, example) => score
+      + Number(recipe.cuisine && recipe.cuisine === example.cuisine) * 5
+      + Number(recipe.course && recipe.course === example.course) * 2
+      + Number(recipe.protein && recipe.protein === example.protein), 0);
+    const score = (recipe) => similarity(recipe, positiveExamples) - similarity(recipe, negativeExamples);
+    return score(second) - score(first);
   });
   swipeIndex = 0;
 }
@@ -1863,7 +1869,6 @@ app.addEventListener("click", (event) => {
     hasMoreRecipes = false;
     saveState();
     target.parentElement?.querySelectorAll("button").forEach((button) => button.classList.toggle("active", button === target));
-    if (catalogRecipes.length) resetSwipeDeck();
   }
   if (target.dataset.maxMinutes !== undefined) {
     state.maxMinutes = Number(target.dataset.maxMinutes) || 0;
@@ -1871,7 +1876,6 @@ app.addEventListener("click", (event) => {
     hasMoreRecipes = false;
     saveState();
     target.parentElement?.querySelectorAll("button").forEach((button) => button.classList.toggle("active", button === target));
-    if (catalogRecipes.length) resetSwipeDeck();
   }
   if (target.dataset.kitchenCourse) {
     state.course = target.dataset.kitchenCourse;
@@ -1879,7 +1883,6 @@ app.addEventListener("click", (event) => {
     hasMoreRecipes = false;
     saveState();
     target.parentElement?.querySelectorAll("button").forEach((button) => button.classList.toggle("active", button === target));
-    if (catalogRecipes.length) resetSwipeDeck();
   }
   if (target.dataset.portions) {
     state.portions = Math.min(8, Math.max(1, state.portions + Number(target.dataset.portions)));
