@@ -6,9 +6,24 @@
   let pending = null;
 
   function requestDetails(input, init = {}) {
-    const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url, location.href);
-    const method = String(init.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
-    return { url, method };
+    let method = String(init.method || "GET").toUpperCase();
+    let pathname = "";
+    try {
+      if (typeof Request !== "undefined" && input instanceof Request) {
+        method = String(init.method || input.method || "GET").toUpperCase();
+        pathname = new URL(input.url, location.origin).pathname;
+      } else {
+        const raw = typeof input === "string"
+          ? input
+          : typeof URL !== "undefined" && input instanceof URL
+            ? input.href
+            : String(input?.url || "");
+        pathname = raw ? new URL(raw, location.origin).pathname : "";
+      }
+    } catch {
+      pathname = "";
+    }
+    return { pathname, method };
   }
 
   function sendPending() {
@@ -22,8 +37,8 @@
   }
 
   window.fetch = function throttledFetch(input, init = {}) {
-    const { url, method } = requestDetails(input, init);
-    if (url.pathname !== "/api/feature-state" || method !== "PUT") return originalFetch(input, init);
+    const { pathname, method } = requestDetails(input, init);
+    if (pathname !== "/api/feature-state" || method !== "PUT") return originalFetch(input, init);
 
     const elapsed = Date.now() - lastSentAt;
     if (!timer && elapsed >= interval) {
