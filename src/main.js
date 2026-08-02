@@ -738,7 +738,7 @@ function render({ preserveScroll = true } = {}) {
           <p>Подбирает блюда из продуктов, которые уже есть дома, с учётом доступной техники, сложности и числа порций. Рецепты из базы и новые варианты проверяются перед показом.</p>
         </section>
         <div class="footer-bottom">
-          <a class="footer-feedback" href="https://t.me/oskrenh" target="_blank" rel="noopener noreferrer">Обратная связь <span aria-hidden="true">↗</span></a>
+          <a class="footer-feedback" href="https://t.me/oskrenh" target="_blank" rel="noopener noreferrer">Обратная связь <span class="footer-arrow" aria-hidden="true"></span></a>
           <span class="footer-copyright">© ${new Date().getFullYear()} Кутно</span>
         </div>
       </footer>
