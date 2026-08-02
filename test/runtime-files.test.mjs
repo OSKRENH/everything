@@ -33,7 +33,7 @@ test("runtime-файлы Кутно проходят синтаксическу�
   }
 });
 
-test("сборочный мост подключает API состояния, подбор и плавный каталог", () => {
+test("сборочный мост подключает прямую, устойчивую и плавную загрузку каталога", () => {
   const bridge = readFileSync("src/kutno-bridge.inject.js", "utf8");
   const matching = readFileSync("src/matching-engine.inject.js", "utf8");
   const reset = readFileSync("src/fetch-reset.inject.js", "utf8");
@@ -52,6 +52,11 @@ test("сборочный мост подключает API состояния, �
   assert.match(reset, /window\.fetch = async function kutnoSafeMatchingFetch/);
   assert.match(fixes, /loadCatalog\(true\)/);
   assert.match(fixes, /catch\s*\{\s*pathname = ""/);
+  assert.match(performance, /catalogDirectFetch/);
+  assert.match(performance, /kutnoFetchBeforeMatching/);
+  assert.match(performance, /requestCatalogDirectly/);
+  assert.match(performance, /localCatalogFallback/);
+  assert.match(performance, /catalogUsingFallback/);
   assert.match(performance, /CATALOG_INITIAL_SIZE = 5/);
   assert.match(performance, /CATALOG_INCREMENT = 1/);
   assert.match(performance, /CATALOG_RETRY_COUNT = 3/);
