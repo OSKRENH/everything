@@ -1,0 +1,134 @@
+.matching-group-more {
+  opacity: 1;
+}
+
+.catalog-load-more {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  margin: 8px 0 44px;
+  padding: 0 16px;
+  color: var(--ink);
+  font-family: "Golos Text", Arial, sans-serif;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  cursor: pointer;
+}
+
+.catalog-load-more small {
+  color: var(--soft);
+  font-size: 9px;
+  font-weight: 400;
+}
+
+@media (max-width: 700px) {
+  #app {
+    overflow: visible;
+  }
+
+  .catalog-grid {
+    display: block;
+    border: 0;
+  }
+
+  .catalog-grid .matching-group {
+    width: 100%;
+    margin: 0 0 30px;
+  }
+
+  .catalog-grid .matching-group > header {
+    display: block;
+    margin: 0;
+    padding: 18px 0 15px;
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .catalog-grid .matching-group > header > div {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+  }
+
+  .catalog-grid .matching-group > header span {
+    width: auto;
+    padding-top: 5px;
+    flex: none;
+  }
+
+  .catalog-grid .matching-group > header h3 {
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+    font-size: clamp(34px, 10.4vw, 42px) !important;
+    line-height: .98;
+    letter-spacing: -.045em;
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .catalog-grid .matching-group > header p {
+    max-width: none;
+    margin: 9px 0 0 40px;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .catalog-grid .matching-group-grid {
+    display: block;
+  }
+
+  .catalog-grid .catalog-card {
+    min-height: 0 !important;
+    padding: 22px 0 26px !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--ink) !important;
+  }
+
+  .catalog-grid .catalog-card-index {
+    margin-bottom: 0;
+  }
+
+  .catalog-grid .catalog-card-topline {
+    margin-top: 16px;
+  }
+
+  .catalog-grid .catalog-availability {
+    margin-top: 14px;
+  }
+
+  .catalog-grid .catalog-card h3 {
+    margin: 16px 0 12px;
+    font-size: clamp(36px, 10.5vw, 44px) !important;
+    line-height: 1;
+    overflow-wrap: break-word;
+  }
+
+  .catalog-grid .catalog-card-meta {
+    margin-top: 18px;
+    gap: 8px 12px;
+  }
+
+  .catalog-grid .catalog-card .catalog-ingredients {
+    margin-top: 20px;
+    padding-top: 12px;
+  }
+
+  .catalog-grid .catalog-open {
+    margin-top: 22px;
+  }
+
+  .catalog-load-more {
+    margin: 8px 0 34px;
+  }
+}
