@@ -14,6 +14,27 @@
   --section-lead-color: var(--soft);
 }
 
+/* Постоянно держим изображения загруженными и декодированными. */
+.illustration-preload-cache {
+  position: fixed;
+  left: -10px;
+  top: -10px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: .001;
+  pointer-events: none;
+  contain: strict;
+}
+
+.illustration-preload-cache img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 1px;
+  height: 1px;
+}
+
 /* Одинаковая типографика заголовков во всех четырёх разделах. */
 .intro-copy h1,
 .archive-heading h1,
@@ -87,6 +108,11 @@
 .favorites-list-illustration {
   margin-right: auto;
   margin-left: auto;
+}
+
+/* В пустом избранном переход в АМ больше не показываем. */
+.favorites-empty .favorites-copy > button {
+  display: none;
 }
 
 @media (max-width: 700px) {
