@@ -1,11 +1,24 @@
 const matchingBaseIngredientsBeforeRussiaDefaults = matchingBaseIngredients;
+
+function sameNormalizedBaseSet(values, expected) {
+  const normalized = values.map(semanticNormalizeIngredient).sort();
+  const target = expected.map(semanticNormalizeIngredient).sort();
+  return normalized.length === target.length && normalized.every((item, index) => item === target[index]);
+}
+
 matchingBaseIngredients = function russianBaseIngredients() {
   const values = matchingBaseIngredientsBeforeRussiaDefaults()
     .filter((item) => !semanticNormalizeIngredient(item).includes("оливков"));
-  const next = values.length ? values : [...SEMANTIC_DEFAULT_BASE_INGREDIENTS];
+  const isPreviousDefault = [
+    ["соль", "вода", "растительное масло"],
+    ["соль", "вода", "растительное масло", "чёрный перец"],
+  ].some((preset) => sameNormalizedBaseSet(values, preset));
+  const next = isPreviousDefault || !values.length
+    ? [...SEMANTIC_DEFAULT_BASE_INGREDIENTS]
+    : values;
   try {
     const stored = JSON.parse(localStorage.getItem(MATCHING_BASE_KEY));
-    if (Array.isArray(stored) && JSON.stringify(stored) !== JSON.stringify(next)) {
+    if (!Array.isArray(stored) || JSON.stringify(stored) !== JSON.stringify(next)) {
       localStorage.setItem(MATCHING_BASE_KEY, JSON.stringify(next));
     }
   } catch {
