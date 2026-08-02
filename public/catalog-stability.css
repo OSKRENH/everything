@@ -2,6 +2,39 @@
   opacity: 1;
 }
 
+@keyframes catalog-card-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes catalog-group-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.catalog-card-entering {
+  animation: catalog-card-reveal .48s cubic-bezier(.22, 1, .36, 1) both;
+  transform-origin: top center;
+  will-change: opacity, transform;
+}
+
+.matching-group-header-entering {
+  animation: catalog-group-reveal .36s cubic-bezier(.22, 1, .36, 1) both;
+  will-change: opacity, transform;
+}
+
 .catalog-scroll-sentinel {
   grid-column: 1 / -1;
   width: 100%;
@@ -144,5 +177,12 @@
 
   .catalog-grid .catalog-open {
     margin-top: 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog-card-entering,
+  .matching-group-header-entering {
+    animation: none;
   }
 }
