@@ -220,11 +220,19 @@ h1 { font-size: var(--display-title-size); line-height: .91; }
 .selected-ingredients { min-height: 34px; margin-bottom: 13px; }
 .selected-ingredients.is-collapsed { max-height: 75px; overflow: hidden; }
 .selected-ingredients .ingredient-tag[hidden] { display: none; }
-.ingredients-toggle {
+.quick-row[hidden] { display: none; }
+.ingredient-list-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: -4px 0 14px;
+}
+.ingredients-toggle, .ingredients-clear {
   display: block;
   border: 0;
   background: transparent;
-  margin: -4px 0 14px;
+  margin: 0;
   padding: 0;
   color: var(--soft);
   font-size: 10px;
@@ -234,7 +242,8 @@ h1 { font-size: var(--display-title-size); line-height: .91; }
   letter-spacing: .06em;
   cursor: pointer;
 }
-.ingredients-toggle:hover { color: var(--ink); }
+.ingredients-clear { text-decoration-style: dotted; }
+.ingredients-toggle:hover, .ingredients-clear:hover { color: var(--ink); }
 .empty-line { color: var(--soft); font-size: 13px; padding: 7px 0; }
 .ingredient-tag {
   border: 1px solid var(--line);
@@ -483,6 +492,9 @@ legend { margin-bottom: 12px; }
 .auth-primary:disabled { opacity: .5; cursor: wait; }
 .auth-secondary { margin-top: 10px; background: transparent; border: 1px solid var(--line); }
 .auth-error { margin: 16px 0 0; color: var(--accent); font-size: 12px; line-height: 1.45; }
+.confirm-card { width: min(100%, 540px); }
+.confirm-actions { display: grid; grid-template-columns: 1fr 1.35fr; gap: 10px; }
+.confirm-actions .auth-primary, .confirm-actions .auth-secondary { margin-top: 0; }
 .account-card h2 { font-size: 60px; }
 .account-summary { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 18px 0; margin: 30px 0; color: var(--soft); font-size: 12px; line-height: 1.7; }
 
@@ -669,6 +681,9 @@ footer span:first-child { font-family: "Prata", Georgia, serif; font-size: 18px;
   .auth-card { width: 100%; max-height: calc(100dvh - 20px); padding: 28px 22px 26px; }
   .auth-card .eyebrow { margin-bottom: 32px; }
   .auth-card h2, .account-card h2 { font-size: 43px; }
+  .confirm-actions { grid-template-columns: 1fr; }
+  .confirm-actions .auth-primary { grid-row: 1; }
+  .confirm-actions .auth-secondary { grid-row: 2; }
   .archive-page, .swipe-page { min-height: calc(100dvh - 126px); padding: 44px 0 75px; }
   .archive-heading { grid-template-columns: 1fr; gap: 30px; padding-bottom: 42px; }
   .archive-visual { gap: 24px; }
