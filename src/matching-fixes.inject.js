@@ -1,3 +1,41 @@
+const matchingBaseIngredientsBeforeRussiaDefaults = matchingBaseIngredients;
+matchingBaseIngredients = function russianBaseIngredients() {
+  const values = matchingBaseIngredientsBeforeRussiaDefaults()
+    .filter((item) => !semanticNormalizeIngredient(item).includes("оливков"));
+  const next = values.length ? values : [...SEMANTIC_DEFAULT_BASE_INGREDIENTS];
+  try {
+    const stored = JSON.parse(localStorage.getItem(MATCHING_BASE_KEY));
+    if (Array.isArray(stored) && JSON.stringify(stored) !== JSON.stringify(next)) {
+      localStorage.setItem(MATCHING_BASE_KEY, JSON.stringify(next));
+    }
+  } catch {
+    localStorage.setItem(MATCHING_BASE_KEY, JSON.stringify(next));
+  }
+  return next;
+};
+
+const ensureMatchingBaseDialogBeforeRussiaDefaults = ensureMatchingBaseDialog;
+ensureMatchingBaseDialog = function russianBaseDialog() {
+  ensureMatchingBaseDialogBeforeRussiaDefaults();
+  const options = document.querySelector(".matching-base-options");
+  if (!options) return;
+
+  [...options.querySelectorAll("label")].forEach((label) => {
+    const value = label.querySelector("input")?.value || "";
+    if (semanticNormalizeIngredient(value).includes("оливков")) label.remove();
+  });
+
+  const selected = new Set(matchingBaseIngredients().map(semanticNormalizeIngredient));
+  ["чёрный перец", "пшеничная мука"].forEach((item) => {
+    const exists = [...options.querySelectorAll("input")]
+      .some((input) => semanticNormalizeIngredient(input.value) === semanticNormalizeIngredient(item));
+    if (exists) return;
+    const label = document.createElement("label");
+    label.innerHTML = `<input type="checkbox" value="${escapeHtml(item)}" ${selected.has(semanticNormalizeIngredient(item)) ? "checked" : ""}><span>${escapeHtml(item)}</span>`;
+    options.append(label);
+  });
+};
+
 const matchingEnhancedUpdateCatalogResults = updateCatalogResults;
 updateCatalogResults = function stableMatchingCatalogResults() {
   const count = document.querySelector(".catalog-count");
@@ -54,6 +92,11 @@ window.fetch = async function matchingRefreshFetch(input, init = {}) {
   return response;
 };
 
+ensureMatchingBaseDialog();
 ensureManualEquipmentNote();
-new MutationObserver(() => requestAnimationFrame(ensureManualEquipmentNote))
+if (currentView === "kitchen") renderMainView();
+new MutationObserver(() => requestAnimationFrame(() => {
+  ensureMatchingBaseDialog();
+  ensureManualEquipmentNote();
+}))
   .observe(document.documentElement, { childList: true, subtree: true });
