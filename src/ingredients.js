@@ -165,3 +165,4 @@ export const ingredientCatalog = [
   "яйца",
   "ячневая крупа",
 ].sort((first, second) => first.localeCompare(second, "ru"));
+

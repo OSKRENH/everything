@@ -3,6 +3,8 @@ import { ingredientCatalog } from "./ingredients.js";
 
 const STORAGE_KEY = "kutno-kitchen-v2";
 const FAVORITES_KEY = "kutno-favorites-v1";
+const COOKING_HISTORY_KEY = "kutno-cooking-history-v1";
+const SWIPE_HISTORY_KEY = "kutno-swipe-history-v1";
 
 const quickIngredients = [
   "яйца",
@@ -28,14 +30,19 @@ const equipmentOptions = [
 
 const defaults = {
   ingredients: [],
+  priorityIngredients: [],
   equipment: ["pan", "pot"],
   difficulty: "легко",
   portions: 2,
+  searchMode: "strict",
+  maxMinutes: 0,
+  course: "все",
 };
 
 const fallbackRecipes = [
   {
     title: "Жареный рис с яйцом",
+    course: "основное",
     subtitle: "Быстрый ужин на одной сковороде",
     minutes: 20,
     difficulty: "очень просто",
@@ -58,6 +65,7 @@ const fallbackRecipes = [
   },
   {
     title: "Картофельная тортилья",
+    course: "завтрак",
     subtitle: "Испанский омлет без лишних продуктов",
     minutes: 35,
     difficulty: "обычно",
@@ -80,6 +88,7 @@ const fallbackRecipes = [
   },
   {
     title: "Курица с рисом",
+    course: "основное",
     subtitle: "Спокойный домашний ужин в одной кастрюле",
     minutes: 45,
     difficulty: "просто",
@@ -102,6 +111,7 @@ const fallbackRecipes = [
   },
   {
     title: "Паста с чесноком и сыром",
+    course: "основное",
     subtitle: "Минимальная версия aglio e olio",
     minutes: 18,
     difficulty: "очень просто",
@@ -124,6 +134,7 @@ const fallbackRecipes = [
   },
   {
     title: "Шакшука",
+    course: "завтрак",
     subtitle: "Яйца в густом томатном соусе",
     minutes: 25,
     difficulty: "просто",
@@ -146,6 +157,7 @@ const fallbackRecipes = [
   },
   {
     title: "Гречка с грибами",
+    course: "основное",
     subtitle: "Крупа, которой не нужен сложный соус",
     minutes: 30,
     difficulty: "просто",
@@ -165,6 +177,71 @@ const fallbackRecipes = [
       "Соедините с гречкой, приправьте и прогрейте 2 минуты.",
     ],
     tip: "Не солите грибы в начале — так они лучше подрумянятся.",
+  },
+  {
+    title: "Яичница",
+    course: "завтрак",
+    subtitle: "Самый короткий честный рецепт из яиц",
+    minutes: 8,
+    difficulty: "легко",
+    required: ["яйца"],
+    equipment: ["Сковорода"],
+    why: "Можно приготовить сразу, не добавляя случайных продуктов.",
+    ingredients: [{ name: "яйца", amount: "3 шт." }, { name: "масло", amount: "1 ч. л." }, { name: "соль", amount: "по вкусу" }],
+    steps: ["Разогрейте масло на сковороде на среднем огне 1 минуту.", "Разбейте яйца на сковороду, посолите и готовьте 3–5 минут, пока белок полностью не схватится.", "Снимите яичницу со сковороды и сразу подавайте."],
+    tip: "Для мягкого желтка не накрывайте сковороду крышкой.",
+  },
+  {
+    title: "Отварные яйца",
+    course: "завтрак",
+    subtitle: "Базовый вариант без сковороды",
+    minutes: 12,
+    difficulty: "легко",
+    required: ["яйца"],
+    equipment: ["Кастрюля"],
+    why: "Подходит, если дома есть только яйца и базовые продукты.",
+    ingredients: [{ name: "яйца", amount: "3 шт." }, { name: "вода", amount: "500 мл" }, { name: "соль", amount: "по вкусу" }],
+    steps: ["Положите яйца в кастрюлю и залейте холодной водой так, чтобы вода покрывала яйца.", "Доведите воду до кипения и варите яйца 7–9 минут на среднем огне.", "Слейте горячую воду, охладите яйца под холодной водой и очистите перед подачей."],
+    tip: "Яйца легче чистятся после полного охлаждения.",
+  },
+  {
+    title: "Жареный картофель",
+    course: "основное",
+    subtitle: "Румяный картофель без дополнительных покупок",
+    minutes: 28,
+    difficulty: "легко",
+    required: ["картофель"],
+    equipment: ["Сковорода"],
+    why: "Один продукт превращается в законченное горячее блюдо.",
+    ingredients: [{ name: "картофель", amount: "500 г" }, { name: "масло", amount: "1,5 ст. л." }, { name: "соль", amount: "по вкусу" }],
+    steps: ["Очистите картофель, нарежьте одинаковыми брусочками и обсушите полотенцем.", "Разогрейте масло на сковороде, выложите картофель одним слоем и жарьте 18–22 минуты на среднем огне, переворачивая каждые 4–5 минут.", "Посолите готовый картофель, снимите со сковороды и подавайте горячим."],
+    tip: "Сухая поверхность картофеля помогает получить корочку.",
+  },
+  {
+    title: "Рассыпчатый рис",
+    course: "основное",
+    subtitle: "Простой рис на воде",
+    minutes: 25,
+    difficulty: "легко",
+    required: ["рис"],
+    equipment: ["Кастрюля"],
+    why: "Надёжный базовый вариант, когда других продуктов нет.",
+    ingredients: [{ name: "рис", amount: "180 г" }, { name: "вода", amount: "360 мл" }, { name: "соль", amount: "по вкусу" }],
+    steps: ["Промойте рис холодной водой до прозрачности стекающей воды.", "Положите рис в кастрюлю, влейте воду, посолите и доведите до кипения.", "Уменьшите огонь до слабого, накройте кастрюлю и варите 15 минут, затем снимите с огня и оставьте под крышкой ещё 5 минут."],
+    tip: "Не перемешивайте рис во время варки.",
+  },
+  {
+    title: "Макароны с маслом",
+    course: "основное",
+    subtitle: "Базовая паста без готового соуса",
+    minutes: 15,
+    difficulty: "легко",
+    required: ["макароны"],
+    equipment: ["Кастрюля"],
+    why: "Быстрый и предсказуемый вариант из одного основного продукта.",
+    ingredients: [{ name: "макароны", amount: "200 г" }, { name: "вода", amount: "1 л" }, { name: "масло", amount: "1 ст. л." }, { name: "соль", amount: "по вкусу" }],
+    steps: ["Налейте воду в кастрюлю, посолите и доведите до активного кипения.", "Опустите макароны в кипящую воду и варите по времени на упаковке до готовности.", "Слейте воду, добавьте масло к горячим макаронам, перемешайте и подавайте."],
+    tip: "Оставьте пару ложек воды от варки, если макароны кажутся сухими.",
   },
 ];
 
@@ -224,6 +301,12 @@ function loadState() {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     const next = { ...defaults, ...saved };
     if (!["легко", "обычно", "сложно"].includes(next.difficulty)) next.difficulty = defaults.difficulty;
+    if (!["strict", "plus-one"].includes(next.searchMode)) next.searchMode = defaults.searchMode;
+    if (![0, 15, 30, 60].includes(Number(next.maxMinutes))) next.maxMinutes = defaults.maxMinutes;
+    if (!["все", "завтрак", "суп", "основное", "перекус"].includes(next.course)) next.course = defaults.course;
+    next.priorityIngredients = Array.isArray(next.priorityIngredients)
+      ? next.priorityIngredients.filter((item) => next.ingredients?.includes(item)).slice(0, 3)
+      : [];
     return next;
   } catch {
     return { ...defaults };
@@ -239,15 +322,33 @@ function loadFavoriteRecipes() {
   }
 }
 
+function loadLocalList(key, limit = 200) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(key));
+    return Array.isArray(saved) ? saved.slice(0, limit) : [];
+  } catch {
+    return [];
+  }
+}
+
 let state = loadState();
 let recipes = [];
 let favoriteRecipes = loadFavoriteRecipes();
+let cookingHistory = loadLocalList(COOKING_HISTORY_KEY);
+let swipeHistory = loadLocalList(SWIPE_HISTORY_KEY, 500);
 let ingredientsExpanded = false;
 let clearProductsConfirmationOpen = false;
 let isLoading = false;
 let isLoadingMore = false;
 let loadMoreMessage = "";
+let hasMoreRecipes = false;
 let activeRecipe = null;
+let cookingMode = false;
+let cookingStep = 0;
+let cookingTimer = null;
+let cookingTimerEndsAt = 0;
+let cookingTimerInterval = null;
+let cookingWakeLock = null;
 let generationError = "";
 let authUser = null;
 let authModalOpen = false;
@@ -269,6 +370,8 @@ let catalogCuisine = "все";
 let catalogDifficulty = "все";
 let catalogCourse = "все";
 let catalogProtein = "все";
+let catalogAvailability = "все";
+let catalogMaxMinutes = 0;
 let catalogQuery = "";
 let swipeIndex = 0;
 let swipeRecipes = [];
@@ -287,6 +390,40 @@ function difficultyValue(value) {
   if (/слож|труд/.test(normalized)) return "сложно";
   if (/обыч|сред/.test(normalized)) return "обычно";
   return "легко";
+}
+
+function ingredientMatches(first = "", second = "") {
+  const left = normalize(String(first)).replace(/[^а-яa-z0-9]+/gu, " ").trim();
+  const right = normalize(String(second)).replace(/[^а-яa-z0-9]+/gu, " ").trim();
+  if (!left || !right) return false;
+  return left === right || left.includes(right) || right.includes(left);
+}
+
+function catalogMissingIngredients(recipe) {
+  return (Array.isArray(recipe?.ingredients) ? recipe.ingredients : [])
+    .filter((item) => !item?.pantry)
+    .filter((item) => !state.ingredients.some((owned) => [item.name, ...(item.aliases || [])].some((candidate) => ingredientMatches(candidate, owned))))
+    .map((item) => item.name);
+}
+
+function recipePriorityScore(recipe) {
+  return state.priorityIngredients.reduce((score, ingredient) => score + Number((recipe.ingredients || [])
+    .some((item) => [item.name, ...(item.aliases || [])].some((candidate) => ingredientMatches(candidate, ingredient)))), 0);
+}
+
+function cookingRecord(recipe) {
+  const id = recipeId(recipe);
+  return cookingHistory.find((item) => item?.id === id) || null;
+}
+
+function saveCookingHistory() {
+  localStorage.setItem(COOKING_HISTORY_KEY, JSON.stringify(cookingHistory.slice(0, 200)));
+  if (authUser) syncKitchen();
+}
+
+function saveSwipeHistory() {
+  localStorage.setItem(SWIPE_HISTORY_KEY, JSON.stringify(swipeHistory.slice(0, 500)));
+  if (authUser) syncKitchen();
 }
 
 function recipeId(recipe) {
@@ -324,9 +461,15 @@ function saveState() {
 function kitchenPayload() {
   return {
     ingredients: state.ingredients,
+    priorityIngredients: state.priorityIngredients,
     equipment: state.equipment,
     difficulty: state.difficulty,
     portions: state.portions,
+    searchMode: state.searchMode,
+    maxMinutes: state.maxMinutes,
+    course: state.course,
+    cookingHistory: cookingHistory.slice(0, 200),
+    swipeHistory: swipeHistory.slice(0, 500),
   };
 }
 
@@ -346,15 +489,29 @@ async function syncKitchen() {
 
 function applyRemoteKitchen(kitchen) {
   if (!kitchen || typeof kitchen !== "object") return false;
-  const hasRemoteData = Array.isArray(kitchen.ingredients) && kitchen.ingredients.length > 0;
+  const hasRemoteData = (Array.isArray(kitchen.ingredients) && kitchen.ingredients.length > 0)
+    || (Array.isArray(kitchen.cookingHistory) && kitchen.cookingHistory.length > 0)
+    || (Array.isArray(kitchen.swipeHistory) && kitchen.swipeHistory.length > 0);
   if (!hasRemoteData) return false;
   state = {
     ...state,
     ingredients: kitchen.ingredients.map(normalize).filter(Boolean),
+    priorityIngredients: Array.isArray(kitchen.priorityIngredients) ? kitchen.priorityIngredients.map(normalize).filter(Boolean).slice(0, 3) : [],
     equipment: Array.isArray(kitchen.equipment) ? kitchen.equipment : state.equipment,
     difficulty: ["легко", "обычно", "сложно"].includes(kitchen.difficulty) ? kitchen.difficulty : state.difficulty,
     portions: Number(kitchen.portions) || state.portions,
+    searchMode: ["strict", "plus-one"].includes(kitchen.searchMode) ? kitchen.searchMode : state.searchMode,
+    maxMinutes: [0, 15, 30, 60].includes(Number(kitchen.maxMinutes)) ? Number(kitchen.maxMinutes) : state.maxMinutes,
+    course: ["все", "завтрак", "суп", "основное", "перекус"].includes(kitchen.course) ? kitchen.course : state.course,
   };
+  if (Array.isArray(kitchen.cookingHistory)) {
+    cookingHistory = kitchen.cookingHistory.slice(0, 200);
+    localStorage.setItem(COOKING_HISTORY_KEY, JSON.stringify(cookingHistory));
+  }
+  if (Array.isArray(kitchen.swipeHistory)) {
+    swipeHistory = kitchen.swipeHistory.slice(0, 500);
+    localStorage.setItem(SWIPE_HISTORY_KEY, JSON.stringify(swipeHistory));
+  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   return true;
 }
@@ -651,6 +808,10 @@ function renderKitchenView() {
               ${ingredientsCollapsible ? `<button class="ingredients-toggle" data-action="toggle-ingredients" aria-expanded="${ingredientsExpanded}">${ingredientsExpanded ? "Свернуть" : `Показать все · ${state.ingredients.length}`}</button>` : ""}
               <button class="ingredients-clear" data-action="request-clear-products">Очистить продукты</button>
             </div>` : ""}
+            ${state.ingredients.length > 1 ? `<div class="priority-products ${ingredientsCollapsed ? "is-collapsed" : ""}">
+              <span>Использовать сначала</span>
+              <div>${sortedIngredients.map((item) => `<button class="${state.priorityIngredients.includes(item) ? "active" : ""}" data-priority-ingredient="${escapeHtml(item)}" aria-pressed="${state.priorityIngredients.includes(item)}">${escapeHtml(item)}</button>`).join("")}</div>
+            </div>` : ""}
             <div class="quick-row ${ingredientsCollapsed ? "is-collapsed" : ""}" aria-label="Частые продукты" aria-hidden="${ingredientsCollapsed}">
               ${quickIngredients.filter((item) => !state.ingredients.includes(normalize(item))).slice(0, 7).map((item) => `<button class="ingredient-tag" data-add-ingredient="${item}">+ ${item}</button>`).join("")}
             </div>
@@ -670,8 +831,33 @@ function renderKitchenView() {
           </div>
         </section>
 
-        <section class="form-section preferences-section">
+        <section class="form-section search-preferences-section">
           <div class="section-index">03</div>
+          <div class="section-content search-preferences-grid">
+            <fieldset>
+              <legend>Режим</legend>
+              <div class="segmented search-mode">
+                <button type="button" class="${state.searchMode === "strict" ? "active" : ""}" data-search-mode="strict">Без покупок</button>
+                <button type="button" class="${state.searchMode === "plus-one" ? "active" : ""}" data-search-mode="plus-one">Можно докупить 1</button>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Время</legend>
+              <div class="segmented">
+                ${[[0, "любое"], [15, "15 мин"], [30, "30 мин"], [60, "60 мин"]].map(([value, label]) => `<button type="button" class="${Number(state.maxMinutes) === value ? "active" : ""}" data-max-minutes="${value}">${label}</button>`).join("")}
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Что приготовить</legend>
+              <div class="segmented">
+                ${["все", "завтрак", "суп", "основное", "перекус"].map((value) => `<button type="button" class="${state.course === value ? "active" : ""}" data-kitchen-course="${value}">${value === "все" ? "любое" : value}</button>`).join("")}
+              </div>
+            </fieldset>
+          </div>
+        </section>
+
+        <section class="form-section preferences-section">
+          <div class="section-index">04</div>
           <div class="section-content preference-columns">
             <fieldset>
               <legend>Сложность</legend>
@@ -789,7 +975,7 @@ function renderResults() {
   if (!recipes.length) {
     if (generationError) {
       return `<section class="generation-error" id="results" aria-live="polite">
-        <span>Не получилось составить три честных рецепта</span>
+        <span>Для этого набора пока нет надёжного рецепта</span>
         <p>${escapeHtml(generationError)}</p>
         <button data-action="generate">Попробовать ещё раз</button>
       </section>`;
@@ -811,11 +997,11 @@ function renderResults() {
       </div>
       <div class="recipe-list">
         ${recipes.map((recipe, index) => renderRecipeCard(recipe, index, "recipes")).join("")}
-        <div class="recipe-list-actions">
-          <button class="load-more-recipes" data-action="load-more" ${isLoadingMore ? "disabled" : ""}>
+        <div class="recipe-list-actions ${hasMoreRecipes || isLoadingMore ? "" : "is-exhausted"}">
+          ${hasMoreRecipes || isLoadingMore ? `<button class="load-more-recipes" data-action="load-more" ${isLoadingMore ? "disabled" : ""}>
             <span>${isLoadingMore ? "Загружаем" : "Загрузить ещё"}</span>
             ${isLoadingMore ? renderPotLoader("pot-loader-small") : `<span aria-hidden="true">↓</span>`}
-          </button>
+          </button>` : `<p class="load-more-message" role="status">Для этого набора показаны все надёжные варианты.</p>`}
           ${loadMoreMessage ? `<p class="load-more-message" role="status">${escapeHtml(loadMoreMessage)}</p>` : ""}
         </div>
       </div>
@@ -860,17 +1046,25 @@ function filteredCatalogRecipes() {
     const difficultyMatches = catalogDifficulty === "все" || difficultyValue(recipe.difficulty) === catalogDifficulty;
     const courseMatches = catalogCourse === "все" || recipe.course === catalogCourse;
     const proteinMatches = catalogProtein === "все" || recipe.protein === catalogProtein;
+    const missingCount = catalogMissingIngredients(recipe).length;
+    const availabilityMatches = catalogAvailability === "все"
+      || (catalogAvailability === "ready" && missingCount === 0)
+      || (catalogAvailability === "one" && missingCount === 1);
+    const timeMatches = !catalogMaxMinutes || Number(recipe.minutes) <= catalogMaxMinutes;
     const searchable = [recipe.title, recipe.subtitle, recipe.cuisine, ...(recipe.ingredients || []).map((item) => item.name)].join(" ");
-    return cuisineMatches && difficultyMatches && courseMatches && proteinMatches && (!query || normalize(searchable).includes(query));
+    return cuisineMatches && difficultyMatches && courseMatches && proteinMatches && availabilityMatches && timeMatches && (!query || normalize(searchable).includes(query));
   });
 }
 
 function orderCatalogRecipes(recipesToOrder) {
-  return [...recipesToOrder].sort((first, second) => Number(first.course === "соус") - Number(second.course === "соус"));
+  return [...recipesToOrder].sort((first, second) => Number(first.course === "соус") - Number(second.course === "соус")
+    || catalogMissingIngredients(first).length - catalogMissingIngredients(second).length
+    || recipePriorityScore(second) - recipePriorityScore(first));
 }
 
 function renderCatalogCard(recipe, index) {
   const favorite = isFavorite(recipe);
+  const missing = catalogMissingIngredients(recipe);
   const ingredients = (recipe.ingredients || []).slice(0, 5).map((item) => escapeHtml(item.name));
   return `<article class="catalog-card">
     <div class="catalog-card-index">${String(index + 1).padStart(2, "0")}</div>
@@ -878,6 +1072,7 @@ function renderCatalogCard(recipe, index) {
       <span>${escapeHtml(`${recipe.flag || "🌍"} ${recipe.cuisine || "Мировая кухня"}`)}</span>
       <button class="favorite-toggle ${favorite ? "active" : ""}" data-toggle-favorite-source="catalog" data-recipe-index="${index}" aria-label="${favorite ? "Убрать из избранного" : "Сохранить в избранное"}">${favorite ? "♥" : "♡"}</button>
     </div>
+    ${state.ingredients.length ? `<div class="catalog-availability ${missing.length === 0 ? "ready" : missing.length === 1 ? "one" : "many"}">${missing.length === 0 ? "Можно приготовить сейчас" : missing.length === 1 ? `Не хватает: ${escapeHtml(missing[0])}` : `Не хватает продуктов: ${missing.length}`}</div>` : ""}
     <h3><button data-open-recipe="${index}" data-recipe-source="catalog">${escapeHtml(recipe.title)}</button></h3>
     <p>${escapeHtml(recipe.subtitle || "Классический рецепт")}</p>
     <div class="catalog-card-meta"><span>${escapeHtml(recipe.course || "основное")}</span><span>${escapeHtml(recipe.protein || "без мяса")}</span><span>${Number(recipe.minutes) || 30} мин</span><span>${escapeHtml(recipe.difficulty || "легко")}</span><span>≈ ${Number(recipe.nutrition?.calories) || 0} ккал</span></div>
@@ -923,6 +1118,8 @@ function renderCatalogView() {
       <div class="catalog-filter"><span>Сложность</span><div>${["все", "легко", "обычно", "сложно"].map((value) => `<button class="${catalogDifficulty === value ? "active" : ""}" data-catalog-difficulty="${value}">${value}</button>`).join("")}</div></div>
       <div class="catalog-filter"><span>Блюдо</span><div>${["все", "суп", "основное", "салат", "закуска", "завтрак", "выпечка", "соус"].map((value) => `<button class="${catalogCourse === value ? "active" : ""}" data-catalog-course="${value}">${value}</button>`).join("")}</div></div>
       <div class="catalog-filter"><span>Состав</span><div>${["все", "мясо", "рыба и морепродукты", "без мяса"].map((value) => `<button class="${catalogProtein === value ? "active" : ""}" data-catalog-protein="${value}">${value === "мясо" ? "с мясом" : value}</button>`).join("")}</div></div>
+      <div class="catalog-filter"><span>Мои продукты</span><div>${[["все", "все"], ["ready", "всё есть"], ["one", "не хватает 1"]].map(([value, label]) => `<button class="${catalogAvailability === value ? "active" : ""}" data-catalog-availability="${value}">${label}</button>`).join("")}</div></div>
+      <div class="catalog-filter"><span>Время</span><div>${[[0, "любое"], [15, "до 15 мин"], [30, "до 30 мин"], [60, "до часа"]].map(([value, label]) => `<button class="${catalogMaxMinutes === value ? "active" : ""}" data-catalog-max-minutes="${value}">${label}</button>`).join("")}</div></div>
       <div class="catalog-filter cuisine-filter"><span>Страна</span><div><button class="${catalogCuisine === "все" ? "active" : ""}" data-catalog-cuisine="все">все</button>${catalogCuisines().map((value) => `<button class="${catalogCuisine === value ? "active" : ""}" data-catalog-cuisine="${escapeHtml(value)}">${escapeHtml(cuisineLabel(value))}</button>`).join("")}</div></div>
     </div>
     <div class="catalog-count">Найдено — ${filtered.length.toString().padStart(2, "0")}</div>
@@ -954,13 +1151,13 @@ function renderSwipeView() {
     <header class="swipe-heading">
       <p class="eyebrow">Влево — пропустить · вправо — сохранить</p>
       <h1 id="swipe-title">АМ <span class="am-heart">❤️</span></h1>
-      <p>Можно нажимать кнопки снизу. Название открывает полный рецепт.</p>
+      <p>${state.ingredients.length ? "Сначала показываем блюда, которые подходят к вашим продуктам и настройкам кухни." : "Можно нажимать кнопки снизу. Название открывает полный рецепт."}</p>
       <figure class="section-illustration swipe-illustration" aria-hidden="true">
         <img src="/illustrations/am-heart-hero.webp" alt="">
       </figure>
     </header>
     <div class="swipe-stage">
-      ${recipe ? `${nextRecipe ? renderSwipeCard(nextRecipe, "behind") : ""}${renderSwipeCard(recipe)}` : `<div class="swipe-finished"><span>Колода закончилась</span><h2>Вы посмотрели все рецепты</h2><p>Сохранённые блюда уже лежат в избранном.</p><button data-action="restart-swipe">Начать заново</button></div>`}
+      ${recipe ? `${nextRecipe ? renderSwipeCard(nextRecipe, "behind") : ""}${renderSwipeCard(recipe)}` : `<div class="swipe-finished"><span>Колода закончилась</span><h2>Вы посмотрели все рецепты</h2><p>Сохранённые блюда уже лежат в избранном. Пропущенные можно вернуть.</p><button data-action="restart-swipe">Показать заново</button></div>`}
     </div>
     ${recipe ? `<div class="swipe-controls"><button class="swipe-no" data-swipe="left" aria-label="Пропустить рецепт"><span>←</span> Пропустить</button><button class="swipe-yes" data-swipe="right" aria-label="Добавить рецепт в избранное">Сохранить <span>♥</span></button></div>` : ""}
   </section>`;
@@ -982,13 +1179,30 @@ function renderFavoritesView() {
 }
 
 function resetSwipeDeck() {
-  swipeRecipes = catalogRecipes.filter((recipe) => recipe.course !== "соус");
+  const skippedIds = new Set(swipeHistory.filter((item) => item?.action === "skip").map((item) => item.id));
+  const maxMissing = state.searchMode === "plus-one" ? 1 : 0;
+  const base = catalogRecipes.filter((recipe) => recipe.course !== "соус")
+    .filter((recipe) => !state.maxMinutes || Number(recipe.minutes) <= Number(state.maxMinutes))
+    .filter((recipe) => state.course === "все" || recipe.course === state.course || (state.course === "перекус" && ["закуска", "салат"].includes(recipe.course)))
+    .filter((recipe) => !skippedIds.has(recipeId(recipe)));
+  const matched = state.ingredients.length ? base.filter((recipe) => catalogMissingIngredients(recipe).length <= maxMissing) : base;
+  swipeRecipes = matched.length ? matched : base;
   const random = new Uint32Array(1);
   for (let index = swipeRecipes.length - 1; index > 0; index -= 1) {
     crypto.getRandomValues(random);
     const target = random[0] % (index + 1);
     [swipeRecipes[index], swipeRecipes[target]] = [swipeRecipes[target], swipeRecipes[index]];
   }
+  swipeRecipes.sort((first, second) => {
+    const firstRecord = cookingRecord(first);
+    const secondRecord = cookingRecord(second);
+    const score = (recipe, record) => recipePriorityScore(recipe) * 20
+      - catalogMissingIngredients(recipe).length * 8
+      + Number(difficultyValue(recipe.difficulty) === state.difficulty) * 4
+      + Number(record?.rating === "liked") * 12
+      - Number(record?.rating === "disliked") * 40;
+    return score(second, secondRecord) - score(first, firstRecord);
+  });
   swipeIndex = 0;
 }
 
@@ -1025,7 +1239,7 @@ function setView(view) {
   }
   currentView = view;
   if (view === "swipe") {
-    if (catalogRecipes.length) resetSwipeDeck();
+    if (catalogRecipes.length && !swipeRecipes.length) resetSwipeDeck();
     swipeHintPending = true;
   }
   history.replaceState(null, "", view === "kitchen" ? `${location.pathname}${location.search}` : `#${view}`);
@@ -1045,6 +1259,8 @@ function finishSwipe(direction) {
   window.setTimeout(() => {
     swipeIndex += 1;
     swipeBusy = false;
+    swipeHistory = [{ id: recipeId(recipe), action: direction === "right" ? "save" : "skip", at: Date.now() }, ...swipeHistory.filter((item) => item.id !== recipeId(recipe))];
+    saveSwipeHistory();
     if (direction === "right" && !isFavorite(recipe)) toggleFavorite(recipe);
     else render();
   }, 340);
@@ -1052,6 +1268,7 @@ function finishSwipe(direction) {
 
 function renderRecipeCard(recipe, index, source = "recipes") {
   const uses = Array.isArray(recipe.uses) ? recipe.uses : [];
+  const missing = Array.isArray(recipe.missing) ? recipe.missing.filter(Boolean) : [];
   const favorite = isFavorite(recipe);
   const calories = Number(recipe.nutrition?.calories) || 0;
   const subtitle = String(recipe.subtitle || recipe.why || "").trim();
@@ -1065,7 +1282,7 @@ function renderRecipeCard(recipe, index, source = "recipes") {
       <div class="recipe-main">
         <div class="recipe-card-topline">
           <div class="recipe-badges">
-            <div class="recipe-status complete">Все продукты есть</div>
+            <div class="recipe-status ${missing.length ? "needs-one" : "complete"}">${missing.length ? `Докупить: ${escapeHtml(missing.join(", "))}` : "Все продукты есть"}</div>
             ${generatedByAi ? `<span class="recipe-ai-label">Сгенерировано ИИ</span>` : ""}
           </div>
           <button class="favorite-toggle ${favorite ? "active" : ""}" data-toggle-favorite-source="${source}" data-recipe-index="${index}" aria-pressed="${favorite}" aria-label="${favorite ? "Убрать из избранного" : "Сохранить в избранное"}">${favorite ? "♥" : "♡"}</button>
@@ -1076,7 +1293,7 @@ function renderRecipeCard(recipe, index, source = "recipes") {
           <span>${Number(recipe.minutes) || 30} мин</span>
           <span>${escapeHtml(recipe.difficulty || "просто")}</span>
           ${calories ? `<span>≈ ${calories} ккал</span>` : ""}
-          <span>Без покупок</span>
+          <span>${missing.length ? "Нужна 1 покупка" : "Без покупок"}</span>
         </div>
       </div>
       <div class="recipe-side">
@@ -1134,6 +1351,81 @@ function renderClearProductsConfirmation() {
   </div>`;
 }
 
+function stepTimerMinutes(step = "") {
+  const values = [...String(step).matchAll(/(\d+)\s*(?:–|-|—)?\s*(\d+)?\s*мин/giu)]
+    .map((match) => Number(match[2] || match[1]))
+    .filter((value) => value > 0 && value <= 180);
+  return values[0] || 0;
+}
+
+function timerLabel() {
+  if (!cookingTimerEndsAt) return "";
+  const remaining = Math.max(0, Math.ceil((cookingTimerEndsAt - Date.now()) / 1000));
+  const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
+  const seconds = String(remaining % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
+function stopCookingTimer() {
+  clearInterval(cookingTimerInterval);
+  cookingTimerInterval = null;
+  cookingTimerEndsAt = 0;
+  cookingTimer = null;
+}
+
+function startCookingTimer(minutes) {
+  stopCookingTimer();
+  cookingTimer = minutes;
+  cookingTimerEndsAt = Date.now() + minutes * 60 * 1000;
+  const update = () => {
+    const output = document.querySelector("[data-cooking-timer-output]");
+    if (output) output.textContent = timerLabel();
+    if (cookingTimerEndsAt && Date.now() >= cookingTimerEndsAt) {
+      stopCookingTimer();
+      if (output) output.textContent = "Готово";
+      navigator.vibrate?.([120, 80, 120]);
+    }
+  };
+  update();
+  cookingTimerInterval = setInterval(update, 1000);
+}
+
+async function setCookingMode(enabled) {
+  cookingMode = enabled;
+  cookingStep = 0;
+  stopCookingTimer();
+  if (enabled) {
+    try {
+      cookingWakeLock = await navigator.wakeLock?.request("screen");
+    } catch {
+      cookingWakeLock = null;
+    }
+  } else {
+    await cookingWakeLock?.release?.().catch(() => {});
+    cookingWakeLock = null;
+  }
+  render();
+}
+
+function finishCooking(recipe) {
+  const id = recipeId(recipe);
+  cookingHistory = [{ id, title: recipe.title, cookedAt: Date.now(), rating: cookingRecord(recipe)?.rating || "" }, ...cookingHistory.filter((item) => item.id !== id)];
+  saveCookingHistory();
+  cookingMode = false;
+  stopCookingTimer();
+  cookingWakeLock?.release?.().catch(() => {});
+  cookingWakeLock = null;
+  render();
+}
+
+function rateCookedRecipe(recipe, rating) {
+  const id = recipeId(recipe);
+  const previous = cookingRecord(recipe) || { id, title: recipe.title, cookedAt: Date.now() };
+  cookingHistory = [{ ...previous, rating }, ...cookingHistory.filter((item) => item.id !== id)];
+  saveCookingHistory();
+  render();
+}
+
 function renderRecipeOverlay(recipe) {
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
   const steps = (Array.isArray(recipe.steps) ? recipe.steps : [])
@@ -1143,6 +1435,9 @@ function renderRecipeOverlay(recipe) {
   const nutrition = recipe.nutrition || {};
   const favorite = isFavorite(recipe);
   const portions = Number(recipe.portions) || state.portions;
+  const cooked = cookingRecord(recipe);
+  const currentStepText = steps[Math.min(cookingStep, Math.max(0, steps.length - 1))] || "";
+  const currentTimerMinutes = stepTimerMinutes(currentStepText);
   return `
     <div class="recipe-overlay" role="dialog" aria-modal="true" aria-labelledby="recipe-title">
       <button class="overlay-backdrop" data-action="close-recipe" aria-label="Закрыть рецепт"></button>
@@ -1150,6 +1445,7 @@ function renderRecipeOverlay(recipe) {
         <div class="sheet-topline">
           <span>Кутно / рецепт</span>
           <div class="sheet-actions">
+            <button class="sheet-cook ${cookingMode ? "active" : ""}" data-action="${cookingMode ? "stop-cooking" : "start-cooking"}">${cookingMode ? "Весь рецепт" : "Готовить"}</button>
             <button class="sheet-favorite ${favorite ? "active" : ""}" data-toggle-active-favorite aria-pressed="${favorite}">${favorite ? "В избранном ♥" : "В избранное ♡"}</button>
             <button class="sheet-close" data-action="close-recipe">Закрыть ×</button>
           </div>
@@ -1171,13 +1467,25 @@ function renderRecipeOverlay(recipe) {
             <div><b>${Number(nutrition.carbs || 0).toFixed(1)}</b><span>углеводы, г</span></div>
           </div>
         </section>` : ""}
-        <div class="sheet-grid">
+        ${cookingMode ? `<section class="cooking-mode" aria-live="polite">
+          <div class="cooking-progress"><span>Шаг ${cookingStep + 1} из ${steps.length}</span><progress value="${cookingStep + 1}" max="${steps.length}"></progress></div>
+          <p class="cooking-step">${escapeHtml(currentStepText)}</p>
+          ${currentTimerMinutes ? `<div class="cooking-timer">
+            <button data-action="start-step-timer" data-timer-minutes="${currentTimerMinutes}">${cookingTimerEndsAt ? "Перезапустить таймер" : `Таймер · ${currentTimerMinutes} мин`}</button>
+            <output data-cooking-timer-output>${timerLabel()}</output>
+          </div>` : ""}
+          <div class="cooking-controls">
+            <button data-action="previous-cooking-step" ${cookingStep === 0 ? "disabled" : ""}>← Назад</button>
+            ${cookingStep < steps.length - 1 ? `<button class="primary" data-action="next-cooking-step">Дальше →</button>` : `<button class="primary" data-action="finish-cooking">Блюдо готово</button>`}
+          </div>
+          <p class="cooking-wake-note">Пока открыт режим готовки, экран не будет гаснуть, если браузер поддерживает эту функцию.</p>
+        </section>` : `<div class="sheet-grid">
           <section>
             <h3>Что понадобится</h3>
             <ol class="ingredient-ledger">
               ${ingredients.map((item) => `<li class="${item.info ? "has-ingredient-info" : ""}">
                 ${item.info ? `<details class="ingredient-info"><summary><span class="ingredient-info-name">${escapeHtml(item.name)}</span><span class="ingredient-info-icon" aria-hidden="true">ⓘ</span></summary><div><p>${escapeHtml(item.info.description || "")}</p><p><b>Чем заменить:</b> ${escapeHtml(item.info.substitutes || "Точной замены нет.")}</p></div></details>` : `<span>${escapeHtml(item.name)}</span>`}
-                <b>${escapeHtml(item.amount)}</b>
+                <b>${escapeHtml(item.amount)}</b>${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}
               </li>`).join("")}
             </ol>
             ${recipe.equipment?.length ? `<p class="sheet-equipment">Инвентарь — ${recipe.equipment.map(escapeHtml).join(", ")}</p>` : ""}
@@ -1189,11 +1497,13 @@ function renderRecipeOverlay(recipe) {
             </ol>
             ${recipe.tip ? `<aside class="cook-note"><span>На заметку</span><p>${escapeHtml(recipe.tip)}</p></aside>` : ""}
           </section>
-        </div>
+        </div>`}
+        ${cooked ? `<section class="cooked-feedback"><span>Готовили ${new Date(cooked.cookedAt).toLocaleDateString("ru-RU")}</span><div><button class="${cooked.rating === "liked" ? "active" : ""}" data-rate-recipe="liked">Понравилось</button><button class="${cooked.rating === "disliked" ? "active" : ""}" data-rate-recipe="disliked">Не моё</button></div></section>` : ""}
         <p class="recipe-source-note">
           ${recipe.source?.type === "generated" ? `<strong class="recipe-ai-source">Сгенерировано ИИ.</strong> ` : ""}
           ${recipe.source?.url ? `<a href="${escapeHtml(recipe.source.url)}" target="_blank" rel="noopener noreferrer">Источник — ${escapeHtml(recipe.source.name || "Spoonacular")}</a>. ` : ""}
-          ${escapeHtml(recipe.source?.note || "Рецепт проверен по вашему списку продуктов")}${recipe.nutrition?.estimated ? ". КБЖУ рассчитано приблизительно" : ". КБЖУ получено из базы для одной порции"}.
+          ${escapeHtml(recipe.source?.note || "Рецепт проверен по вашему списку продуктов")}${recipe.nutrition?.checked ? ". КБЖУ на порцию проверено по энергетическому балансу белков, жиров и углеводов" : ". КБЖУ рассчитано приблизительно"}.
+          <a class="recipe-report" href="https://t.me/oskrenh" target="_blank" rel="noopener noreferrer">Сообщить об ошибке</a>.
         </p>
       </article>
     </div>`;
@@ -1219,14 +1529,23 @@ const fallbackNutrition = {
   "Паста с чесноком и сыром": { calories: 480, protein: 18, fat: 19, carbs: 59, estimated: true },
   "Шакшука": { calories: 245, protein: 12, fat: 15, carbs: 15, estimated: true },
   "Гречка с грибами": { calories: 390, protein: 12, fat: 12, carbs: 61, estimated: true },
+  "Яичница": { calories: 250, protein: 19, fat: 19, carbs: 1, estimated: true },
+  "Отварные яйца": { calories: 215, protein: 19, fat: 15, carbs: 1, estimated: true },
+  "Жареный картофель": { calories: 360, protein: 6, fat: 14, carbs: 53, estimated: true },
+  "Рассыпчатый рис": { calories: 325, protein: 6, fat: 1, carbs: 72, estimated: true },
+  "Макароны с маслом": { calories: 430, protein: 12, fat: 10, carbs: 72, estimated: true },
 };
 
 function getFallbackSuggestions() {
   const have = state.ingredients.map(normalize);
-  const ingredientIsAvailable = (name) => {
+  const availableEquipment = state.equipment.map(equipmentName);
+  const knownEquipment = new Set(equipmentOptions.map(([, name]) => name));
+  const maxMissing = state.searchMode === "plus-one" ? 1 : 0;
+  const ingredientIsAvailable = (name, missing = []) => {
     const value = normalize(name);
     if (["соль", "вода", "масло"].some((basic) => value.includes(basic))) return true;
-    return have.some((owned) => value.includes(owned) || owned.includes(value));
+    return have.some((owned) => value.includes(owned) || owned.includes(value))
+      || missing.some((item) => value.includes(item) || item.includes(value));
   };
   const scored = fallbackRecipes.map((recipe) => {
     const uses = recipe.required.filter((item) => have.some((owned) => owned.includes(item) || item.includes(owned)));
@@ -1246,10 +1565,13 @@ function getFallbackSuggestions() {
     }, state.portions);
   });
   return scored
-    .filter((item) => item.missing.length === 0 && item.ingredients.every((ingredient) => ingredientIsAvailable(ingredient.name)))
+    .filter((item) => item.missing.length <= maxMissing && item.ingredients.every((ingredient) => ingredientIsAvailable(ingredient.name, item.missing)))
+    .filter((item) => !state.maxMinutes || item.minutes <= state.maxMinutes)
+    .filter((item) => state.course === "все" || item.course === state.course || (state.course === "перекус" && ["закуска", "салат"].includes(item.course)))
+    .filter((item) => item.equipment.filter((name) => knownEquipment.has(name)).every((name) => availableEquipment.includes(name)))
     .sort((a, b) => Number(difficultyValue(a.difficulty) === state.difficulty) * -1
       - Number(difficultyValue(b.difficulty) === state.difficulty) * -1
-      || b.match - a.match || a.minutes - b.minutes)
+      || recipePriorityScore(b) - recipePriorityScore(a) || b.match - a.match || a.minutes - b.minutes)
     .slice(0, 3);
 }
 
@@ -1299,13 +1621,15 @@ function mergeUniqueRecipes(primary, additions, excludedTitles = [], limit = 3) 
 
 async function generateRecipes({ append = false } = {}) {
   if (!state.ingredients.length || isLoading || isLoadingMore) return;
-  const existingRecipes = append ? [...recipes] : [];
+  const instantFallbacks = append ? [] : getFallbackSuggestions();
+  const existingRecipes = append ? [...recipes] : instantFallbacks;
   const excludeTitles = [...new Set([...recentRecipeTitles, ...recipes.map((recipe) => recipe.title).filter(Boolean)])].slice(-12);
   const excludeSourceIds = [...new Set([...recentSourceIds, ...recipes.map((recipe) => Number(recipe.source?.id)).filter(Number.isFinite)])].slice(-20);
   if (append) isLoadingMore = true;
   else {
-    isLoading = true;
-    recipes = [];
+    recipes = instantFallbacks;
+    isLoading = instantFallbacks.length === 0;
+    isLoadingMore = instantFallbacks.length > 0;
   }
   generationError = "";
   loadMoreMessage = "";
@@ -1320,6 +1644,10 @@ async function generateRecipes({ append = false } = {}) {
         equipment: state.equipment.map(equipmentName),
         difficulty: state.difficulty,
         portions: state.portions,
+        searchMode: state.searchMode,
+        maxMinutes: state.maxMinutes,
+        course: state.course,
+        priorityIngredients: state.priorityIngredients,
         excludeTitles,
         excludeSourceIds,
         variation: Date.now() % 1000000,
@@ -1330,25 +1658,28 @@ async function generateRecipes({ append = false } = {}) {
       throw new Error(errorData.error || "Не удалось составить меню");
     }
     const data = await response.json();
-    if (!Array.isArray(data.recipes) || !data.recipes.length) throw new Error("Не найдено подходящих вариантов");
+    if (!Array.isArray(data.recipes)) throw new Error("Не найдено подходящих вариантов");
     const incoming = mergeUniqueRecipes(data.recipes, getFallbackSuggestions(), excludeTitles);
     if (append) {
       recipes = mergeUniqueRecipes(existingRecipes, incoming, [], existingRecipes.length + 3);
-      if (recipes.length === existingRecipes.length) loadMoreMessage = "Новых подходящих рецептов пока не нашлось";
+      if (recipes.length === existingRecipes.length) loadMoreMessage = "Для этого набора больше надёжных вариантов нет";
     } else {
-      recipes = incoming;
+      recipes = mergeUniqueRecipes(existingRecipes, incoming, [], 3);
     }
+    hasMoreRecipes = Boolean(data.hasMore) && recipes.length > 0;
+    if (!recipes.length) generationError = data.error || "Добавьте ещё один основной продукт или измените настройки";
     recentRecipeTitles = [...new Set([...excludeTitles, ...recipes.map((recipe) => recipe.title).filter(Boolean)])].slice(-24);
     recentSourceIds = [...new Set([...excludeSourceIds, ...recipes.map((recipe) => Number(recipe.source?.id)).filter(Number.isFinite)])].slice(-20);
   } catch (error) {
     const safeFallbacks = getFallbackSuggestions();
     if (append) {
       recipes = mergeUniqueRecipes(existingRecipes, safeFallbacks, excludeTitles, existingRecipes.length + 3);
-      loadMoreMessage = recipes.length > existingRecipes.length ? "" : "Не удалось найти новые варианты. Попробуйте ещё раз";
+      loadMoreMessage = recipes.length > existingRecipes.length ? "" : "Для этого набора больше надёжных вариантов нет";
     } else {
-      recipes = safeFallbacks;
+      recipes = mergeUniqueRecipes(existingRecipes, safeFallbacks, [], 3);
     }
-    if (!append && !safeFallbacks.length) {
+    hasMoreRecipes = false;
+    if (!append && !recipes.length) {
       generationError = error instanceof Error ? error.message : "Попробуйте ещё раз";
     }
   } finally {
@@ -1494,12 +1825,22 @@ app.addEventListener("click", (event) => {
   if (target.dataset.addIngredient) addIngredients([target.dataset.addIngredient]);
   if (target.dataset.removeIngredient) {
     state.ingredients = state.ingredients.filter((item) => item !== target.dataset.removeIngredient);
+    state.priorityIngredients = state.priorityIngredients.filter((item) => item !== target.dataset.removeIngredient);
     recentRecipeTitles = [];
     recentSourceIds = [];
     saveState();
     recipes = [];
     generationError = "";
     render();
+  }
+  if (target.dataset.priorityIngredient) {
+    const ingredient = target.dataset.priorityIngredient;
+    state.priorityIngredients = state.priorityIngredients.includes(ingredient)
+      ? state.priorityIngredients.filter((item) => item !== ingredient)
+      : [...state.priorityIngredients, ingredient].slice(-3);
+    saveState();
+    target.classList.toggle("active", state.priorityIngredients.includes(ingredient));
+    target.setAttribute("aria-pressed", String(state.priorityIngredients.includes(ingredient)));
   }
   if (target.dataset.equipment) {
     const id = target.dataset.equipment;
@@ -1515,6 +1856,30 @@ app.addEventListener("click", (event) => {
     state.difficulty = target.dataset.difficulty;
     saveState();
     target.parentElement?.querySelectorAll("button").forEach((button) => button.classList.toggle("active", button === target));
+  }
+  if (target.dataset.searchMode) {
+    state.searchMode = target.dataset.searchMode;
+    recipes = [];
+    hasMoreRecipes = false;
+    saveState();
+    target.parentElement?.querySelectorAll("button").forEach((button) => button.classList.toggle("active", button === target));
+    if (catalogRecipes.length) resetSwipeDeck();
+  }
+  if (target.dataset.maxMinutes !== undefined) {
+    state.maxMinutes = Number(target.dataset.maxMinutes) || 0;
+    recipes = [];
+    hasMoreRecipes = false;
+    saveState();
+    target.parentElement?.querySelectorAll("button").forEach((button) => button.classList.toggle("active", button === target));
+    if (catalogRecipes.length) resetSwipeDeck();
+  }
+  if (target.dataset.kitchenCourse) {
+    state.course = target.dataset.kitchenCourse;
+    recipes = [];
+    hasMoreRecipes = false;
+    saveState();
+    target.parentElement?.querySelectorAll("button").forEach((button) => button.classList.toggle("active", button === target));
+    if (catalogRecipes.length) resetSwipeDeck();
   }
   if (target.dataset.portions) {
     state.portions = Math.min(8, Math.max(1, state.portions + Number(target.dataset.portions)));
@@ -1540,8 +1905,18 @@ app.addEventListener("click", (event) => {
     catalogProtein = target.dataset.catalogProtein;
     activateCatalogFilter(target);
   }
+  if (target.dataset.catalogAvailability) {
+    catalogAvailability = target.dataset.catalogAvailability;
+    activateCatalogFilter(target);
+  }
+  if (target.dataset.catalogMaxMinutes !== undefined) {
+    catalogMaxMinutes = Number(target.dataset.catalogMaxMinutes) || 0;
+    activateCatalogFilter(target);
+  }
   if (target.dataset.swipe) finishSwipe(target.dataset.swipe);
   if (target.dataset.action === "restart-swipe") {
+    swipeHistory = swipeHistory.filter((item) => item?.action !== "skip");
+    saveSwipeHistory();
     resetSwipeDeck();
     swipeHintPending = true;
     render();
@@ -1554,8 +1929,10 @@ app.addEventListener("click", (event) => {
     const collapsed = !ingredientsExpanded;
     const list = document.querySelector(".selected-ingredients");
     const quick = document.querySelector(".quick-row");
+    const priority = document.querySelector(".priority-products");
     list?.classList.toggle("is-collapsed", collapsed);
     quick?.classList.toggle("is-collapsed", collapsed);
+    priority?.classList.toggle("is-collapsed", collapsed);
     quick?.setAttribute("aria-hidden", String(collapsed));
     target.setAttribute("aria-expanded", String(ingredientsExpanded));
     target.textContent = ingredientsExpanded ? "Свернуть" : `Показать все · ${state.ingredients.length}`;
@@ -1572,6 +1949,7 @@ app.addEventListener("click", (event) => {
   }
   if (target.dataset.action === "confirm-clear-products") {
     state.ingredients = [];
+    state.priorityIngredients = [];
     ingredientsExpanded = false;
     clearProductsConfirmationOpen = false;
     recipes = [];
@@ -1598,15 +1976,34 @@ app.addEventListener("click", (event) => {
     toggleFavorite(source[Number(target.dataset.recipeIndex)], target);
   }
   if (target.dataset.toggleActiveFavorite !== undefined) toggleFavorite(activeRecipe, target);
+  if (target.dataset.action === "start-cooking") setCookingMode(true);
+  if (target.dataset.action === "stop-cooking") setCookingMode(false);
+  if (target.dataset.action === "previous-cooking-step") {
+    cookingStep = Math.max(0, cookingStep - 1);
+    stopCookingTimer();
+    render();
+  }
+  if (target.dataset.action === "next-cooking-step") {
+    cookingStep = Math.min((activeRecipe?.steps?.length || 1) - 1, cookingStep + 1);
+    stopCookingTimer();
+    render();
+  }
+  if (target.dataset.action === "start-step-timer") startCookingTimer(Number(target.dataset.timerMinutes));
+  if (target.dataset.action === "finish-cooking" && activeRecipe) finishCooking(activeRecipe);
+  if (target.dataset.rateRecipe && activeRecipe) rateCookedRecipe(activeRecipe, target.dataset.rateRecipe);
   if (target.dataset.openRecipe !== undefined) {
     const source = selectRecipeSource(target.dataset.recipeSource);
     activeRecipe = source[Number(target.dataset.openRecipe)];
     if (!activeRecipe) return;
+    cookingMode = false;
+    cookingStep = 0;
+    stopCookingTimer();
     render();
     document.body.classList.add("no-scroll");
     document.querySelector(".recipe-sheet [data-action='close-recipe']")?.focus();
   }
   if (target.dataset.action === "close-recipe") {
+    setCookingMode(false);
     activeRecipe = null;
     document.body.classList.remove("no-scroll");
     render();
@@ -1621,6 +2018,7 @@ document.addEventListener("keydown", (event) => {
     return;
   }
   if (event.key === "Escape" && activeRecipe) {
+    setCookingMode(false);
     activeRecipe = null;
     document.body.classList.remove("no-scroll");
     render();

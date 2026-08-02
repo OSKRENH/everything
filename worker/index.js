@@ -59,28 +59,27 @@ const recipeSchema = {
   required: ["recipes"],
 };
 
-function recipeSchemaFor(ingredients) {
+function recipeSchemaFor(ingredients, maxMissing = 0) {
   const schema = structuredClone(recipeSchema);
   const recipe = schema.properties.recipes.items;
   const allowedIngredients = [...new Set([...ingredients, "соль", "вода", "растительное масло"])];
-  recipe.properties.ingredients.items.properties.name = {
-    type: "string",
-    enum: allowedIngredients,
-  };
+  recipe.properties.ingredients.items.properties.name = maxMissing > 0
+    ? { type: "string" }
+    : { type: "string", enum: allowedIngredients };
   recipe.properties.uses.items = {
     type: "string",
     enum: ingredients,
   };
   recipe.properties.missing = {
     type: "array",
-    maxItems: 0,
+    maxItems: maxMissing,
     items: { type: "string" },
   };
   return schema;
 }
 
-function generatedRecipeSchemaFor(ingredients) {
-  const schema = recipeSchemaFor(ingredients);
+function generatedRecipeSchemaFor(ingredients, maxMissing = 0) {
+  const schema = recipeSchemaFor(ingredients, maxMissing);
   schema.properties.recipes.minItems = 1;
   return schema;
 }
@@ -295,16 +294,24 @@ function normalizePortionAmount(name = "", amount = "", portions = 1) {
   return text;
 }
 
-function safeNutrition(value) {
+export function safeNutrition(value) {
   const number = (input, max) => Math.min(max, Math.max(0, Number(input) || 0));
+  const protein = Math.round(number(value?.protein, 300) * 10) / 10;
+  const fat = Math.round(number(value?.fat, 300) * 10) / 10;
+  const carbs = Math.round(number(value?.carbs, 600) * 10) / 10;
+  const macroCalories = Math.round(protein * 4 + fat * 9 + carbs * 4);
+  const suppliedCalories = Math.round(number(value?.calories, 3000));
+  const caloriesAreConsistent = suppliedCalories > 0
+    && Math.abs(suppliedCalories - macroCalories) <= Math.max(35, macroCalories * 0.12);
   const nutrition = {
-    calories: Math.round(number(value?.calories, 3000)),
-    protein: Math.round(number(value?.protein, 300) * 10) / 10,
-    fat: Math.round(number(value?.fat, 300) * 10) / 10,
-    carbs: Math.round(number(value?.carbs, 600) * 10) / 10,
-    estimated: value?.estimated !== false,
+    calories: caloriesAreConsistent ? suppliedCalories : macroCalories,
+    protein,
+    fat,
+    carbs,
+    estimated: true,
+    checked: true,
   };
-  return nutrition.calories > 0 ? nutrition : null;
+  return nutrition.calories > 0 && (protein > 0 || fat > 0 || carbs > 0) ? nutrition : null;
 }
 
 function cleanRecipeSteps(value) {
@@ -403,7 +410,7 @@ function reviewRecipeQuality(recipes, ownedIngredients) {
   }));
 }
 
-function normalizeRecipes(recipes, portions, ownedIngredients, requestedDifficulty = "") {
+function normalizeRecipes(recipes, portions, ownedIngredients, requestedDifficulty = "", maxMissing = 0) {
   const seen = new Set();
   return recipes
     .map((recipe) => {
@@ -434,12 +441,17 @@ function normalizeRecipes(recipes, portions, ownedIngredients, requestedDifficul
         seenIngredients.add(signature);
         return true;
       });
-      const hasUnknownIngredient = !ingredients.length || ingredients.some((item) => !ingredientIsOwned(item.name, ownedIngredients));
-      const hasMissing = sanitizeList(recipe.missing).some((item) => !isPantryBasic(item));
+      const missing = sanitizeList(recipe.missing)
+        .filter((item) => !isPantryBasic(item))
+        .filter((item, index, values) => values.findIndex((candidate) => normalizedSignature(candidate) === normalizedSignature(item)) === index)
+        .slice(0, maxMissing + 1);
+      const allowedIngredients = [...ownedIngredients, ...missing];
+      const hasUnknownIngredient = !ingredients.length || ingredients.some((item) => !ingredientIsOwned(item.name, allowedIngredients));
+      const hasTooManyMissing = missing.length > maxMissing;
       const nutrition = safeNutrition(recipe.nutrition);
       const title = String(recipe.title || "").trim();
       const looksGeneric = /^(?:жареные|тушеные|вареные) (?:продукты|ингредиенты|овощи)$/i.test(title);
-      if (hasUnknownIngredient || hasMissing || steps.length < 3 || !nutrition || title.length < 4 || looksGeneric) return null;
+      if (hasUnknownIngredient || hasTooManyMissing || steps.length < 3 || !nutrition || title.length < 4 || looksGeneric) return null;
       const uses = ownedIngredients
         .filter((owned) => ingredients.some((item) => !isPantryBasic(item.name) && ingredientIsOwned(item.name, [owned])))
         .sort((first, second) => Number(!ingredientMentioned(title, first)) - Number(!ingredientMentioned(title, second)));
@@ -450,8 +462,8 @@ function normalizeRecipes(recipes, portions, ownedIngredients, requestedDifficul
       return {
         ...recipe,
         difficulty,
-        match: 100,
-        missing: [],
+        match: missing.length ? Math.max(60, Math.round((uses.length / Math.max(1, uses.length + missing.length)) * 100)) : 100,
+        missing,
         uses,
         equipment: sanitizeList(recipe.equipment, 12),
         ingredients,
@@ -846,11 +858,28 @@ function parseKitchen(value) {
 
 function sanitizeKitchen(value) {
   const equipmentIds = ["pan", "pot", "oven", "blender", "microwave", "multicooker"];
+  const ingredients = sanitizeList(value?.ingredients);
+  const cookingHistory = (Array.isArray(value?.cookingHistory) ? value.cookingHistory : []).slice(0, 200).flatMap((item) => {
+    const id = String(item?.id || "").slice(0, 80);
+    if (!id) return [];
+    return [{ id, title: String(item?.title || "").slice(0, 120), cookedAt: Math.max(0, Number(item?.cookedAt) || 0), rating: ["liked", "disliked"].includes(item?.rating) ? item.rating : "" }];
+  });
+  const swipeHistory = (Array.isArray(value?.swipeHistory) ? value.swipeHistory : []).slice(0, 500).flatMap((item) => {
+    const id = String(item?.id || "").slice(0, 80);
+    if (!id || !["skip", "save"].includes(item?.action)) return [];
+    return [{ id, action: item.action, at: Math.max(0, Number(item?.at) || 0) }];
+  });
   return {
-    ingredients: sanitizeList(value?.ingredients),
+    ingredients,
+    priorityIngredients: sanitizeList(value?.priorityIngredients, 3).filter((item) => ingredients.some((owned) => ingredientIsOwned(item, [owned]))),
     equipment: sanitizeList(value?.equipment, 12).filter((item) => equipmentIds.includes(item)),
     difficulty: normalizeDifficulty(value?.difficulty, "легко"),
     portions: Math.min(8, Math.max(1, Number(value?.portions) || 2)),
+    searchMode: value?.searchMode === "plus-one" ? "plus-one" : "strict",
+    maxMinutes: [0, 15, 30, 60].includes(Number(value?.maxMinutes)) ? Number(value.maxMinutes) : 0,
+    course: ["все", "завтрак", "суп", "основное", "перекус"].includes(value?.course) ? value.course : "все",
+    cookingHistory,
+    swipeHistory,
   };
 }
 
@@ -1150,11 +1179,16 @@ function catalogIngredientMatches(item, ownedIngredient) {
     || normalizedSignature(ownedIngredient).includes(normalizedSignature(candidate)));
 }
 
-function catalogRecipeIsAvailable(recipe, ownedIngredients, equipment) {
+function catalogMissingItems(recipe, ownedIngredients) {
+  return (Array.isArray(recipe?.ingredients) ? recipe.ingredients : [])
+    .filter((item) => item?.pantry !== true)
+    .filter((item) => !ownedIngredients.some((owned) => catalogIngredientMatches(item, owned)));
+}
+
+function catalogRecipeIsAvailable(recipe, ownedIngredients, equipment, maxMissing = 0) {
   const requiredIngredients = Array.isArray(recipe?.ingredients) ? recipe.ingredients : [];
   const requiredEquipment = Array.isArray(recipe?.equipment) ? recipe.equipment : [];
-  return requiredIngredients.every((item) => item?.pantry === true
-      || ownedIngredients.some((owned) => catalogIngredientMatches(item, owned)))
+  return catalogMissingItems(recipe, ownedIngredients).length <= maxMissing
     && requiredEquipment.every((required) => equipment.some((owned) => normalizedSignature(owned) === normalizedSignature(required)));
 }
 
@@ -1172,6 +1206,7 @@ function scaledCatalogAmount(item, portions, baseServings) {
 
 function catalogRecipeForPortions(recipe, ownedIngredients, portions) {
   const uses = ownedIngredients.filter((owned) => recipe.ingredients.some((item) => !item.pantry && catalogIngredientMatches(item, owned)));
+  const missing = catalogMissingItems(recipe, ownedIngredients).map((item) => item.name);
   return {
     id: `catalog:${recipe.id}`,
     title: recipe.title,
@@ -1182,8 +1217,8 @@ function catalogRecipeForPortions(recipe, ownedIngredients, portions) {
     protein: recipe.protein || "без мяса",
     minutes: Number(recipe.minutes) || 30,
     difficulty: normalizeDifficulty(recipe.difficulty),
-    match: 100,
-    missing: [],
+    match: Math.max(0, Math.round((uses.length / Math.max(1, recipe.ingredients.filter((item) => !item.pantry).length)) * 100)),
+    missing,
     uses,
     equipment: recipe.equipment,
     why: `Все обязательные продукты для классического блюда уже есть дома`,
@@ -1198,6 +1233,9 @@ function catalogRecipeForPortions(recipe, ownedIngredients, portions) {
       return {
         name: item.name,
         amount: scaledCatalogAmount(item, portions, recipe.servings),
+        aliases: Array.isArray(item.aliases) ? item.aliases : [],
+        pantry: item.pantry === true,
+        ...(item.note ? { note: String(item.note) } : {}),
         ...(glossaryEntry ? { info: glossaryEntry } : {}),
       };
     }),
@@ -1216,7 +1254,7 @@ function catalogRecipeForPortions(recipe, ownedIngredients, portions) {
   };
 }
 
-async function findCatalogRecipes(env, { ingredients, equipment, difficulty, portions, excludeTitles, variation }) {
+async function findCatalogRecipes(env, { ingredients, priorityIngredients, equipment, difficulty, portions, excludeTitles, variation, maxMissing = 0, maxMinutes = 0, course = "все" }) {
   await ensureRecipeCatalog(env);
   const result = await env.DB.prepare(`
     SELECT recipe_json FROM recipes
@@ -1232,14 +1270,20 @@ async function findCatalogRecipes(env, { ingredients, equipment, difficulty, por
     }
   }).filter(Boolean)
     .filter((recipe) => !excludeTitles.some((title) => recipeTitlesAreDuplicate(title, recipe.title)))
-    .filter((recipe) => catalogRecipeIsAvailable(recipe, ingredients, equipment))
+    .filter((recipe) => !maxMinutes || Number(recipe.minutes) <= maxMinutes)
+    .filter((recipe) => course === "все" || recipe.course === course || (course === "перекус" && ["закуска", "салат"].includes(recipe.course)))
+    .filter((recipe) => catalogRecipeIsAvailable(recipe, ingredients, equipment, maxMissing))
     .map((recipe) => ({
       recipe,
       difficultyDistance: Math.abs(difficultyRank(recipe.difficulty) - difficultyRank(difficulty)),
       usedCount: ingredients.filter((owned) => recipe.ingredients.some((item) => !item.pantry && catalogIngredientMatches(item, owned))).length,
+      missingCount: catalogMissingItems(recipe, ingredients).length,
+      priorityCount: priorityIngredients.filter((owned) => recipe.ingredients.some((item) => !item.pantry && catalogIngredientMatches(item, owned))).length,
       rotation: Math.abs(hashText(`${recipe.id}:${variation}`)) % 1000,
     }))
-    .sort((first, second) => first.difficultyDistance - second.difficultyDistance
+    .sort((first, second) => first.missingCount - second.missingCount
+      || second.priorityCount - first.priorityCount
+      || first.difficultyDistance - second.difficultyDistance
       || second.usedCount - first.usedCount
       || first.rotation - second.rotation)
     .map(({ recipe }) => catalogRecipeForPortions(recipe, ingredients, portions));
@@ -1586,6 +1630,7 @@ async function generateRecipes(request, env) {
   }
 
   const ingredients = sanitizeList(body.ingredients);
+  const priorityIngredients = sanitizeList(body.priorityIngredients, 3).filter((item) => ingredients.some((owned) => ingredientIsOwned(item, [owned])));
   const equipment = sanitizeList(body.equipment, 12);
   const difficulty = normalizeDifficulty(body.difficulty, "легко");
   const portions = Math.min(8, Math.max(1, Number(body.portions) || 2));
@@ -1594,13 +1639,16 @@ async function generateRecipes(request, env) {
     ? body.excludeSourceIds.map(Number).filter(Number.isFinite).slice(0, 20)
     : [];
   const variation = Math.min(999999, Math.max(0, Number(body.variation) || 0));
+  const maxMissing = body.searchMode === "plus-one" ? 1 : 0;
+  const maxMinutes = [0, 15, 30, 60].includes(Number(body.maxMinutes)) ? Number(body.maxMinutes) : 0;
+  const course = ["все", "завтрак", "суп", "основное", "перекус"].includes(body.course) ? body.course : "все";
   if (!ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
 
   let recipes = [];
   let catalogAttempt = "no_matching_catalog_recipe";
   try {
-    recipes = await findCatalogRecipes(env, { ingredients, equipment, difficulty, portions, excludeTitles, variation });
-    if (recipes.length >= 3) return json({ recipes, source: "kutno-catalog", catalogVersion: CATALOG_VERSION });
+    recipes = await findCatalogRecipes(env, { ingredients, priorityIngredients, equipment, difficulty, portions, excludeTitles, variation, maxMissing, maxMinutes, course });
+    if (recipes.length >= 3) return json({ recipes, hasMore: true, source: "kutno-catalog", catalogVersion: CATALOG_VERSION });
   } catch (error) {
     catalogAttempt = error instanceof Error ? error.message : String(error);
     console.warn("catalog_search_failed", catalogAttempt);
@@ -1612,7 +1660,7 @@ async function generateRecipes(request, env) {
       const sourcedRecipes = (await generateFromSpoonacular(env, { ingredients, equipment, difficulty, portions, excludedSourceIds }))
         .filter((recipe) => !excludeTitles.some((title) => recipeTitlesAreDuplicate(title, recipe.title)));
       recipes = mergeUniqueRecipes(recipes, sourcedRecipes);
-      if (recipes.length >= 3) return json({ recipes, source: "mixed", catalogVersion: CATALOG_VERSION });
+      if (recipes.length >= 3) return json({ recipes, hasMore: true, source: "mixed", catalogVersion: CATALOG_VERSION });
     } catch (error) {
       sourceAttempt = error instanceof Error ? error.message : String(error);
       console.warn("spoonacular_generation_failed", sourceAttempt);
@@ -1621,17 +1669,23 @@ async function generateRecipes(request, env) {
 
   const allExcludedTitles = [...new Set([...excludeTitles, ...recipes.map((recipe) => recipe.title)])];
 
+  const purchaseRule = maxMissing > 0
+    ? "Разрешён ровно один отсутствующий небазовый продукт на рецепт. Укажи его в missing и используй то же название в ingredients. Не добавляй второй отсутствующий продукт. Если покупка не нужна, missing должен быть пустым."
+    : "Используй только продукты из списка пользователя, а также соль, воду и растительное масло. Нельзя добавлять перец, чеснок, специи, соусы, сахар, муку, молоко, зелень или любой другой продукт, если его нет в списке. Поле missing всегда должно быть пустым массивом.";
   const system = `Ты — строгий редактор современной русской кулинарной книги. Предложи до трёх разных действительно существующих и кулинарно осмысленных домашних блюд, использующих разные сочетания доступных продуктов. Если исходный набор объективно позволяет приготовить только одно или два нормальных блюда, верни меньше. Не придумывай блюдо только ради заполнения списка. Пиши только по-русски, без англицизмов, заглушек, служебных слов и выдуманных техник.
-ЖЁСТКОЕ ПРАВИЛО: используй только продукты из списка пользователя, а также соль, воду и растительное масло. Нельзя добавлять перец, чеснок, специи, соусы, сахар, муку, молоко, зелень или любой другой продукт, если его нет в списке. Поле missing всегда должно быть пустым массивом. В ingredients перечисли абсолютно всё, что используется в шагах; названия пользовательских продуктов сохраняй максимально близко к исходному списку. Не называй блюдо общими словами вроде «жареные продукты» или «смесь ингредиентов». В amount всегда указывай понятное русское количество: г, мл, ст. л., ч. л. или шт.; слово unit запрещено. Каждый рецепт должен содержать минимум три законченных конкретных шага с температурой или понятным уровнем огня и временем там, где это важно. Не выводи слова subtitle, title, description или step как содержимое полей. Не предлагай опасные способы приготовления.
+ЖЁСТКОЕ ПРАВИЛО: ${purchaseRule} В ingredients перечисли абсолютно всё, что используется в шагах; названия пользовательских продуктов сохраняй максимально близко к исходному списку. Не называй блюдо общими словами вроде «жареные продукты» или «смесь ингредиентов». В amount всегда указывай понятное русское количество: г, мл, ст. л., ч. л. или шт.; слово unit запрещено. Каждый рецепт должен содержать минимум три законченных конкретных шага с температурой или понятным уровнем огня и временем там, где это важно. Не выводи слова subtitle, title, description или step как содержимое полей. Не предлагай опасные способы приготовления.
 РАЗУМНЫЕ КОЛИЧЕСТВА: сыр — не более 60 г на порцию, мясо или рыба — не более 180 г на порцию, сухая крупа или макароны — не более 100 г на порцию, масло — не более 1 ст. л. на порцию. Соль указывай только «по вкусу». Количества продуктов лучше не повторять в шагах; если повторяешь, они обязаны дословно совпадать с ingredients.
 СВЯЗНОСТЬ ШАГОВ: каждый шаг должен ясно отвечать, что взять, куда поместить, что сделать и какого результата дождаться. Нельзя пропускать перенос продукта в посуду: после шага «разогреть сковороду» обязательно должен быть шаг «выложить или влить продукт на сковороду», и только затем «готовить». Не используй местоимения без понятного объекта. Последний шаг должен явно завершать приготовление или подачу. Перед ответом мысленно пройди рецепт от первого шага до последнего и исправь любой разрыв в последовательности.
 Для каждого рецепта оцени КБЖУ НА ОДНУ ПОРЦИЮ по указанным количествам: calories — ккал, protein/fat/carbs — граммы. Значения должны быть реалистичными и согласованными с ингредиентами; это ориентировочная оценка.`;
   const user = `Продукты дома: ${ingredients.join(", ")}.
 Инвентарь: ${equipment.length ? equipment.join(", ") : "обычная базовая кухня"}.
 Желаемая сложность приготовления: ${difficulty}. Порций: ${portions}.
+${maxMinutes ? `Максимальное время: ${maxMinutes} минут.` : "Ограничения по времени нет."}
+${course !== "все" ? `Нужный тип блюда: ${course}.` : "Тип блюда любой."}
+${priorityIngredients.length ? `По возможности используй в первую очередь: ${priorityIngredients.join(", ")}.` : ""}
 ${allExcludedTitles.length ? `Не повторяй недавние варианты: ${allExcludedTitles.join(", ")}.` : ""}
 Номер вариации запроса: ${variation}.
-Никаких покупок и замен: каждый небазовый ингредиент обязан дословно соответствовать продукту из списка. Расположи блюда от самого подходящего. Количество ингредиентов укажи на ${portions} порции. В ingredients перечисли только продукты, реально участвующие в шагах, и обязательно добавь туда каждый продукт, упомянутый в шагах. match для каждого блюда — 100. В uses перечисли только использованные продукты пользователя, missing — пустой массив. Лучше вернуть один хороший узнаваемый рецепт, чем три нелепых.`;
+${maxMissing > 0 ? "Можно предложить покупку не более одного продукта; всё остальное должно быть дома." : "Никаких покупок и замен: каждый небазовый ингредиент обязан соответствовать продукту из списка."} Расположи блюда от самого подходящего. Количество ингредиентов укажи на ${portions} порции. В ingredients перечисли только продукты, реально участвующие в шагах, и обязательно добавь туда каждый продукт, упомянутый в шагах. В uses перечисли только использованные продукты пользователя. Лучше вернуть один хороший узнаваемый рецепт, чем три нелепых.`;
 
   try {
     let retryFeedback = "";
@@ -1644,7 +1698,7 @@ ${allExcludedTitles.length ? `Не повторяй недавние вариа�
           { role: "system", content: system },
           { role: "user", content: `${user}${retryInstruction}` },
         ],
-        schema: generatedRecipeSchemaFor(ingredients),
+        schema: generatedRecipeSchemaFor(ingredients, maxMissing),
         schemaName: "generated_recipes",
         maxTokens: 2800,
         temperature: attempt === 1 ? 0.35 : attempt === 2 ? 0.2 : 0.65,
@@ -1655,7 +1709,7 @@ ${allExcludedTitles.length ? `Не повторяй недавние вариа�
         continue;
       }
 
-      const normalizedGeneratedRecipes = normalizeRecipes(data.recipes, portions, ingredients, difficulty);
+      const normalizedGeneratedRecipes = normalizeRecipes(data.recipes, portions, ingredients, difficulty, maxMissing);
       const generatedRecipes = normalizedGeneratedRecipes
         .filter((recipe) => !allExcludedTitles.some((title) => recipeTitlesAreDuplicate(title, recipe.title)));
       const qualityReview = reviewRecipeQuality(generatedRecipes, ingredients);
@@ -1665,6 +1719,7 @@ ${allExcludedTitles.length ? `Не повторяй недавние вариа�
       if (recipes.length > recipeCountBeforeMerge) {
         return json({
           recipes,
+          hasMore: recipes.length >= 3,
           source: recipes.some((recipe) => recipe.source?.type === "kutno-catalog") ? "mixed" : "workers-ai",
           sourceAttempt,
           catalogAttempt,
@@ -1685,8 +1740,10 @@ ${allExcludedTitles.length ? `Не повторяй недавние вариа�
     console.error("recipe_generation_failed", error instanceof Error ? error.message : String(error));
     const recoveryRecipes = findRecoveryRecipes({ ingredients, equipment, difficulty, portions, excludeTitles: allExcludedTitles });
     recipes = mergeUniqueRecipes(recipes, recoveryRecipes);
-    if (recipes.length) return json({ recipes, source: "mixed", sourceAttempt, catalogAttempt, catalogVersion: CATALOG_VERSION });
-    return json({ error: "Не удалось составить меню" }, 503);
+    if (recipes.length) return json({ recipes, hasMore: recipes.length >= 3, source: "mixed", sourceAttempt, catalogAttempt, catalogVersion: CATALOG_VERSION });
+    return json({ recipes: [], hasMore: false, error: maxMissing > 0
+      ? "Попробуйте добавить ещё один основной продукт или изменить тип блюда"
+      : "Добавьте ещё один основной продукт или включите режим «Можно докупить 1»" });
   }
 }
 

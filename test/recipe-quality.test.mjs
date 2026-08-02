@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import worker, { findRecoveryRecipes, recipeQualityIssues, recipeTitlesAreDuplicate } from "../worker/index.js";
+import worker, { findRecoveryRecipes, recipeQualityIssues, recipeTitlesAreDuplicate, safeNutrition } from "../worker/index.js";
 
 function recipe(steps) {
   return {
@@ -37,6 +37,38 @@ test("считает варианты одного блюда дублями, д
   assert.equal(recipeTitlesAreDuplicate("Китайский жареный рис с яйцом", "Жареный рис с яйцом"), true);
   assert.equal(recipeTitlesAreDuplicate("Домашняя шакшука", "Шакшука"), true);
   assert.equal(recipeTitlesAreDuplicate("Жареный рис с яйцом", "Шакшука"), false);
+});
+
+test("пересчитывает калории, если они расходятся с БЖУ", () => {
+  const nutrition = safeNutrition({ calories: 120, protein: 20, fat: 10, carbs: 30 });
+  assert.equal(nutrition.calories, 290);
+  assert.equal(nutrition.checked, true);
+});
+
+test("разрешает ровно один отсутствующий продукт в режиме покупки", async () => {
+  const draft = {
+    ...recipe([
+      "Налейте воду в кастрюлю, доведите до кипения, положите макароны и варите 8 минут.",
+      "Слейте воду, верните макароны в кастрюлю и добавьте сыр.",
+      "Перемешивайте макароны с сыром на слабом огне 2 минуты, затем снимите и подавайте.",
+    ]),
+    title: "Макароны с сыром",
+    ingredients: [{ name: "макароны", amount: "180 г" }, { name: "сыр", amount: "80 г" }, { name: "вода", amount: "1 л" }],
+    uses: ["макароны"],
+    missing: ["сыр"],
+  };
+  const env = {
+    AI: { run: async () => aiResponse({ recipes: [draft] }) },
+    ASSETS: { fetch: () => new Response("not found", { status: 404 }) },
+  };
+  const response = await worker.fetch(new Request("https://kutno.ru/api/generate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ingredients: ["макароны"], equipment: ["Кастрюля"], portions: 2, searchMode: "plus-one" }),
+  }), env);
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.deepEqual(body.recipes[0].missing, ["сыр"]);
 });
 
 test("повторяет генерацию, если продукт не помещён в посуду перед нагревом", async () => {
