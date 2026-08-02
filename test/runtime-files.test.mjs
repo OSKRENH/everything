@@ -7,6 +7,7 @@ const runtimeFiles = [
   "vite.config.js",
   "worker/entry.js",
   "worker/matching-entry.js",
+  "worker/manual-recipes.js",
   "src/ingredient-semantics.js",
   "src/ingredient-semantics-v2.js",
   "src/kutno-bridge.inject.js",
@@ -43,10 +44,12 @@ test("сборочный мост подключает API состояния и
 test("расширенные Worker-слои делегируют основной API", () => {
   const featureWorker = readFileSync("worker/entry.js", "utf8");
   const matchingWorker = readFileSync("worker/matching-entry.js", "utf8");
+  const manualCatalog = readFileSync("worker/manual-recipes.js", "utf8");
   assert.match(featureWorker, /return baseWorker\.fetch\(request, env, ctx\)/);
   assert.match(featureWorker, /\/api\/feature-state/);
   assert.match(featureWorker, /shared_recipes/);
   assert.match(matchingWorker, /return featureWorker\.fetch\(request, env, ctx\)/);
-  assert.match(matchingWorker, /allow-one-purchase/);
+  assert.match(matchingWorker, /manualRecipesForPortions/);
   assert.match(matchingWorker, /ingredient-semantics-v2/);
+  assert.match(manualCatalog, /kutno-manual-catalog/);
 });
