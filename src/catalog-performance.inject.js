@@ -1,7 +1,69 @@
-const CATALOG_BATCH_SIZE = 12;
-let catalogVisibleLimit = CATALOG_BATCH_SIZE;
+const CATALOG_INITIAL_SIZE = 5;
+const CATALOG_INCREMENT = 1;
+const CATALOG_RETRY_COUNT = 3;
+let catalogVisibleLimit = CATALOG_INITIAL_SIZE;
 let catalogResultKey = "";
 let catalogLoadObserver = null;
+let catalogLoadPending = false;
+let catalogRecoveryTimer = 0;
+
+function catalogDelay(milliseconds) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+/*
+ * Первый запрос каталога иногда временно падает на мобильном Safari.
+ * Не показываем ошибку после одной неудачи: повторяем запрос автоматически,
+ * а ручную кнопку оставляем только как последний запасной вариант.
+ */
+loadCatalog = async function resilientCatalogLoad(force = false) {
+  if ((catalogRecipes.length && !force) || catalogLoading) return;
+  catalogLoading = true;
+  catalogError = "";
+  renderMainView();
+
+  let loaded = false;
+  let lastError = null;
+  for (let attempt = 0; attempt < CATALOG_RETRY_COUNT; attempt += 1) {
+    try {
+      const response = await fetch(`/api/catalog?portions=${state.portions}`, {
+        cache: "no-store",
+        headers: { "x-kutno-catalog-attempt": String(attempt + 1) },
+      });
+      const data = await response.json();
+      if (!response.ok || !Array.isArray(data.recipes)) {
+        throw new Error(data.error || "Не удалось открыть базу рецептов");
+      }
+      catalogRecipes = orderCatalogRecipes(data.recipes);
+      resetSwipeDeck();
+      loaded = true;
+      break;
+    } catch (error) {
+      lastError = error;
+      if (attempt < CATALOG_RETRY_COUNT - 1) await catalogDelay(350 * (attempt + 1));
+    }
+  }
+
+  catalogError = loaded
+    ? ""
+    : lastError instanceof Error
+      ? lastError.message
+      : "Не удалось открыть базу рецептов";
+  catalogLoading = false;
+  renderMainView();
+};
+
+function recoverInitialCatalogLoad() {
+  window.clearTimeout(catalogRecoveryTimer);
+  catalogRecoveryTimer = window.setTimeout(async function recover() {
+    if (currentView !== "catalog" || catalogRecipes.length) return;
+    if (catalogLoading) {
+      catalogRecoveryTimer = window.setTimeout(recover, 250);
+      return;
+    }
+    await loadCatalog(true);
+  }, 300);
+}
 
 function catalogQuickKey() {
   return [
@@ -39,6 +101,12 @@ function catalogFilteredKey(items) {
   ].join("::");
 }
 
+function catalogScrollSentinel(left) {
+  return `<div class="catalog-scroll-sentinel" data-catalog-scroll-sentinel aria-hidden="true">
+    <span>Ещё ${left}</span>
+  </div>`;
+}
+
 function renderCatalogGroupsLimited(items, limit) {
   const groups = matchingGroupRecipes(items);
   let remaining = limit;
@@ -58,38 +126,52 @@ function renderCatalogGroupsLimited(items, limit) {
     </section>`;
   }).join("");
 
-  if (items.length <= limit) return markup;
-  const left = items.length - limit;
-  const next = Math.min(CATALOG_BATCH_SIZE, left);
-  return `${markup}<button type="button" class="catalog-load-more" data-catalog-load-more>
-    <span>Показать ещё</span><small>ещё ${next} из ${left}</small>
-  </button>`;
+  return items.length > limit
+    ? `${markup}${catalogScrollSentinel(items.length - limit)}`
+    : markup;
 }
 
 function renderPlainCatalogLimited(items, limit) {
   const visible = items.slice(0, limit);
   const cards = visible.map((recipe) => renderCatalogCard(recipe, catalogRecipes.indexOf(recipe))).join("");
-  if (items.length <= limit) return cards;
-  const left = items.length - limit;
-  const next = Math.min(CATALOG_BATCH_SIZE, left);
-  return `${cards}<button type="button" class="catalog-load-more" data-catalog-load-more>
-    <span>Показать ещё</span><small>ещё ${next} из ${left}</small>
-  </button>`;
+  return items.length > limit
+    ? `${cards}${catalogScrollSentinel(items.length - limit)}`
+    : cards;
+}
+
+function revealNextCatalogItem() {
+  if (catalogLoadPending) return;
+  catalogLoadPending = true;
+  catalogLoadObserver?.disconnect();
+  catalogLoadObserver = null;
+  catalogVisibleLimit += CATALOG_INCREMENT;
+  updateCatalogResults();
+  requestAnimationFrame(() => {
+    catalogLoadPending = false;
+  });
 }
 
 function armCatalogAutoLoad() {
   catalogLoadObserver?.disconnect();
   catalogLoadObserver = null;
-  const button = document.querySelector("[data-catalog-load-more]");
-  if (!button || typeof IntersectionObserver === "undefined") return;
+  const sentinel = document.querySelector("[data-catalog-scroll-sentinel]");
+  if (!sentinel) return;
+
+  if (typeof IntersectionObserver === "undefined") {
+    const onScroll = () => {
+      if (sentinel.getBoundingClientRect().top > window.innerHeight + 180) return;
+      window.removeEventListener("scroll", onScroll);
+      revealNextCatalogItem();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true, once: false });
+    return;
+  }
+
   catalogLoadObserver = new IntersectionObserver((entries) => {
     if (!entries.some((entry) => entry.isIntersecting)) return;
-    catalogLoadObserver?.disconnect();
-    catalogLoadObserver = null;
-    catalogVisibleLimit += CATALOG_BATCH_SIZE;
-    updateCatalogResults();
-  }, { rootMargin: "500px 0px" });
-  catalogLoadObserver.observe(button);
+    revealNextCatalogItem();
+  }, { rootMargin: "220px 0px" });
+  catalogLoadObserver.observe(sentinel);
 }
 
 updateCatalogResults = function performantCatalogResults() {
@@ -104,7 +186,7 @@ updateCatalogResults = function performantCatalogResults() {
   const nextResultKey = catalogFilteredKey(filtered);
   if (catalogResultKey !== nextResultKey) {
     catalogResultKey = nextResultKey;
-    catalogVisibleLimit = CATALOG_BATCH_SIZE;
+    catalogVisibleLimit = CATALOG_INITIAL_SIZE;
   }
 
   const finalQuickKey = catalogQuickKey();
@@ -124,11 +206,4 @@ updateCatalogResults = function performantCatalogResults() {
   requestAnimationFrame(armCatalogAutoLoad);
 };
 
-document.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-catalog-load-more]");
-  if (!button) return;
-  catalogLoadObserver?.disconnect();
-  catalogLoadObserver = null;
-  catalogVisibleLimit += CATALOG_BATCH_SIZE;
-  updateCatalogResults();
-});
+recoverInitialCatalogLoad();
