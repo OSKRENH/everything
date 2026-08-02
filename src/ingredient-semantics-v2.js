@@ -22,6 +22,15 @@ const SPECIAL_LABELS = {
   "special:milk-powder": "сухое молоко",
 };
 
+export const MANUAL_EQUIPMENT = [
+  "руки",
+  "нож",
+  "разделочная доска",
+  "миска",
+  "ложка",
+  "вилка",
+];
+
 function semanticValue(value = "") {
   return SPECIAL_INGREDIENTS.get(normalizeIngredient(value)) || value;
 }
@@ -44,13 +53,13 @@ function transformedRecipe(recipe) {
 }
 
 function transformedContext(context = {}) {
-  const equipmentProvided = Array.isArray(context.equipment);
+  const selectedEquipment = Array.isArray(context.equipment) ? context.equipment : [];
   return {
     ...context,
     ingredients: (Array.isArray(context.ingredients) ? context.ingredients : []).map(semanticValue),
     priorityIngredients: (Array.isArray(context.priorityIngredients) ? context.priorityIngredients : []).map(semanticValue),
     baseIngredients: (Array.isArray(context.baseIngredients) ? context.baseIngredients : DEFAULT_BASE_INGREDIENTS).map(semanticValue),
-    equipment: equipmentProvided && context.equipment.length === 0 ? ["__нет техники__"] : context.equipment,
+    equipment: [...new Set([...MANUAL_EQUIPMENT, ...selectedEquipment])],
   };
 }
 
