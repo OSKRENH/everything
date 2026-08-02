@@ -1,5 +1,5 @@
 import featureWorker from "./entry.js";
-import { analyzeRecipe, enrichRecipeSemantics } from "../src/ingredient-semantics.js";
+import { analyzeRecipe, enrichRecipeSemantics } from "../src/ingredient-semantics-v2.js";
 
 function json(data, status = 200, headers = {}) {
   return Response.json(data, {
