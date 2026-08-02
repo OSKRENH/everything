@@ -395,7 +395,7 @@ async function restoreFavorites() {
   }
 }
 
-async function toggleFavorite(recipe) {
+async function toggleFavorite(recipe, trigger) {
   if (!recipe) return;
   const id = recipeId(recipe);
   const wasFavorite = favoriteRecipes.some((item) => recipeId(item) === id);
@@ -404,7 +404,16 @@ async function toggleFavorite(recipe) {
     ? favoriteRecipes.filter((item) => recipeId(item) !== id)
     : [{ ...recipe, id, portions: Number(recipe.portions) || state.portions }, ...favoriteRecipes];
   saveFavoritesLocally();
-  render();
+  if (trigger && !activeRecipe && currentView !== "favorites") {
+    const favorite = !wasFavorite;
+    trigger.classList.toggle("active", favorite);
+    trigger.textContent = favorite ? "♥" : "♡";
+    trigger.setAttribute("aria-label", favorite ? "Убрать из избранного" : "Сохранить в избранное");
+    const favoritesNav = document.querySelector('.header-nav [data-view="favorites"]');
+    if (favoritesNav) favoritesNav.textContent = `Избранное${favoriteRecipes.length ? ` · ${favoriteRecipes.length}` : ""}`;
+  } else {
+    render();
+  }
   if (activeRecipe) requestAnimationFrame(() => {
     const sheet = document.querySelector(".recipe-sheet");
     if (sheet) sheet.scrollTop = sheetScroll;
@@ -1013,6 +1022,10 @@ function selectRecipeSource(source) {
 
 function setView(view) {
   if (!["kitchen", "catalog", "swipe", "favorites"].includes(view)) return;
+  if (currentView === view) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
   currentView = view;
   if (view === "swipe") {
     if (catalogRecipes.length) resetSwipeDeck();
@@ -1020,7 +1033,7 @@ function setView(view) {
   }
   history.replaceState(null, "", view === "kitchen" ? `${location.pathname}${location.search}` : `#${view}`);
   render({ preserveScroll: false });
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  restorePageScroll(0);
   if ((view === "catalog" || view === "swipe") && !catalogRecipes.length) loadCatalog();
 }
 
@@ -1585,9 +1598,9 @@ app.addEventListener("click", (event) => {
   if (target.dataset.action === "logout") logout();
   if (target.dataset.toggleFavoriteSource) {
     const source = selectRecipeSource(target.dataset.toggleFavoriteSource);
-    toggleFavorite(source[Number(target.dataset.recipeIndex)]);
+    toggleFavorite(source[Number(target.dataset.recipeIndex)], target);
   }
-  if (target.dataset.toggleActiveFavorite !== undefined) toggleFavorite(activeRecipe);
+  if (target.dataset.toggleActiveFavorite !== undefined) toggleFavorite(activeRecipe, target);
   if (target.dataset.openRecipe !== undefined) {
     const source = selectRecipeSource(target.dataset.recipeSource);
     activeRecipe = source[Number(target.dataset.openRecipe)];
