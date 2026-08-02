@@ -315,6 +315,8 @@ const ACTIVE_HEAT_ACTION = /(?:обжар|жар|свар|вар|туш|запе
 const TRANSFER_ACTION = /(?:вылож|полож|добав|перелож|помест|опуст|засып|всып|влей|налей|залей|разбей|вылей)/iu;
 const COOKING_TARGET = /(?:сковород|кастрюл|сотейн|противен|духовк|форм|казан|вок|мис|тарел|вод|масл)/iu;
 const TIME_OR_DONENESS = /(?:\d+(?:[.,]\d+)?\s*(?:сек|мин|час)|до\s+[а-я]|пока\s+[а-я]|до\s+готовности)/iu;
+const HEAT_LEVEL = /(?:слаб|средн|сильн|низк|высок|огн|температур)/iu;
+const PREHEAT_ACTION = /(?:разогр|прогр|подогр)/iu;
 const FINISH_ACTION = /(?:сним|пода|разлож|перелож|остуд|готов|до\s+[а-я]|пока\s+[а-я])/iu;
 const FOOD_AMOUNT = /\d+(?:[.,]\d+)?\s*(?:кг|г|мл|л|шт\.?|ст\.?\s*л\.?|ч\.?\s*л\.?)/giu;
 
@@ -330,6 +332,11 @@ export function recipeQualityIssues(recipe, ownedIngredients) {
   const steps = cleanRecipeSteps(recipe?.steps);
   const issues = [];
   const stepText = steps.join(" ");
+  const recipeIngredientNames = (Array.isArray(recipe?.ingredients) ? recipe.ingredients : [])
+    .map((item) => String(item?.name || "").trim())
+    .filter(Boolean);
+  const stepMentionsIngredient = (step) => recipeIngredientNames.some((name) => ingredientMentioned(step, name));
+  const isPreheatStep = (step) => PREHEAT_ACTION.test(step) && !stepMentionsIngredient(step);
 
   if (steps.some((step) => !STEP_ACTION.test(step))) {
     issues.push("каждый шаг должен содержать конкретное кулинарное действие");
@@ -351,15 +358,18 @@ export function recipeQualityIssues(recipe, ownedIngredients) {
     issues.push(`количества в шагах не совпадают со списком ингредиентов: ${inconsistentAmounts.join(", ")}`);
   }
 
-  const firstActiveHeatStep = steps.findIndex((step) => ACTIVE_HEAT_ACTION.test(step));
+  const firstActiveHeatStep = steps.findIndex((step) => ACTIVE_HEAT_ACTION.test(step) && !isPreheatStep(step));
   if (firstActiveHeatStep >= 0) {
     const preparationChain = steps.slice(0, firstActiveHeatStep + 1);
-    const transferredToCookingTarget = preparationChain.some((step) => TRANSFER_ACTION.test(step) && COOKING_TARGET.test(step));
+    const transferredToCookingTarget = preparationChain.some((step) => COOKING_TARGET.test(step)
+      && (TRANSFER_ACTION.test(step) || stepMentionsIngredient(step)));
     if (!transferredToCookingTarget) {
       issues.push("пропущено помещение продукта в посуду или среду приготовления перед нагревом");
     }
 
-    const vagueHeatStep = steps.find((step) => ACTIVE_HEAT_ACTION.test(step) && !TIME_OR_DONENESS.test(step));
+    const vagueHeatStep = steps.find((step) => ACTIVE_HEAT_ACTION.test(step)
+      && !TIME_OR_DONENESS.test(step)
+      && !(isPreheatStep(step) && HEAT_LEVEL.test(step)));
     if (vagueHeatStep) {
       issues.push("для нагрева нужно указать время или понятный признак готовности");
     }
