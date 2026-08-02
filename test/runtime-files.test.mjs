@@ -33,12 +33,13 @@ test("runtime-файлы Кутно проходят синтаксическу�
   }
 });
 
-test("сборочный мост подключает API состояния, подбор и последовательный каталог", () => {
+test("сборочный мост подключает API состояния, подбор и плавный каталог", () => {
   const bridge = readFileSync("src/kutno-bridge.inject.js", "utf8");
   const matching = readFileSync("src/matching-engine.inject.js", "utf8");
   const reset = readFileSync("src/fetch-reset.inject.js", "utf8");
   const fixes = readFileSync("src/matching-fixes.inject.js", "utf8");
   const performance = readFileSync("src/catalog-performance.inject.js", "utf8");
+  const catalogCss = readFileSync("public/catalog-stability.css", "utf8");
   const throttle = readFileSync("public/feature-sync-throttle.js", "utf8");
   const vite = readFileSync("vite.config.js", "utf8");
   assert.match(bridge, /window\.kutnoBridge\s*=/);
@@ -54,9 +55,15 @@ test("сборочный мост подключает API состояния, �
   assert.match(performance, /CATALOG_INITIAL_SIZE = 5/);
   assert.match(performance, /CATALOG_INCREMENT = 1/);
   assert.match(performance, /CATALOG_RETRY_COUNT = 3/);
+  assert.match(performance, /CATALOG_REVEAL_DURATION = 480/);
+  assert.match(performance, /catalog-card-entering/);
+  assert.match(performance, /matching-group-header-entering/);
+  assert.match(performance, /rootMargin: "60px 0px"/);
   assert.match(performance, /IntersectionObserver/);
   assert.match(performance, /resilientCatalogLoad/);
   assert.match(performance, /performantCatalogResults/);
+  assert.match(catalogCss, /@keyframes catalog-card-reveal/);
+  assert.match(catalogCss, /prefers-reduced-motion/);
   assert.match(throttle, /catch\s*\{\s*pathname = ""/);
   assert.match(vite, /const kutnoFetchBeforeMatching = window\.fetch\.bind\(window\)/);
   assert.ok(vite.indexOf("${matchingSource}") < vite.indexOf("${fetchResetSource}"));
