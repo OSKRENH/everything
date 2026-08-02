@@ -1,0 +1,118 @@
+:root {
+  --section-title-size: clamp(62px, 6.5vw, 104px);
+  --section-title-line-height: .94;
+  --section-title-weight: 400;
+  --section-title-color: var(--ink);
+  --section-title-spacing: -.055em;
+  --section-kicker-size: 11px;
+  --section-kicker-line-height: 1.35;
+  --section-kicker-weight: 500;
+  --section-kicker-color: var(--ink);
+  --section-lead-size: 13px;
+  --section-lead-line-height: 1.65;
+  --section-lead-weight: 400;
+  --section-lead-color: var(--soft);
+}
+
+/* Одинаковая типографика заголовков во всех четырёх разделах. */
+.intro-copy h1,
+.archive-heading h1,
+.swipe-heading h1,
+.favorites-copy h1,
+.favorites-empty h1 {
+  margin: 0;
+  max-width: 100%;
+  color: var(--section-title-color);
+  font-family: "Prata", Georgia, serif;
+  font-size: var(--section-title-size);
+  font-weight: var(--section-title-weight);
+  line-height: var(--section-title-line-height);
+  letter-spacing: var(--section-title-spacing);
+}
+
+/* Надзаголовки получают один размер, цвет, вес и высоту строки. */
+.intro-copy > .eyebrow,
+.archive-heading .eyebrow,
+.swipe-heading .eyebrow,
+.favorites-copy > .eyebrow,
+.favorites-empty .eyebrow {
+  color: var(--section-kicker-color);
+  font-family: "Golos Text", Arial, sans-serif;
+  font-size: var(--section-kicker-size);
+  font-weight: var(--section-kicker-weight);
+  line-height: var(--section-kicker-line-height);
+  letter-spacing: .13em;
+}
+
+/* Описания разделов выглядят одинаково. */
+.archive-visual > p,
+.swipe-heading > p:last-of-type,
+.favorites-copy > p:last-of-type,
+.favorites-empty .favorites-copy > p:last-of-type {
+  color: var(--section-lead-color);
+  font-family: "Golos Text", Arial, sans-serif;
+  font-size: var(--section-lead-size);
+  font-weight: var(--section-lead-weight);
+  line-height: var(--section-lead-line-height);
+  letter-spacing: 0;
+}
+
+/* Сердце не меняет метрики строки заголовка АМ. */
+.swipe-heading .am-heart {
+  display: inline-block;
+  font-size: .52em;
+  line-height: 1;
+  vertical-align: .1em;
+}
+
+/* Иллюстрации избранного всегда стоят по центру своей колонки. */
+.favorites-illustration,
+.favorites-list-illustration {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  justify-self: stretch;
+}
+
+.favorites-illustration img,
+.favorites-list-illustration img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  margin-inline: auto;
+  object-position: center center;
+}
+
+.favorites-list-illustration {
+  margin-right: auto;
+  margin-left: auto;
+}
+
+@media (max-width: 700px) {
+  :root {
+    --section-title-size: clamp(48px, 12.8vw, 54px);
+    --section-title-line-height: .98;
+    --section-kicker-size: 11px;
+    --section-kicker-line-height: 1.35;
+    --section-lead-size: 13px;
+    --section-lead-line-height: 1.65;
+  }
+
+  .intro-copy h1,
+  .archive-heading h1,
+  .swipe-heading h1,
+  .favorites-copy h1,
+  .favorites-empty h1 {
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .favorites-illustration img {
+    max-width: min(100%, 300px);
+  }
+
+  .favorites-list-illustration img {
+    max-width: min(100%, 260px);
+  }
+}
