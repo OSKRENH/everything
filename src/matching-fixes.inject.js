@@ -17,6 +17,18 @@ updateCatalogResults = function stableMatchingCatalogResults() {
     : `<p class="catalog-empty">Ничего не нашлось. Попробуйте убрать один из фильтров.</p>`;
 };
 
+function ensureManualEquipmentNote() {
+  const label = [...document.querySelectorAll(".field-label")]
+    .find((node) => node.textContent?.trim() === "Что умеет кухня");
+  const content = label?.closest(".section-content");
+  const equipmentGrid = content?.querySelector(".equipment-grid");
+  if (!equipmentGrid || content.querySelector(".manual-equipment-note")) return;
+  const note = document.createElement("p");
+  note.className = "manual-equipment-note";
+  note.textContent = "Нож, руки, доска, миска и столовые приборы доступны всегда. Если ничего не отмечено, Кутно предложит салаты, сэндвичи и другие холодные блюда.";
+  equipmentGrid.insertAdjacentElement("afterend", note);
+}
+
 document.addEventListener("click", (event) => {
   const action = event.target.closest("[data-matching-action]")?.dataset.matchingAction;
   if (action !== "save-base-products") return;
@@ -41,3 +53,7 @@ window.fetch = async function matchingRefreshFetch(input, init = {}) {
   }
   return response;
 };
+
+ensureManualEquipmentNote();
+new MutationObserver(() => requestAnimationFrame(ensureManualEquipmentNote))
+  .observe(document.documentElement, { childList: true, subtree: true });
