@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import worker, { recipeTitlesAreDuplicate } from "../worker/index.js";
+import worker, { recipeQualityIssues, recipeTitlesAreDuplicate } from "../worker/index.js";
 
 function recipe(steps) {
   return {
@@ -126,4 +126,51 @@ test("повторяет генерацию, если количество в ш
   assert.equal(response.status, 200);
   assert.equal(calls, 2);
   assert.doesNotMatch(body.recipes[0].steps.join(" "), /200\s*г/iu);
+});
+
+test("принимает обычные повелительные действия в связном рецепте", () => {
+  const issues = recipeQualityIssues(recipe([
+    "Промойте сыр холодной водой и обсушите его полотенцем.",
+    "Разогрейте сухую сковороду на среднем огне 2 минуты.",
+    "Выложите сыр на сковороду и переверните через 2 минуты, когда снизу появится корочка.",
+    "Снимите готовый сыр со сковороды, приправьте и подавайте горячим.",
+  ]), ["сыр"]);
+
+  assert.deepEqual(issues, []);
+});
+
+test("использует третью попытку, если первые два ответа не прошли проверку", async () => {
+  const invalid = recipe([
+    "Подготовьте чистую посуду для приготовления.",
+    "Разогрейте сковороду на среднем огне 2 минуты.",
+    "Снимите сковороду с огня и подавайте блюдо.",
+  ]);
+  const valid = recipe([
+    "Натрите сыр на крупной тёрке.",
+    "Разогрейте сухую сковороду на среднем огне 2 минуты.",
+    "Выложите сыр тонким слоем на сковороду и готовьте 2 минуты, пока он не расплавится и не подрумянится снизу.",
+    "Снимите готовый сыр лопаткой и подавайте горячим.",
+  ]);
+  let calls = 0;
+  const env = {
+    AI: {
+      async run() {
+        const draft = calls < 2 ? invalid : valid;
+        calls += 1;
+        return aiResponse({ recipes: [draft] });
+      },
+    },
+    ASSETS: { fetch: () => new Response("not found", { status: 404 }) },
+  };
+
+  const response = await worker.fetch(new Request("https://kutno.ru/api/generate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ingredients: ["сыр"], equipment: ["сковорода"], portions: 2 }),
+  }), env);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(calls, 3);
+  assert.equal(body.recipes[0].title, "Жареный сыр");
 });

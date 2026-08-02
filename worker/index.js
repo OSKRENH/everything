@@ -2,7 +2,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { CATALOG_VERSION, INGREDIENT_GLOSSARY, WORLD_RECIPE_CATALOG } from "./recipe-catalog.js";
 
 const MODEL = "@cf/openai/gpt-oss-120b";
-const MAX_RECIPE_GENERATION_ATTEMPTS = 2;
+const MAX_RECIPE_GENERATION_ATTEMPTS = 3;
 const GOOGLE_JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
 
 const recipeSchema = {
@@ -310,7 +310,7 @@ function cleanRecipeSteps(value) {
     });
 }
 
-const STEP_ACTION = /(?:очист|нареж|пореж|измельч|натер|натр|разбей|взбей|смеш|перемеш|соедин|вылож|полож|добав|перелож|помест|опуст|засып|всып|влей|налей|залей|разогр|обжар|жар|свар|вар|туш|запек|выпек|готов|кипят|довед|расплав|накрой|остав|сним|пода|посол|остуд|процед)/iu;
+const STEP_ACTION = /(?:очист|нареж|пореж|измельч|натер|натр|разбей|взбей|смеш|перемеш|соедин|вылож|полож|добав|перелож|помест|опуст|засып|всып|влей|налей|залей|разогр|прогр|подогр|обжар|подрумян|жар|свар|вар|туш|томи|запек|выпек|готов|кипят|довед|расплав|накрой|остав|сним|пода|посол|поперч|приправ|остуд|процед|промой|замоч|обсуш|слей|откин|распредел|сформ|переверн|сдвин|верни|уменьш|увелич|разлож|посып|полей|[а-яё]{3,}(?:йте|ите|ьте))/iu;
 const ACTIVE_HEAT_ACTION = /(?:обжар|жар|свар|вар|туш|запек|выпек|готов(?:ить|ьте|им|ят|ится)|кипят|довед|расплав)/iu;
 const TRANSFER_ACTION = /(?:вылож|полож|добав|перелож|помест|опуст|засып|всып|влей|налей|залей|разбей|вылей)/iu;
 const COOKING_TARGET = /(?:сковород|кастрюл|сотейн|противен|духовк|форм|казан|вок|мис|тарел|вод|масл)/iu;
@@ -326,7 +326,7 @@ function amountSignature(value = "") {
     .replaceAll(".", "");
 }
 
-function recipeQualityIssues(recipe, ownedIngredients) {
+export function recipeQualityIssues(recipe, ownedIngredients) {
   const steps = cleanRecipeSteps(recipe?.steps);
   const issues = [];
   const stepText = steps.join(" ");
@@ -1359,7 +1359,7 @@ async function generateRecipes(request, env) {
   let catalogAttempt = "no_matching_catalog_recipe";
   try {
     recipes = await findCatalogRecipes(env, { ingredients, equipment, difficulty, portions, excludeTitles, variation });
-    if (recipes.length) return json({ recipes, source: "kutno-catalog", catalogVersion: CATALOG_VERSION });
+    if (recipes.length >= 3) return json({ recipes, source: "kutno-catalog", catalogVersion: CATALOG_VERSION });
   } catch (error) {
     catalogAttempt = error instanceof Error ? error.message : String(error);
     console.warn("catalog_search_failed", catalogAttempt);
@@ -1414,12 +1414,14 @@ ${allExcludedTitles.length ? `Не повторяй недавние вариа�
         continue;
       }
 
-      const generatedRecipes = normalizeRecipes(data.recipes, portions, ingredients, difficulty)
+      const normalizedGeneratedRecipes = normalizeRecipes(data.recipes, portions, ingredients, difficulty);
+      const generatedRecipes = normalizedGeneratedRecipes
         .filter((recipe) => !allExcludedTitles.some((title) => recipeTitlesAreDuplicate(title, recipe.title)));
       const qualityReview = reviewRecipeQuality(generatedRecipes, ingredients);
       const coherentRecipes = qualityReview.filter(({ issues }) => issues.length === 0).map(({ recipe }) => recipe);
+      const recipeCountBeforeMerge = recipes.length;
       recipes = mergeUniqueRecipes(recipes, coherentRecipes);
-      if (recipes.length) {
+      if (recipes.length > recipeCountBeforeMerge) {
         return json({
           recipes,
           source: recipes.some((recipe) => recipe.source?.type === "kutno-catalog") ? "mixed" : "workers-ai",
@@ -1429,7 +1431,9 @@ ${allExcludedTitles.length ? `Не повторяй недавние вариа�
         });
       }
 
-      retryFeedback = qualityReview.length
+      retryFeedback = normalizedGeneratedRecipes.length && !generatedRecipes.length
+        ? `все предложенные блюда повторяют недавние варианты (${allExcludedTitles.join(", ")}); выбери другие блюда и другие техники приготовления`
+        : qualityReview.length
         ? qualityReview.map(({ recipe, issues }) => `${recipe.title}: ${issues.join("; ")}`).join("\n")
         : "рецепты нарушают ограничения по продуктам, количествам или структуре шагов";
       console.warn("recipe_quality_retry", JSON.stringify({ attempt, retryFeedback }));
