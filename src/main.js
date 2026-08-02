@@ -243,6 +243,7 @@ let state = loadState();
 let recipes = [];
 let favoriteRecipes = loadFavoriteRecipes();
 let ingredientsExpanded = false;
+let clearProductsConfirmationOpen = false;
 let isLoading = false;
 let isLoadingMore = false;
 let loadMoreMessage = "";
@@ -637,8 +638,11 @@ function renderKitchenView() {
                 ? sortedIngredients.map((item) => `<button class="ingredient-tag selected" data-remove-ingredient="${escapeHtml(item)}">${escapeHtml(item)} <span aria-hidden="true">×</span></button>`).join("")
                 : `<span class="empty-line">Пока пусто — начните с главного продукта</span>`}
             </div>
-            ${ingredientsCollapsible ? `<button class="ingredients-toggle" data-action="toggle-ingredients" aria-expanded="${ingredientsExpanded}">${ingredientsExpanded ? "Свернуть" : `Показать все · ${state.ingredients.length}`}</button>` : ""}
-            <div class="quick-row" aria-label="Частые продукты">
+            ${state.ingredients.length ? `<div class="ingredient-list-actions">
+              ${ingredientsCollapsible ? `<button class="ingredients-toggle" data-action="toggle-ingredients" aria-expanded="${ingredientsExpanded}">${ingredientsExpanded ? "Свернуть" : `Показать все · ${state.ingredients.length}`}</button>` : ""}
+              <button class="ingredients-clear" data-action="request-clear-products">Очистить продукты</button>
+            </div>` : ""}
+            <div class="quick-row" aria-label="Частые продукты" ${ingredientsCollapsed ? "hidden" : ""}>
               ${quickIngredients.filter((item) => !state.ingredients.includes(normalize(item))).slice(0, 7).map((item) => `<button class="ingredient-tag" data-add-ingredient="${item}">+ ${item}</button>`).join("")}
             </div>
           </div>
@@ -699,7 +703,6 @@ function render() {
           ${[["kitchen", "Кухня"], ["catalog", "База"], ["swipe", "АМ ❤️"], ["favorites", `Избранное${favoriteRecipes.length ? ` · ${favoriteRecipes.length}` : ""}`]].map(([id, label]) => `<button class="${currentView === id ? "active" : ""}" data-view="${id}">${label}</button>`).join("")}
         </nav>
         <div class="header-actions">
-          ${currentView === "kitchen" ? `<button class="text-button header-clear" data-action="clear-all" ${state.ingredients.length ? "" : "disabled"}>Очистить кухню</button>` : ""}
           <button class="account-button" data-action="account">${authUser ? escapeHtml(authUser.name) : "Войти"}</button>
         </div>
       </header>
@@ -715,8 +718,10 @@ function render() {
     </div>
     ${activeRecipe ? renderRecipeOverlay(activeRecipe) : ""}
     ${authModalOpen ? renderAuthOverlay() : ""}
+    ${clearProductsConfirmationOpen ? renderClearProductsConfirmation() : ""}
   `;
   requestAnimationFrame(clampSelectedIngredients);
+  if (clearProductsConfirmationOpen) requestAnimationFrame(() => document.querySelector("[data-action='cancel-clear-products']")?.focus());
   if (authModalOpen && !authUser && !authBusy) requestAnimationFrame(mountGoogleButton);
   if (currentView === "swipe" && swipeHintPending && document.querySelector(".swipe-card.front")) swipeHintPending = false;
 }
@@ -1050,6 +1055,21 @@ function renderAuthOverlay() {
       </div>
       ${authError ? `<p class="auth-error" role="alert">${escapeHtml(authError)}</p>` : ""}
       <p class="google-auth-note">Google передаст Кутно только имя, адрес почты и идентификатор аккаунта. Пароль Google остаётся у Google.</p>
+    </section>
+  </div>`;
+}
+
+function renderClearProductsConfirmation() {
+  return `<div class="auth-overlay confirm-overlay" role="alertdialog" aria-modal="true" aria-labelledby="clear-products-title" aria-describedby="clear-products-description">
+    <button class="overlay-backdrop" data-action="cancel-clear-products" aria-label="Отменить очистку"></button>
+    <section class="auth-card confirm-card">
+      <p class="eyebrow">Очистить список</p>
+      <h2 id="clear-products-title">Удалить все продукты?</h2>
+      <p id="clear-products-description" class="auth-lead">Техника, сложность, порции и избранное останутся без изменений.</p>
+      <div class="confirm-actions">
+        <button class="auth-secondary" data-action="cancel-clear-products">Отмена</button>
+        <button class="auth-primary" data-action="confirm-clear-products">Очистить продукты</button>
+      </div>
     </section>
   </div>`;
 }
@@ -1474,14 +1494,26 @@ app.addEventListener("click", (event) => {
     ingredientsExpanded = !ingredientsExpanded;
     render();
   }
-  if (target.dataset.action === "clear-all") {
-    state = { ...defaults, equipment: [...defaults.equipment] };
+  if (target.dataset.action === "request-clear-products") {
+    clearProductsConfirmationOpen = true;
+    document.body.classList.add("no-scroll");
+    render();
+  }
+  if (target.dataset.action === "cancel-clear-products") {
+    clearProductsConfirmationOpen = false;
+    document.body.classList.remove("no-scroll");
+    render();
+  }
+  if (target.dataset.action === "confirm-clear-products") {
+    state.ingredients = [];
     ingredientsExpanded = false;
+    clearProductsConfirmationOpen = false;
     recipes = [];
     recentRecipeTitles = [];
     recentSourceIds = [];
     generationError = "";
     saveState();
+    document.body.classList.remove("no-scroll");
     render();
   }
   if (target.dataset.action === "account") {
@@ -1516,6 +1548,12 @@ app.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && clearProductsConfirmationOpen) {
+    clearProductsConfirmationOpen = false;
+    document.body.classList.remove("no-scroll");
+    render();
+    return;
+  }
   if (event.key === "Escape" && activeRecipe) {
     activeRecipe = null;
     document.body.classList.remove("no-scroll");
