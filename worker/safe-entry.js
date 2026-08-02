@@ -1,3 +1,4 @@
+import oilFixWorker from "./oil-fix-entry.js";
 import matchingWorker from "./matching-entry.js";
 import featureWorker from "./entry.js";
 
@@ -8,10 +9,18 @@ function safeError(error) {
     : "Не удалось обработать подбор рецептов";
 }
 
+async function catalogFallback(request, env, ctx) {
+  try {
+    return await matchingWorker.fetch(request, env, ctx);
+  } catch {
+    return featureWorker.fetch(request, env, ctx);
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     try {
-      return await matchingWorker.fetch(request, env, ctx);
+      return await oilFixWorker.fetch(request, env, ctx);
     } catch (error) {
       let pathname = "";
       try {
@@ -22,7 +31,7 @@ export default {
 
       if (pathname === "/api/catalog" && request.method === "GET") {
         try {
-          return await featureWorker.fetch(request, env, ctx);
+          return await catalogFallback(request, env, ctx);
         } catch {
           // Ниже вернём безопасную ошибку вместо необработанного исключения.
         }
