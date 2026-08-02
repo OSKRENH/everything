@@ -2,6 +2,13 @@ import fs from "node:fs";
 import { defineConfig } from "vite";
 
 const bridgeSource = fs.readFileSync(new URL("./src/kutno-bridge.inject.js", import.meta.url), "utf8");
+const matchingSource = fs.readFileSync(new URL("./src/matching-engine.inject.js", import.meta.url), "utf8");
+const semanticImport = `import {
+  analyzeRecipe as semanticAnalyzeRecipe,
+  ingredientMatch as semanticIngredientMatch,
+  normalizeIngredient as semanticNormalizeIngredient,
+  DEFAULT_BASE_INGREDIENTS as SEMANTIC_DEFAULT_BASE_INGREDIENTS,
+} from "./ingredient-semantics.js";`;
 
 export default defineConfig({
   plugins: [
@@ -12,7 +19,7 @@ export default defineConfig({
         const cleanId = id.split("?", 1)[0];
         if (!cleanId.endsWith("/src/main.js")) return null;
         return {
-          code: `${code}\n\n${bridgeSource}`,
+          code: `${semanticImport}\n${code}\n\n${bridgeSource}\n\n${matchingSource}`,
           map: null,
         };
       },
