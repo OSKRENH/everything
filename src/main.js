@@ -767,16 +767,18 @@ function clampSelectedIngredients() {
   list.style.setProperty("--ingredients-expanded-height", `${list.scrollHeight}px`);
   const quick = document.querySelector(".quick-row");
   if (quick) quick.style.setProperty("--quick-row-height", `${quick.scrollHeight}px`);
+  const listTop = list.getBoundingClientRect().top;
   const rowTops = [];
   for (const tag of tags) {
-    const top = tag.offsetTop;
+    const top = tag.getBoundingClientRect().top - listTop;
     if (!rowTops.some((rowTop) => Math.abs(rowTop - top) < 2)) rowTops.push(top);
   }
   if (rowTops.length < 3) return;
   const secondRowTop = rowTops[1];
   const secondRowBottom = Math.max(...tags
-    .filter((tag) => Math.abs(tag.offsetTop - secondRowTop) < 2)
-    .map((tag) => tag.offsetTop + tag.offsetHeight));
+    .map((tag) => ({ tag, top: tag.getBoundingClientRect().top - listTop }))
+    .filter(({ top }) => Math.abs(top - secondRowTop) < 2)
+    .map(({ tag, top }) => top + tag.offsetHeight));
   list.style.setProperty("--ingredients-collapsed-height", `${secondRowBottom}px`);
 }
 
