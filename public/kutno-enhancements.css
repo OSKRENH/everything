@@ -1,3 +1,50 @@
+:root { interpolate-size: allow-keywords; }
+
+#top { view-transition-name: kutno-main; }
+
+::view-transition-group(kutno-main) {
+  animation-duration: .3s;
+  animation-timing-function: cubic-bezier(.22, .75, .24, 1);
+}
+::view-transition-old(kutno-main) { animation: kutno-view-out .18s ease both; }
+::view-transition-new(kutno-main) { animation: kutno-view-in .3s cubic-bezier(.22, .75, .24, 1) both; }
+
+@keyframes kutno-view-out {
+  to { opacity: 0; transform: translateY(-7px) scale(.997); }
+}
+@keyframes kutno-view-in {
+  from { opacity: 0; transform: translateY(11px) scale(.997); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.kutno-view-leaving #top {
+  opacity: 0;
+  transform: translateY(-7px);
+  transition: opacity .11s ease, transform .11s ease;
+}
+.kutno-view-entering #top { animation: kutno-view-in .26s cubic-bezier(.22, .75, .24, 1) both; }
+
+button,
+a,
+.ingredient-tag,
+.catalog-filter button,
+.header-nav button {
+  transition-property: color, background-color, border-color, opacity;
+  transition-duration: .16s;
+  transition-timing-function: ease;
+}
+
+.section-illustration img,
+.pot-loader {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+.kitchen-illustration img { aspect-ratio: auto 4 / 3; }
+.base-illustration img { aspect-ratio: auto 16 / 9; }
+.swipe-illustration img { aspect-ratio: auto 4 / 3; }
+.favorites-illustration img,
+.favorites-list-illustration img { aspect-ratio: auto 1 / 1; }
+
 .advanced-settings {
   border: 0;
   margin: 0;
@@ -51,6 +98,16 @@
 .advanced-settings > summary > i::after { transform: rotate(90deg); }
 .advanced-settings[open] > summary > i::after { transform: rotate(0); }
 .advanced-settings-body { overflow: hidden; }
+.advanced-settings::details-content {
+  block-size: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: block-size .28s cubic-bezier(.22, .75, .24, 1), opacity .18s ease;
+}
+.advanced-settings[open]::details-content {
+  block-size: auto;
+  opacity: 1;
+}
 
 .auth-email-toggle {
   width: 100%;
@@ -73,9 +130,7 @@
   display: none;
 }
 
-.auth-card.email-auth-collapsed .google-auth-note {
-  margin-top: 18px;
-}
+.auth-card.email-auth-collapsed .google-auth-note { margin-top: 18px; }
 
 @media (max-width: 700px) {
   .advanced-settings > summary {
@@ -93,21 +148,21 @@
     grid-row: 1 / 3;
   }
 
-  .auth-card:not(.account-card):not(.confirm-card) {
-    padding-top: 24px;
-  }
-  .auth-card:not(.account-card):not(.confirm-card) .eyebrow {
-    margin-bottom: 24px;
-  }
-  .auth-card:not(.account-card):not(.confirm-card) h2 {
-    font-size: 39px;
-  }
-  .auth-card:not(.account-card):not(.confirm-card) .auth-lead {
-    margin: 14px 0 21px;
-  }
+  .auth-card:not(.account-card):not(.confirm-card) { padding-top: 24px; }
+  .auth-card:not(.account-card):not(.confirm-card) .eyebrow { margin-bottom: 24px; }
+  .auth-card:not(.account-card):not(.confirm-card) h2 { font-size: 39px; }
+  .auth-card:not(.account-card):not(.confirm-card) .auth-lead { margin: 14px 0 21px; }
   .auth-card:not(.account-card):not(.confirm-card) .google-auth-note {
     margin-top: 16px;
     padding-top: 12px;
     line-height: 1.45;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(kutno-main),
+  ::view-transition-new(kutno-main),
+  .kutno-view-entering #top { animation: none; }
+  .kutno-view-leaving #top { transition: none; }
+  .advanced-settings::details-content { transition: none; }
 }
