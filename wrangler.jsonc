@@ -32,6 +32,9 @@
   "vars": {
     "GOOGLE_CLIENT_ID": "117547932468-r7j3rtk0b00va7o687gqn7he18cbuir2.apps.googleusercontent.com"
   },
+  "secrets": {
+    "required": ["YANDEX_CLIENT_ID", "YANDEX_CLIENT_SECRET"]
+  },
   "observability": {
     "enabled": true
   }
