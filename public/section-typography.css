@@ -117,132 +117,26 @@
 
 @media (max-width: 700px) {
   :root {
-    --section-title-size: 50px;
+    --section-title-size: clamp(48px, 12.8vw, 54px);
     --section-title-line-height: .98;
     --section-kicker-size: 11px;
     --section-kicker-line-height: 1.35;
     --section-lead-size: 13px;
-    --section-lead-line-height: 1.6;
-    --section-mobile-hero-height: calc(100svh - 126px);
-    --section-mobile-top-space: 46px;
-    --section-mobile-bottom-space: 36px;
-    --section-mobile-kicker-row: 48px;
-    --section-mobile-title-row: 150px;
-    --section-mobile-lead-row: 90px;
-  }
-
-  /* Убираем разные внешние отступы исходных четырёх экранов. */
-  .intro-grid {
-    width: 100%;
-    padding: 0;
-    gap: 0;
-  }
-
-  .archive-page,
-  .swipe-page {
-    min-height: 0;
-    padding: 0 0 75px;
-  }
-
-  .swipe-page {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-    gap: 0;
-  }
-
-  /* Единая сетка шапки: надзаголовок, три строки заголовка,
-     единый блок описания и единая зона иллюстрации. */
-  .intro-copy,
-  .archive-heading,
-  .swipe-heading,
-  .favorites-empty {
-    width: 100%;
-    min-height: var(--section-mobile-hero-height);
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows:
-      var(--section-mobile-kicker-row)
-      var(--section-mobile-title-row)
-      var(--section-mobile-lead-row)
-      minmax(220px, 1fr);
-    gap: 0;
-    align-items: start;
-    align-content: stretch;
-    padding: var(--section-mobile-top-space) 0 var(--section-mobile-bottom-space);
-  }
-
-  /* В базе и избранном нужные элементы лежат во вложенных блоках —
-     раскрываем их в общую сетку без изменения HTML. */
-  .archive-heading > div:first-child,
-  .archive-heading .archive-visual,
-  .favorites-empty .favorites-copy {
-    display: contents;
-  }
-
-  .intro-copy > .eyebrow,
-  .archive-heading .eyebrow,
-  .swipe-heading .eyebrow,
-  .favorites-empty .eyebrow {
-    grid-row: 1;
-    align-self: start;
-    margin: 0;
+    --section-lead-line-height: 1.65;
   }
 
   .intro-copy h1,
   .archive-heading h1,
   .swipe-heading h1,
+  .favorites-copy h1,
   .favorites-empty h1 {
-    grid-row: 2;
-    align-self: start;
-    min-height: var(--section-mobile-title-row);
     overflow-wrap: normal;
     word-break: normal;
   }
 
-  .archive-heading .archive-visual > p,
-  .swipe-heading > p:last-of-type,
-  .favorites-empty .favorites-copy > p:last-of-type {
-    grid-row: 3;
-    align-self: start;
-    width: 100%;
-    max-width: none;
-    min-height: var(--section-mobile-lead-row);
-    margin: 0;
+  .favorites-illustration img {
+    max-width: min(100%, 300px);
   }
-
-  .intro-copy .kitchen-illustration,
-  .archive-heading .base-illustration,
-  .swipe-heading .swipe-illustration,
-  .favorites-empty .favorites-illustration {
-    grid-row: 4;
-    align-self: stretch;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0;
-    padding: 0;
-  }
-
-  .intro-copy .kitchen-illustration img,
-  .archive-heading .base-illustration img,
-  .swipe-heading .swipe-illustration img,
-  .favorites-empty .favorites-illustration img {
-    display: block;
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 250px;
-    margin: auto;
-    object-fit: contain;
-    object-position: center center;
-  }
-
-  .intro-copy .kitchen-illustration img { max-width: 78%; }
-  .archive-heading .base-illustration img { max-width: 100%; }
-  .swipe-heading .swipe-illustration img { max-width: 84%; }
-  .favorites-empty .favorites-illustration img { max-width: 72%; }
 
   .favorites-list-illustration img {
     max-width: min(100%, 260px);
