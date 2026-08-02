@@ -267,12 +267,14 @@
     }
     const list = document.querySelector("[data-kf-shopping-list]");
     if (!list) return;
+    const signature = JSON.stringify(items);
+    if (list.dataset.kfSignature === signature) return;
+    list.dataset.kfSignature = signature;
     if (!items.length) {
-      const emptyMarkup = `<div class="kf-shopping-empty"><strong>Пока пусто</strong><p>Добавьте недостающие продукты из любого рецепта.</p></div>`;
-      if (list.innerHTML !== emptyMarkup) list.innerHTML = emptyMarkup;
+      list.innerHTML = `<div class="kf-shopping-empty"><strong>Пока пусто</strong><p>Добавьте недостающие продукты из любого рецепта.</p></div>`;
       return;
     }
-    const markup = items
+    list.innerHTML = items
       .map(
         (item) => `<label class="kf-shopping-item ${item.checked ? "checked" : ""}">
           <input type="checkbox" data-kf-shopping-id="${escapeAttr(item.id)}" ${item.checked ? "checked" : ""}>
@@ -281,7 +283,6 @@
         </label>`,
       )
       .join("");
-    if (list.innerHTML !== markup) list.innerHTML = markup;
   }
 
   function openShopping() {
