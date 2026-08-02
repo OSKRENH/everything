@@ -95,7 +95,10 @@ async function loadCatalogForMatching(request, env, ctx, body) {
   const url = new URL(request.url);
   url.pathname = "/api/catalog";
   url.search = `?portions=${Math.min(8, Math.max(1, Number(body.portions) || 2))}`;
-  const response = await featureWorker.fetch(new Request(url, { method: "GET", headers: request.headers }), env, ctx);
+  const headers = new Headers(request.headers);
+  headers.delete("content-length");
+  headers.delete("content-type");
+  const response = await featureWorker.fetch(new Request(url, { method: "GET", headers }), env, ctx);
   if (!response.ok) return [];
   const data = await response.json().catch(() => ({}));
   return Array.isArray(data.recipes) ? data.recipes : [];
@@ -109,12 +112,30 @@ async function runBaseGenerate(body, request, env, ctx) {
   return { response, data, recipes };
 }
 
+function catalogResponse(recipes, body, hasMore = false, relaxation = null) {
+  return json({
+    recipes: recipes.slice(0, 3),
+    hasMore,
+    source: "semantic-catalog",
+    ...(relaxation ? {
+      relaxation,
+      originalFilters: {
+        searchMode: body.searchMode,
+        maxMinutes: body.maxMinutes,
+        course: body.course,
+      },
+    } : {}),
+  });
+}
+
 async function smartGenerate(request, env, ctx) {
   const body = await request.clone().json().catch(() => ({}));
   if (!Array.isArray(body.ingredients) || !body.ingredients.length) return featureWorker.fetch(request, env, ctx);
 
   const catalog = await loadCatalogForMatching(request, env, ctx, body);
   const strictCatalog = rankRecipes(catalog, body).map((item) => item.recipe);
+  if (strictCatalog.length >= 3) return catalogResponse(strictCatalog, body, strictCatalog.length > 3);
+
   const base = await runBaseGenerate(body, request, env, ctx);
   if (!base.data && !base.response.ok) return base.response;
 
