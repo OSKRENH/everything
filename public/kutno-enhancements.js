@@ -1,16 +1,34 @@
 (() => {
   const KITCHEN_KEY = "kutno-kitchen-v2";
+  const COOKING_HISTORY_KEY = "kutno-cooking-history-v1";
+  const SWIPE_HISTORY_KEY = "kutno-swipe-history-v1";
   const AUTH_PATHS = new Set([
     "/api/auth/me",
     "/api/auth/google",
     "/api/auth/login",
     "/api/auth/register",
   ]);
+  const ILLUSTRATIONS = [
+    "/illustrations/kitchen-hero.webp",
+    "/illustrations/base-hero.webp",
+    "/illustrations/am-heart-hero.webp",
+    "/illustrations/favorites-hero.webp",
+    "/illustrations/pot-loader.gif",
+  ];
   const originalFetch = window.fetch.bind(window);
 
   let settingsOpen = window.matchMedia("(min-width: 701px)").matches;
   let emailAuthExpanded = false;
-  let enhancementFrame = 0;
+  let enhancing = false;
+  let syntheticViewClick = false;
+
+  window.__kutnoIllustrationCache = ILLUSTRATIONS.map((src) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.src = src;
+    image.decode?.().catch(() => {});
+    return image;
+  });
 
   function readJson(key, fallback = {}) {
     try {
@@ -43,16 +61,18 @@
         byId.set(item.id, item);
       }
     }
-    return [...byId.values()]
-      .sort((a, b) => Number(b[dateKey] || 0) - Number(a[dateKey] || 0));
+    return [...byId.values()].sort((a, b) => Number(b[dateKey] || 0) - Number(a[dateKey] || 0));
   }
 
   function mergeKitchen(remoteKitchen) {
     const remote = remoteKitchen && typeof remoteKitchen === "object" ? remoteKitchen : {};
     const local = readJson(KITCHEN_KEY);
+    const localCookingHistory = readJson(COOKING_HISTORY_KEY, []);
+    const localSwipeHistory = readJson(SWIPE_HISTORY_KEY, []);
     const hasLocalKitchen = Array.isArray(local.ingredients) && local.ingredients.length > 0;
+    const hasLocalHistory = localCookingHistory.length > 0 || localSwipeHistory.length > 0;
 
-    if (!hasLocalKitchen) return remote;
+    if (!hasLocalKitchen && !hasLocalHistory) return remote;
 
     const ingredients = uniqueStrings(remote.ingredients || [], local.ingredients || []);
     const priorityIngredients = uniqueStrings(
@@ -62,12 +82,12 @@
 
     return {
       ...remote,
-      ...local,
+      ...(hasLocalKitchen ? local : {}),
       ingredients,
       priorityIngredients,
       equipment: uniqueStrings(remote.equipment || [], local.equipment || []),
-      cookingHistory: mergeHistory(remote.cookingHistory, local.cookingHistory, "cookedAt").slice(0, 200),
-      swipeHistory: mergeHistory(remote.swipeHistory, local.swipeHistory, "at").slice(0, 500),
+      cookingHistory: mergeHistory(remote.cookingHistory, localCookingHistory, "cookedAt").slice(0, 200),
+      swipeHistory: mergeHistory(remote.swipeHistory, localSwipeHistory, "at").slice(0, 500),
     };
   }
 
@@ -130,6 +150,13 @@
     const mode = state.searchMode === "plus-one" ? "можно докупить 1" : "без покупок";
     const time = Number(state.maxMinutes) ? `до ${Number(state.maxMinutes)} мин` : "любое время";
     return `${mode} · ${time} · ${portionsLabel(state.portions)}`;
+  }
+
+  function enhanceImages() {
+    document.querySelectorAll(".section-illustration img, .pot-loader").forEach((image) => {
+      image.loading = "eager";
+      image.decoding = "async";
+    });
   }
 
   function enhanceSettings() {
@@ -195,22 +222,64 @@
   }
 
   function enhance() {
-    cancelAnimationFrame(enhancementFrame);
-    enhancementFrame = requestAnimationFrame(() => {
+    if (enhancing) return;
+    enhancing = true;
+    try {
       enhanceSettings();
       enhanceAuth();
-    });
+      enhanceImages();
+    } finally {
+      enhancing = false;
+    }
   }
+
+  function runViewClick(target) {
+    syntheticViewClick = true;
+    target.click();
+    return Promise.resolve().then(() => enhance());
+  }
+
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-view]");
+    if (!target || syntheticViewClick || target.classList.contains("active")) return;
+    if (event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (typeof document.startViewTransition === "function" && !reducedMotion) {
+      const transition = document.startViewTransition(() => runViewClick(target));
+      transition.finished.finally(() => {
+        syntheticViewClick = false;
+      });
+      return;
+    }
+
+    const root = document.documentElement;
+    root.classList.add("kutno-view-leaving");
+    window.setTimeout(() => {
+      runViewClick(target).finally(() => {
+        root.classList.remove("kutno-view-leaving");
+        root.classList.add("kutno-view-entering");
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          root.classList.remove("kutno-view-entering");
+          syntheticViewClick = false;
+        }));
+      });
+    }, reducedMotion ? 0 : 110);
+  }, true);
 
   document.addEventListener("click", (event) => {
     if (event.target.closest("[data-auth-mode]")) emailAuthExpanded = true;
     if (event.target.closest("[data-action='account']")) emailAuthExpanded = false;
     if (event.target.closest("[data-search-mode], [data-max-minutes], [data-portions], [data-kitchen-course], [data-difficulty]")) {
-      setTimeout(enhance, 0);
+      queueMicrotask(enhance);
     }
   }, true);
 
   const observer = new MutationObserver(enhance);
   observer.observe(document.documentElement, { childList: true, subtree: true });
+  enhance();
   document.addEventListener("DOMContentLoaded", enhance, { once: true });
 })();
