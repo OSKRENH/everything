@@ -5,6 +5,7 @@ const bridgeSource = fs.readFileSync(new URL("./src/kutno-bridge.inject.js", imp
 const matchingSource = fs.readFileSync(new URL("./src/matching-engine.inject.js", import.meta.url), "utf8");
 const fetchResetSource = fs.readFileSync(new URL("./src/fetch-reset.inject.js", import.meta.url), "utf8");
 const matchingFixesSource = fs.readFileSync(new URL("./src/matching-fixes.inject.js", import.meta.url), "utf8");
+const catalogPerformanceSource = fs.readFileSync(new URL("./src/catalog-performance.inject.js", import.meta.url), "utf8");
 const semanticImport = `import {
   analyzeRecipe as semanticAnalyzeRecipe,
   ingredientMatch as semanticIngredientMatch,
@@ -21,7 +22,7 @@ export default defineConfig({
         const cleanId = id.split("?", 1)[0];
         if (!cleanId.endsWith("/src/main.js")) return null;
         return {
-          code: `${semanticImport}\n${code}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}`,
+          code: `${semanticImport}\n${code}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}`,
           map: null,
         };
       },
