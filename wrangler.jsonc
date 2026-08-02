@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "kutno",
-  "main": "worker/oil-fix-entry.js",
+  "main": "worker/safe-entry.js",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
   "routes": [
