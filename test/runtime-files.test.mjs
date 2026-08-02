@@ -8,6 +8,7 @@ const runtimeFiles = [
   "worker/entry.js",
   "worker/matching-entry.js",
   "worker/oil-fix-entry.js",
+  "worker/safe-entry.js",
   "worker/manual-recipes.js",
   "src/ingredient-semantics.js",
   "src/ingredient-semantics-v2.js",
@@ -34,6 +35,7 @@ test("сборочный мост подключает API состояния и
   const bridge = readFileSync("src/kutno-bridge.inject.js", "utf8");
   const matching = readFileSync("src/matching-engine.inject.js", "utf8");
   const fixes = readFileSync("src/matching-fixes.inject.js", "utf8");
+  const throttle = readFileSync("public/feature-sync-throttle.js", "utf8");
   const vite = readFileSync("vite.config.js", "utf8");
   assert.match(bridge, /window\.kutnoBridge\s*=/);
   assert.match(bridge, /restoreSwipeSnapshot/);
@@ -42,6 +44,8 @@ test("сборочный мост подключает API состояния и
   assert.match(matching, /Готовить сейчас/);
   assert.match(matching, /Хочу использовать/);
   assert.match(fixes, /loadCatalog\(true\)/);
+  assert.match(fixes, /catch\s*\{\s*pathname = ""/);
+  assert.match(throttle, /catch\s*\{\s*pathname = ""/);
   assert.match(vite, /ingredient-semantics-v3/);
 });
 
@@ -49,7 +53,9 @@ test("расширенные Worker-слои делегируют основно
   const featureWorker = readFileSync("worker/entry.js", "utf8");
   const matchingWorker = readFileSync("worker/matching-entry.js", "utf8");
   const oilFixWorker = readFileSync("worker/oil-fix-entry.js", "utf8");
+  const safeWorker = readFileSync("worker/safe-entry.js", "utf8");
   const manualCatalog = readFileSync("worker/manual-recipes.js", "utf8");
+  const wrangler = readFileSync("wrangler.jsonc", "utf8");
   assert.match(featureWorker, /return baseWorker\.fetch\(request, env, ctx\)/);
   assert.match(featureWorker, /\/api\/feature-state/);
   assert.match(featureWorker, /shared_recipes/);
@@ -57,5 +63,8 @@ test("расширенные Worker-слои делегируют основно
   assert.match(matchingWorker, /manualRecipesForPortions/);
   assert.match(oilFixWorker, /return matchingWorker\.fetch\(request, env, ctx\)/);
   assert.match(oilFixWorker, /ingredient-semantics-v3/);
+  assert.match(safeWorker, /oilFixWorker\.fetch/);
+  assert.match(safeWorker, /catalogFallback/);
+  assert.match(wrangler, /worker\/safe-entry\.js/);
   assert.match(manualCatalog, /kutno-manual-catalog/);
 });
