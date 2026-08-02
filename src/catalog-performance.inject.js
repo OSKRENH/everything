@@ -1,10 +1,12 @@
 const CATALOG_INITIAL_SIZE = 5;
 const CATALOG_INCREMENT = 1;
 const CATALOG_RETRY_COUNT = 3;
+const CATALOG_REVEAL_DURATION = 480;
 let catalogVisibleLimit = CATALOG_INITIAL_SIZE;
 let catalogResultKey = "";
 let catalogLoadObserver = null;
 let catalogLoadPending = false;
+let catalogAnimateNext = false;
 let catalogRecoveryTimer = 0;
 
 function catalogDelay(milliseconds) {
@@ -139,27 +141,54 @@ function renderPlainCatalogLimited(items, limit) {
     : cards;
 }
 
+function finishCatalogReveal(card, header) {
+  card?.classList.remove("catalog-card-entering");
+  header?.classList.remove("matching-group-header-entering");
+  catalogLoadPending = false;
+  armCatalogAutoLoad();
+}
+
+function animateNewCatalogCard(grid) {
+  if (!catalogAnimateNext) return false;
+  catalogAnimateNext = false;
+
+  const cards = [...grid.querySelectorAll(".catalog-card")];
+  const card = cards.at(-1);
+  if (!card) {
+    catalogLoadPending = false;
+    return false;
+  }
+
+  const group = card.closest(".matching-group");
+  const header = group?.querySelector(":scope > header") || null;
+  const startsNewGroup = Boolean(group && group.querySelectorAll(".catalog-card").length === 1);
+
+  card.classList.add("catalog-card-entering");
+  if (startsNewGroup) header?.classList.add("matching-group-header-entering");
+
+  window.setTimeout(() => finishCatalogReveal(card, startsNewGroup ? header : null), CATALOG_REVEAL_DURATION + 60);
+  return true;
+}
+
 function revealNextCatalogItem() {
   if (catalogLoadPending) return;
   catalogLoadPending = true;
+  catalogAnimateNext = true;
   catalogLoadObserver?.disconnect();
   catalogLoadObserver = null;
   catalogVisibleLimit += CATALOG_INCREMENT;
   updateCatalogResults();
-  requestAnimationFrame(() => {
-    catalogLoadPending = false;
-  });
 }
 
 function armCatalogAutoLoad() {
   catalogLoadObserver?.disconnect();
   catalogLoadObserver = null;
   const sentinel = document.querySelector("[data-catalog-scroll-sentinel]");
-  if (!sentinel) return;
+  if (!sentinel || catalogLoadPending) return;
 
   if (typeof IntersectionObserver === "undefined") {
     const onScroll = () => {
-      if (sentinel.getBoundingClientRect().top > window.innerHeight + 180) return;
+      if (sentinel.getBoundingClientRect().top > window.innerHeight + 60) return;
       window.removeEventListener("scroll", onScroll);
       revealNextCatalogItem();
     };
@@ -170,7 +199,7 @@ function armCatalogAutoLoad() {
   catalogLoadObserver = new IntersectionObserver((entries) => {
     if (!entries.some((entry) => entry.isIntersecting)) return;
     revealNextCatalogItem();
-  }, { rootMargin: "220px 0px" });
+  }, { rootMargin: "60px 0px" });
   catalogLoadObserver.observe(sentinel);
 }
 
@@ -187,6 +216,8 @@ updateCatalogResults = function performantCatalogResults() {
   if (catalogResultKey !== nextResultKey) {
     catalogResultKey = nextResultKey;
     catalogVisibleLimit = CATALOG_INITIAL_SIZE;
+    catalogAnimateNext = false;
+    catalogLoadPending = false;
   }
 
   const finalQuickKey = catalogQuickKey();
@@ -203,7 +234,9 @@ updateCatalogResults = function performantCatalogResults() {
   grid.innerHTML = state.ingredients.length
     ? renderCatalogGroupsLimited(filtered, catalogVisibleLimit)
     : renderPlainCatalogLimited(filtered, catalogVisibleLimit);
-  requestAnimationFrame(armCatalogAutoLoad);
+
+  const animated = animateNewCatalogCard(grid);
+  if (!animated) requestAnimationFrame(armCatalogAutoLoad);
 };
 
 recoverInitialCatalogLoad();
