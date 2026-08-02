@@ -35,7 +35,7 @@
   height: 1px;
 }
 
-/* Одинаковая типографика заголовков во всех четырёх разделах. */
+/* Единая типографика разделов. */
 .intro-copy h1,
 .archive-heading h1,
 .swipe-heading h1,
@@ -51,7 +51,6 @@
   letter-spacing: var(--section-title-spacing);
 }
 
-/* Надзаголовки получают один размер, цвет, вес и высоту строки. */
 .intro-copy > .eyebrow,
 .archive-heading .eyebrow,
 .swipe-heading .eyebrow,
@@ -65,7 +64,6 @@
   letter-spacing: .13em;
 }
 
-/* Описания разделов выглядят одинаково. */
 .archive-visual > p,
 .swipe-heading > p:last-of-type,
 .favorites-copy > p:last-of-type,
@@ -78,7 +76,6 @@
   letter-spacing: 0;
 }
 
-/* Сердце не меняет метрики строки заголовка АМ. */
 .swipe-heading .am-heart {
   display: inline-block;
   font-size: .52em;
@@ -86,7 +83,7 @@
   vertical-align: .1em;
 }
 
-/* Иллюстрации избранного всегда стоят по центру своей колонки. */
+/* Иллюстрации избранного центрируются и не меняют геометрию после загрузки. */
 .favorites-illustration,
 .favorites-list-illustration {
   width: 100%;
@@ -110,7 +107,6 @@
   margin-left: auto;
 }
 
-/* В пустом избранном переход в АМ больше не показываем. */
 .favorites-empty .favorites-copy > button {
   display: none;
 }
@@ -123,103 +119,121 @@
     --section-kicker-line-height: 1.35;
     --section-lead-size: 12px;
     --section-lead-line-height: 1.55;
-    --section-mobile-kicker-row: 18px;
-    --section-mobile-title-row: 145px;
-    --section-mobile-lead-row: 66px;
-    --section-mobile-illustration-row: 250px;
-    --section-mobile-row-gap: 18px;
+    --mobile-title-box: 134px;
+    --mobile-lead-box: 56px;
+    --mobile-title-lead-gap: 18px;
+    --mobile-lead-art-gap: 22px;
+    --mobile-art-box: 250px;
   }
 
-  /* Убираем разные исходные отступы, но не растягиваем блок на высоту экрана. */
+  /* Оставляем исходную структуру каждого раздела. Меняем только размеры и отступы. */
   .intro-grid {
-    padding-top: 0;
-  }
-
-  .intro-copy {
-    min-height: 0;
+    padding-top: 44px;
   }
 
   .archive-page,
   .swipe-page {
-    padding-top: 0;
+    padding-top: 44px;
   }
 
-  .archive-heading,
   .favorites-empty {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding-top: 44px;
+  }
+
+  .archive-heading {
     gap: 0;
   }
 
-  /* Компактная общая сетка по трём красным линиям:
-     низ заголовка, низ описания, начало иллюстрации. */
-  .intro-copy,
-  .archive-heading,
-  .swipe-heading,
-  .favorites-empty {
-    width: 100%;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows:
-      var(--section-mobile-kicker-row)
-      var(--section-mobile-title-row)
-      var(--section-mobile-lead-row)
-      var(--section-mobile-illustration-row);
-    row-gap: var(--section-mobile-row-gap);
-    align-content: start;
-    align-items: stretch;
-    min-height: 0;
-    padding: 44px 0 36px;
+  .archive-visual {
+    display: block;
   }
 
-  /* В базе и избранном содержимое лежит во вложенных контейнерах. */
-  .archive-heading > div:first-child,
-  .archive-heading .archive-visual,
-  .favorites-empty .favorites-copy {
-    display: contents;
+  .favorites-copy {
+    align-items: stretch;
   }
 
   .intro-copy > .eyebrow,
   .archive-heading .eyebrow,
   .swipe-heading .eyebrow,
+  .favorites-copy > .eyebrow,
   .favorites-empty .eyebrow {
-    grid-row: 1;
-    align-self: start;
-    margin: 0;
+    margin: 0 0 24px;
   }
 
+  /* Одинаковая нижняя линия заголовков без grid и display: contents. */
   .intro-copy h1,
   .archive-heading h1,
   .swipe-heading h1,
   .favorites-copy h1,
   .favorites-empty h1 {
-    grid-row: 2;
-    align-self: end;
-    overflow-wrap: normal;
+    box-sizing: border-box;
+    height: var(--mobile-title-box);
+    min-height: var(--mobile-title-box);
+    overflow: visible;
     word-break: normal;
+    overflow-wrap: normal;
+  }
+
+  .intro-copy h1 {
+    padding-top: 0;
+  }
+
+  .archive-heading h1,
+  .favorites-copy h1,
+  .favorites-empty h1 {
+    padding-top: 45px;
+  }
+
+  .swipe-heading h1 {
+    padding-top: 89px;
+  }
+
+  /* Одинаковая зона описания. */
+  .archive-heading > div:first-child {
+    margin-bottom: var(--mobile-title-lead-gap);
   }
 
   .archive-heading .archive-visual > p,
   .swipe-heading > p:last-of-type,
+  .favorites-copy > p:last-of-type,
   .favorites-empty .favorites-copy > p:last-of-type {
-    grid-row: 3;
-    align-self: end;
+    box-sizing: border-box;
     width: 100%;
     max-width: none;
+    height: var(--mobile-lead-box);
+    min-height: var(--mobile-lead-box);
     margin: 0;
+  }
+
+  .swipe-heading h1,
+  .favorites-copy h1,
+  .favorites-empty h1 {
+    margin-bottom: var(--mobile-title-lead-gap);
+  }
+
+  /* Все иллюстрации начинаются на одной линии и сразу занимают окончательное место. */
+  .intro-copy .kitchen-illustration {
+    margin: calc(var(--mobile-title-lead-gap) + var(--mobile-lead-box) + var(--mobile-lead-art-gap)) 0 0;
+  }
+
+  .archive-heading .base-illustration,
+  .swipe-heading .swipe-illustration,
+  .favorites-empty .favorites-illustration {
+    margin: var(--mobile-lead-art-gap) 0 0;
   }
 
   .intro-copy .kitchen-illustration,
   .archive-heading .base-illustration,
   .swipe-heading .swipe-illustration,
   .favorites-empty .favorites-illustration {
-    grid-row: 4;
-    align-self: start;
     width: 100%;
-    height: var(--section-mobile-illustration-row);
-    min-height: var(--section-mobile-illustration-row);
+    height: var(--mobile-art-box);
+    min-height: var(--mobile-art-box);
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    margin: 0;
     padding: 0;
     overflow: hidden;
   }
@@ -231,7 +245,7 @@
     display: block;
     width: auto;
     height: auto;
-    max-height: 235px;
+    max-height: var(--mobile-art-box);
     margin: 0 auto;
     object-fit: contain;
     object-position: center top;
@@ -253,7 +267,6 @@
     max-width: 72%;
   }
 
-  /* Список избранного тоже заранее резервирует место под рисунок. */
   .favorites-list-illustration {
     width: 100%;
     height: 210px;
