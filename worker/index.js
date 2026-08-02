@@ -487,15 +487,18 @@ const RECOVERY_RECIPE_TEMPLATES = [
         { name: "вода", amount: `${portions * 30} мл` },
       ],
       steps: [
-        `Нарежьте ${chicken} небольшими одинаковыми кусочками, а ${broccoli} разделите на небольшие соцветия.`,
-        `Разогрейте сковороду на среднем огне, налейте растительное масло, выложите ${chicken} и обжаривайте 6–8 минут до светлой румяной корочки.`,
-        `Добавьте ${broccoli} и воду, накройте сковороду и тушите 5 минут, пока капуста не станет мягче, но сохранит форму.`,
-        `Влейте ${soy}, перемешайте и готовьте ещё 2 минуты, затем снимите блюдо с огня и подавайте горячим.`,
+        `Нарежьте ${recoveryAccusative(chicken)} небольшими одинаковыми кусочками, а ${recoveryAccusative(broccoli)} разделите на небольшие соцветия.`,
+        `Разогрейте сковороду на среднем огне, налейте растительное масло, выложите ${recoveryAccusative(chicken)} и обжаривайте 6–8 минут до светлой румяной корочки.`,
+        `Добавьте ${recoveryAccusative(broccoli)} и воду, накройте сковороду и тушите 5 минут, пока капуста не станет мягче, но сохранит форму.`,
+        `Влейте ${recoveryAccusative(soy)}, перемешайте и готовьте ещё 2 минуты, затем снимите блюдо с огня и подавайте горячим.`,
       ],
     }),
   },
   {
     title: "Лапша с курицей и брокколи",
+    titleFor: ({ noodles }) => normalizedSignature(noodles).includes("макарон")
+      ? "Макароны с курицей и брокколи"
+      : "Лапша с курицей и брокколи",
     subtitle: "Сытная лапша с овощами без дополнительных покупок",
     minutes: 30,
     equipment: ["Сковорода", "Кастрюля"],
@@ -511,10 +514,10 @@ const RECOVERY_RECIPE_TEMPLATES = [
         { name: "вода", amount: `${portions * 500} мл` },
       ],
       steps: [
-        `Налейте воду в кастрюлю, доведите до кипения, опустите ${noodles} и варите по времени на упаковке, затем слейте воду.`,
-        `Нарежьте ${chicken} небольшими кусочками, а ${broccoli} разделите на соцветия.`,
-        `Разогрейте растительное масло на сковороде, выложите ${chicken} и обжаривайте 6 минут до румяной корочки.`,
-        `Добавьте ${broccoli}, накройте и готовьте 5 минут, затем положите ${noodles}, влейте ${soy}, перемешайте и прогревайте 2 минуты перед подачей.`,
+        `Налейте воду в кастрюлю, доведите до кипения, опустите ${recoveryAccusative(noodles)} и варите по времени на упаковке, затем слейте воду.`,
+        `Нарежьте ${recoveryAccusative(chicken)} небольшими кусочками, а ${recoveryAccusative(broccoli)} разделите на соцветия.`,
+        `Разогрейте растительное масло на сковороде, выложите ${recoveryAccusative(chicken)} и обжаривайте 6 минут до румяной корочки.`,
+        `Добавьте ${recoveryAccusative(broccoli)}, накройте и готовьте 5 минут, затем положите ${recoveryAccusative(noodles)}, влейте ${recoveryAccusative(soy)}, перемешайте и прогревайте 2 минуты перед подачей.`,
       ],
     }),
   },
@@ -534,15 +537,18 @@ const RECOVERY_RECIPE_TEMPLATES = [
         { name: "соль", amount: "по вкусу" },
       ],
       steps: [
-        `Разделите ${broccoli} на небольшие соцветия и натрите ${cheese}.`,
-        `Разогрейте растительное масло на сковороде, выложите ${broccoli} и обжаривайте 4 минуты на среднем огне.`,
-        `Разбейте ${eggs} в миску, посолите, взбейте и вылейте смесь на сковороду поверх ${broccoli}.`,
-        `Посыпьте омлет продуктом «${cheese}», накройте и готовьте 5–6 минут на слабом огне, затем снимите со сковороды и подавайте.`,
+        `Разделите ${recoveryAccusative(broccoli)} на небольшие соцветия и натрите ${recoveryAccusative(cheese)}.`,
+        `Разогрейте растительное масло на сковороде, выложите ${recoveryAccusative(broccoli)} и обжаривайте 4 минуты на среднем огне.`,
+        `Разбейте ${recoveryAccusative(eggs)} в миску, посолите, взбейте и вылейте смесь на сковороду поверх ${recoveryGenitive(broccoli)}.`,
+        `Посыпьте омлет ${recoveryInstrumental(cheese)}, накройте и готовьте 5–6 минут на слабом огне, затем снимите со сковороды и подавайте.`,
       ],
     }),
   },
   {
     title: "Макароны с сыром на сковороде",
+    titleFor: ({ pasta }) => normalizedSignature(pasta).includes("лапш")
+      ? "Лапша с сыром на сковороде"
+      : "Макароны с сыром на сковороде",
     subtitle: "Простая сливочная текстура без готового соуса",
     minutes: 20,
     equipment: ["Сковорода", "Кастрюля"],
@@ -557,10 +563,10 @@ const RECOVERY_RECIPE_TEMPLATES = [
         { name: "соль", amount: "по вкусу" },
       ],
       steps: [
-        `Налейте воду в кастрюлю, посолите, доведите до кипения, добавьте ${pasta} и варите до состояния чуть плотнее готового.`,
-        `Натрите ${cheese}, слейте воду с продукта «${pasta}», сохранив немного горячей воды.`,
-        `Разогрейте растительное масло на сковороде, выложите ${pasta}, добавьте немного сохранённой воды и перемешайте.`,
-        `Посыпьте продуктом «${cheese}» и прогревайте 2 минуты на слабом огне до расплавления, затем снимите и подавайте сразу.`,
+        `Налейте воду в кастрюлю, посолите, доведите до кипения, добавьте ${recoveryAccusative(pasta)} и варите до состояния чуть плотнее готового.`,
+        `Натрите ${recoveryAccusative(cheese)}, откиньте ${recoveryAccusative(pasta)} на дуршлаг, сохранив немного горячей воды.`,
+        `Разогрейте растительное масло на сковороде, выложите ${recoveryAccusative(pasta)}, добавьте немного сохранённой воды и перемешайте.`,
+        `Посыпьте ${recoveryInstrumental(cheese)} и прогревайте 2 минуты на слабом огне до расплавления, затем снимите и подавайте сразу.`,
       ],
     }),
   },
@@ -581,10 +587,10 @@ const RECOVERY_RECIPE_TEMPLATES = [
         { name: "соль", amount: "по вкусу" },
       ],
       steps: [
-        `Промойте ${buckwheat}, положите в кастрюлю, влейте воду, посолите и варите 18 минут на слабом огне под крышкой.`,
-        `Нарежьте ${chicken} небольшими кусочками, а ${onion} — тонкими полосками.`,
-        `Разогрейте растительное масло на сковороде, выложите ${chicken} и обжаривайте 7 минут до румяной корочки.`,
-        `Добавьте ${onion}, готовьте ещё 5 минут до мягкости, затем положите ${buckwheat}, перемешайте, прогревайте 2 минуты и подавайте.`,
+        `Промойте ${recoveryAccusative(buckwheat)}, положите в кастрюлю, влейте воду, посолите и варите 18 минут на слабом огне под крышкой.`,
+        `Нарежьте ${recoveryAccusative(chicken)} небольшими кусочками, а ${recoveryAccusative(onion)} — тонкими полосками.`,
+        `Разогрейте растительное масло на сковороде, выложите ${recoveryAccusative(chicken)} и обжаривайте 7 минут до румяной корочки.`,
+        `Добавьте ${recoveryAccusative(onion)}, готовьте ещё 5 минут до мягкости, затем положите ${recoveryAccusative(buckwheat)}, перемешайте, прогревайте 2 минуты и подавайте.`,
       ],
     }),
   },
@@ -604,8 +610,8 @@ const RECOVERY_RECIPE_TEMPLATES = [
         { name: "соль", amount: "по вкусу" },
       ],
       steps: [
-        `Очень мелко нарежьте ${chicken} ножом, посолите и переложите в миску.`,
-        `Разбейте ${eggs} в миску с продуктом «${chicken}», добавьте ${flour} и тщательно перемешайте до густой массы.`,
+        `Очень мелко нарежьте ${recoveryAccusative(chicken)} ножом, посолите и переложите в миску.`,
+        `Разбейте ${recoveryAccusative(eggs)} в миску, добавьте ${recoveryAccusative(flour)} и тщательно перемешайте все продукты до густой массы.`,
         `Разогрейте растительное масло на сковороде, ложкой выложите небольшие оладьи и жарьте 4 минуты на среднем огне.`,
         `Переверните оладьи, готовьте ещё 4 минуты до полной готовности, затем снимите со сковороды и подавайте горячими.`,
       ],
@@ -613,8 +619,39 @@ const RECOVERY_RECIPE_TEMPLATES = [
   },
 ];
 
+const RECOVERY_CASES = {
+  "курица": { accusative: "курицу", genitive: "курицы", instrumental: "курицей" },
+  "гречка": { accusative: "гречку", genitive: "гречки", instrumental: "гречкой" },
+  "мука": { accusative: "муку", genitive: "муки", instrumental: "мукой" },
+  "лапша": { accusative: "лапшу", genitive: "лапши", instrumental: "лапшой" },
+  "яйцо": { accusative: "яйцо", genitive: "яйца", instrumental: "яйцом" },
+  "яйца": { accusative: "яйца", genitive: "яиц", instrumental: "яйцами" },
+  "сыр": { accusative: "сыр", genitive: "сыра", instrumental: "сыром" },
+  "макароны": { accusative: "макароны", genitive: "макарон", instrumental: "макаронами" },
+};
+
+function recoveryCase(value, grammaticalCase) {
+  return RECOVERY_CASES[normalizedSignature(value)]?.[grammaticalCase] || value;
+}
+
+function recoveryAccusative(value) {
+  return recoveryCase(value, "accusative");
+}
+
+function recoveryGenitive(value) {
+  return recoveryCase(value, "genitive");
+}
+
+function recoveryInstrumental(value) {
+  return recoveryCase(value, "instrumental");
+}
+
 function findOwnedByAliases(ingredients, aliases) {
-  return ingredients.find((ingredient) => aliases.some((alias) => ingredientIsOwned(alias, [ingredient]))) || "";
+  for (const alias of aliases) {
+    const ingredient = ingredients.find((item) => ingredientIsOwned(alias, [item]));
+    if (ingredient) return ingredient;
+  }
+  return "";
 }
 
 export function findRecoveryRecipes({ ingredients, equipment, difficulty, portions, excludeTitles }) {
@@ -624,10 +661,11 @@ export function findRecoveryRecipes({ ingredients, equipment, difficulty, portio
       .map(([key, aliases]) => [key, findOwnedByAliases(ingredients, aliases)]));
     if (Object.values(matched).some((value) => !value)) return [];
     if (template.equipment.some((required) => !normalizedEquipment.some((owned) => owned.includes(normalizedSignature(required))))) return [];
-    if (excludeTitles.some((title) => recipeTitlesAreDuplicate(title, template.title))) return [];
+    const title = template.titleFor?.(matched) || template.title;
+    if (excludeTitles.some((excludedTitle) => recipeTitlesAreDuplicate(excludedTitle, title))) return [];
     const built = template.build(matched, portions);
     const recipe = {
-      title: template.title,
+      title,
       subtitle: template.subtitle,
       minutes: template.minutes,
       difficulty: normalizeDifficulty(difficulty),
