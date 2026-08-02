@@ -470,6 +470,188 @@ function normalizeRecipes(recipes, portions, ownedIngredients, requestedDifficul
     .slice(0, 3);
 }
 
+const RECOVERY_RECIPE_TEMPLATES = [
+  {
+    title: "Курица с брокколи в соевом соусе",
+    subtitle: "Быстрая домашняя жарка на одной сковороде",
+    minutes: 25,
+    equipment: ["Сковорода"],
+    required: { chicken: ["курица", "куриное филе"], broccoli: ["брокколи"], soy: ["соевый соус"] },
+    nutrition: { calories: 390, protein: 43, fat: 17, carbs: 16 },
+    build: ({ chicken, broccoli, soy }, portions) => ({
+      ingredients: [
+        { name: chicken, amount: `${portions * 160} г` },
+        { name: broccoli, amount: `${portions * 120} г` },
+        { name: soy, amount: `${portions} ст. л.` },
+        { name: "растительное масло", amount: `${Math.max(1, portions)} ст. л.` },
+        { name: "вода", amount: `${portions * 30} мл` },
+      ],
+      steps: [
+        `Нарежьте ${chicken} небольшими одинаковыми кусочками, а ${broccoli} разделите на небольшие соцветия.`,
+        `Разогрейте сковороду на среднем огне, налейте растительное масло, выложите ${chicken} и обжаривайте 6–8 минут до светлой румяной корочки.`,
+        `Добавьте ${broccoli} и воду, накройте сковороду и тушите 5 минут, пока капуста не станет мягче, но сохранит форму.`,
+        `Влейте ${soy}, перемешайте и готовьте ещё 2 минуты, затем снимите блюдо с огня и подавайте горячим.`,
+      ],
+    }),
+  },
+  {
+    title: "Лапша с курицей и брокколи",
+    subtitle: "Сытная лапша с овощами без дополнительных покупок",
+    minutes: 30,
+    equipment: ["Сковорода", "Кастрюля"],
+    required: { noodles: ["лапша", "макароны"], chicken: ["курица", "куриное филе"], broccoli: ["брокколи"], soy: ["соевый соус"] },
+    nutrition: { calories: 560, protein: 42, fat: 16, carbs: 62 },
+    build: ({ noodles, chicken, broccoli, soy }, portions) => ({
+      ingredients: [
+        { name: noodles, amount: `${portions * 90} г` },
+        { name: chicken, amount: `${portions * 140} г` },
+        { name: broccoli, amount: `${portions * 100} г` },
+        { name: soy, amount: `${portions} ст. л.` },
+        { name: "растительное масло", amount: `${Math.max(1, portions)} ст. л.` },
+        { name: "вода", amount: `${portions * 500} мл` },
+      ],
+      steps: [
+        `Налейте воду в кастрюлю, доведите до кипения, опустите ${noodles} и варите по времени на упаковке, затем слейте воду.`,
+        `Нарежьте ${chicken} небольшими кусочками, а ${broccoli} разделите на соцветия.`,
+        `Разогрейте растительное масло на сковороде, выложите ${chicken} и обжаривайте 6 минут до румяной корочки.`,
+        `Добавьте ${broccoli}, накройте и готовьте 5 минут, затем положите ${noodles}, влейте ${soy}, перемешайте и прогревайте 2 минуты перед подачей.`,
+      ],
+    }),
+  },
+  {
+    title: "Омлет с брокколи и сыром",
+    subtitle: "Мягкий омлет с овощами на сковороде",
+    minutes: 20,
+    equipment: ["Сковорода"],
+    required: { eggs: ["яйца", "яйцо"], broccoli: ["брокколи"], cheese: ["сыр"] },
+    nutrition: { calories: 350, protein: 25, fat: 24, carbs: 9 },
+    build: ({ eggs, broccoli, cheese }, portions) => ({
+      ingredients: [
+        { name: eggs, amount: `${Math.max(2, portions * 2)} шт.` },
+        { name: broccoli, amount: `${portions * 90} г` },
+        { name: cheese, amount: `${portions * 40} г` },
+        { name: "растительное масло", amount: `${Math.max(1, portions / 2)} ст. л.` },
+        { name: "соль", amount: "по вкусу" },
+      ],
+      steps: [
+        `Разделите ${broccoli} на небольшие соцветия и натрите ${cheese}.`,
+        `Разогрейте растительное масло на сковороде, выложите ${broccoli} и обжаривайте 4 минуты на среднем огне.`,
+        `Разбейте ${eggs} в миску, посолите, взбейте и вылейте смесь на сковороду поверх ${broccoli}.`,
+        `Посыпьте омлет продуктом «${cheese}», накройте и готовьте 5–6 минут на слабом огне, затем снимите со сковороды и подавайте.`,
+      ],
+    }),
+  },
+  {
+    title: "Макароны с сыром на сковороде",
+    subtitle: "Простая сливочная текстура без готового соуса",
+    minutes: 20,
+    equipment: ["Сковорода", "Кастрюля"],
+    required: { pasta: ["макароны", "лапша"], cheese: ["сыр"] },
+    nutrition: { calories: 490, protein: 20, fat: 17, carbs: 61 },
+    build: ({ pasta, cheese }, portions) => ({
+      ingredients: [
+        { name: pasta, amount: `${portions * 100} г` },
+        { name: cheese, amount: `${portions * 50} г` },
+        { name: "вода", amount: `${portions * 500} мл` },
+        { name: "растительное масло", amount: `${Math.max(1, portions / 2)} ст. л.` },
+        { name: "соль", amount: "по вкусу" },
+      ],
+      steps: [
+        `Налейте воду в кастрюлю, посолите, доведите до кипения, добавьте ${pasta} и варите до состояния чуть плотнее готового.`,
+        `Натрите ${cheese}, слейте воду с продукта «${pasta}», сохранив немного горячей воды.`,
+        `Разогрейте растительное масло на сковороде, выложите ${pasta}, добавьте немного сохранённой воды и перемешайте.`,
+        `Посыпьте продуктом «${cheese}» и прогревайте 2 минуты на слабом огне до расплавления, затем снимите и подавайте сразу.`,
+      ],
+    }),
+  },
+  {
+    title: "Гречка с курицей и луком",
+    subtitle: "Рассыпчатая крупа с румяной курицей",
+    minutes: 35,
+    equipment: ["Сковорода", "Кастрюля"],
+    required: { buckwheat: ["гречка"], chicken: ["курица", "куриное филе"], onion: ["лук", "репчатый лук"] },
+    nutrition: { calories: 520, protein: 42, fat: 15, carbs: 55 },
+    build: ({ buckwheat, chicken, onion }, portions) => ({
+      ingredients: [
+        { name: buckwheat, amount: `${portions * 90} г` },
+        { name: chicken, amount: `${portions * 150} г` },
+        { name: onion, amount: `${Math.max(1, Math.ceil(portions / 2))} шт.` },
+        { name: "вода", amount: `${portions * 200} мл` },
+        { name: "растительное масло", amount: `${Math.max(1, portions)} ст. л.` },
+        { name: "соль", amount: "по вкусу" },
+      ],
+      steps: [
+        `Промойте ${buckwheat}, положите в кастрюлю, влейте воду, посолите и варите 18 минут на слабом огне под крышкой.`,
+        `Нарежьте ${chicken} небольшими кусочками, а ${onion} — тонкими полосками.`,
+        `Разогрейте растительное масло на сковороде, выложите ${chicken} и обжаривайте 7 минут до румяной корочки.`,
+        `Добавьте ${onion}, готовьте ещё 5 минут до мягкости, затем положите ${buckwheat}, перемешайте, прогревайте 2 минуты и подавайте.`,
+      ],
+    }),
+  },
+  {
+    title: "Куриные оладьи на сковороде",
+    subtitle: "Нежные рубленые оладьи из простых продуктов",
+    minutes: 30,
+    equipment: ["Сковорода"],
+    required: { chicken: ["курица", "куриное филе"], eggs: ["яйца", "яйцо"], flour: ["мука"] },
+    nutrition: { calories: 440, protein: 46, fat: 19, carbs: 20 },
+    build: ({ chicken, eggs, flour }, portions) => ({
+      ingredients: [
+        { name: chicken, amount: `${portions * 160} г` },
+        { name: eggs, amount: `${Math.max(1, Math.ceil(portions / 2))} шт.` },
+        { name: flour, amount: `${portions * 25} г` },
+        { name: "растительное масло", amount: `${Math.max(1, portions)} ст. л.` },
+        { name: "соль", amount: "по вкусу" },
+      ],
+      steps: [
+        `Очень мелко нарежьте ${chicken} ножом, посолите и переложите в миску.`,
+        `Разбейте ${eggs} в миску с продуктом «${chicken}», добавьте ${flour} и тщательно перемешайте до густой массы.`,
+        `Разогрейте растительное масло на сковороде, ложкой выложите небольшие оладьи и жарьте 4 минуты на среднем огне.`,
+        `Переверните оладьи, готовьте ещё 4 минуты до полной готовности, затем снимите со сковороды и подавайте горячими.`,
+      ],
+    }),
+  },
+];
+
+function findOwnedByAliases(ingredients, aliases) {
+  return ingredients.find((ingredient) => aliases.some((alias) => ingredientIsOwned(alias, [ingredient]))) || "";
+}
+
+export function findRecoveryRecipes({ ingredients, equipment, difficulty, portions, excludeTitles }) {
+  const normalizedEquipment = equipment.map(normalizedSignature);
+  const recipes = RECOVERY_RECIPE_TEMPLATES.flatMap((template) => {
+    const matched = Object.fromEntries(Object.entries(template.required)
+      .map(([key, aliases]) => [key, findOwnedByAliases(ingredients, aliases)]));
+    if (Object.values(matched).some((value) => !value)) return [];
+    if (template.equipment.some((required) => !normalizedEquipment.some((owned) => owned.includes(normalizedSignature(required))))) return [];
+    if (excludeTitles.some((title) => recipeTitlesAreDuplicate(title, template.title))) return [];
+    const built = template.build(matched, portions);
+    const recipe = {
+      title: template.title,
+      subtitle: template.subtitle,
+      minutes: template.minutes,
+      difficulty: normalizeDifficulty(difficulty),
+      match: 100,
+      missing: [],
+      uses: [...new Set(Object.values(matched))],
+      equipment: template.equipment,
+      why: "Все продукты для этого проверенного варианта уже есть дома",
+      ingredients: built.ingredients,
+      steps: built.steps,
+      nutrition: { ...template.nutrition, estimated: true },
+      tip: "Следите за нагревом и ориентируйтесь на указанные признаки готовности.",
+      portions,
+      source: {
+        name: "Кутно",
+        type: "curated-recovery",
+        note: "Проверенный резервный рецепт Кутно",
+      },
+    };
+    return recipeQualityIssues(recipe, ingredients).length ? [] : [recipe];
+  });
+  return mergeUniqueRecipes(recipes).slice(0, 3);
+}
+
 const SESSION_COOKIE = "kutno_session";
 const SESSION_TTL = 60 * 60 * 24 * 30;
 
@@ -1463,6 +1645,8 @@ ${allExcludedTitles.length ? `Не повторяй недавние вариа�
     throw new Error("Recipes failed quality checks after retry");
   } catch (error) {
     console.error("recipe_generation_failed", error instanceof Error ? error.message : String(error));
+    const recoveryRecipes = findRecoveryRecipes({ ingredients, equipment, difficulty, portions, excludeTitles: allExcludedTitles });
+    recipes = mergeUniqueRecipes(recipes, recoveryRecipes);
     if (recipes.length) return json({ recipes, source: "mixed", sourceAttempt, catalogAttempt, catalogVersion: CATALOG_VERSION });
     return json({ error: "Не удалось составить меню" }, 503);
   }
