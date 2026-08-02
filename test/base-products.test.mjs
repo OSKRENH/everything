@@ -6,9 +6,26 @@ import {
   SUGGESTED_BASE_INGREDIENTS,
 } from "../src/ingredient-semantics-v2.js";
 
-test("по умолчанию базовыми считаются только соль, вода и растительное масло", () => {
-  assert.deepEqual(DEFAULT_BASE_INGREDIENTS, ["соль", "вода", "растительное масло"]);
+test("по умолчанию базовыми считаются соль, вода, растительное масло и сахар", () => {
+  assert.deepEqual(DEFAULT_BASE_INGREDIENTS, ["соль", "вода", "растительное масло", "сахар"]);
   assert.ok(!DEFAULT_BASE_INGREDIENTS.some((item) => /оливков/i.test(item)));
+});
+
+test("сахар по умолчанию не блокирует рецепт", () => {
+  const recipe = {
+    title: "Сладкая творожная намазка",
+    ingredients: [
+      { name: "творог" },
+      { name: "сахар", pantry: true },
+    ],
+    equipment: ["Миска", "Вилка"],
+  };
+  const analysis = analyzeRecipe(recipe, {
+    ingredients: ["творог"],
+    equipment: [],
+  });
+  assert.equal(analysis.requiredMissing.length, 0);
+  assert.ok(analysis.exactAvailable.some((item) => item.name === "сахар" && item.role === "base"));
 });
 
 test("оливковое масло не считается базовым и использует растительное только как замену", () => {
@@ -54,5 +71,6 @@ test("расширенную бакалею можно включить вруч
   assert.ok(SUGGESTED_BASE_INGREDIENTS.includes("сахар"));
   assert.ok(SUGGESTED_BASE_INGREDIENTS.includes("пшеничная мука"));
   assert.ok(SUGGESTED_BASE_INGREDIENTS.includes("уксус"));
+  assert.equal(SUGGESTED_BASE_INGREDIENTS.filter((item) => item === "сахар").length, 1);
   assert.ok(!SUGGESTED_BASE_INGREDIENTS.some((item) => /оливков/i.test(item)));
 });
