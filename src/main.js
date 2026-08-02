@@ -642,7 +642,7 @@ function renderKitchenView() {
               ${ingredientsCollapsible ? `<button class="ingredients-toggle" data-action="toggle-ingredients" aria-expanded="${ingredientsExpanded}">${ingredientsExpanded ? "Свернуть" : `Показать все · ${state.ingredients.length}`}</button>` : ""}
               <button class="ingredients-clear" data-action="request-clear-products">Очистить продукты</button>
             </div>` : ""}
-            <div class="quick-row" aria-label="Частые продукты" ${ingredientsCollapsed ? "hidden" : ""}>
+            <div class="quick-row ${ingredientsCollapsed ? "is-collapsed" : ""}" aria-label="Частые продукты" aria-hidden="${ingredientsCollapsed}">
               ${quickIngredients.filter((item) => !state.ingredients.includes(normalize(item))).slice(0, 7).map((item) => `<button class="ingredient-tag" data-add-ingredient="${item}">+ ${item}</button>`).join("")}
             </div>
           </div>
@@ -692,7 +692,19 @@ function renderKitchenView() {
     ${renderResults()}`;
 }
 
-function render() {
+function restorePageScroll(top) {
+  const root = document.documentElement;
+  const previousBehavior = root.style.scrollBehavior;
+  root.style.scrollBehavior = "auto";
+  window.scrollTo(0, top);
+  requestAnimationFrame(() => {
+    window.scrollTo(0, top);
+    root.style.scrollBehavior = previousBehavior;
+  });
+}
+
+function render({ preserveScroll = true } = {}) {
+  const scrollTop = window.scrollY;
   ingredientSuggestions = [];
   activeSuggestionIndex = -1;
   app.innerHTML = `
@@ -731,6 +743,7 @@ function render() {
     ${authModalOpen ? renderAuthOverlay() : ""}
     ${clearProductsConfirmationOpen ? renderClearProductsConfirmation() : ""}
   `;
+  if (preserveScroll) restorePageScroll(scrollTop);
   requestAnimationFrame(clampSelectedIngredients);
   if (clearProductsConfirmationOpen) requestAnimationFrame(() => document.querySelector("[data-action='cancel-clear-products']")?.focus());
   if (authModalOpen && !authUser && !authBusy) requestAnimationFrame(mountGoogleButton);
@@ -738,16 +751,24 @@ function render() {
 }
 
 function clampSelectedIngredients() {
-  const list = document.querySelector(".selected-ingredients.is-collapsed");
+  const list = document.querySelector(".selected-ingredients");
   if (!list) return;
   const tags = [...list.querySelectorAll(".ingredient-tag.selected")];
   tags.forEach((tag) => { tag.hidden = false; });
+  list.style.setProperty("--ingredients-expanded-height", `${list.scrollHeight}px`);
+  const quick = document.querySelector(".quick-row");
+  if (quick) quick.style.setProperty("--quick-row-height", `${quick.scrollHeight}px`);
   const rowTops = [];
   for (const tag of tags) {
     const top = tag.offsetTop;
     if (!rowTops.some((rowTop) => Math.abs(rowTop - top) < 2)) rowTops.push(top);
-    if (rowTops.length > 2) tag.hidden = true;
   }
+  if (rowTops.length < 3) return;
+  const secondRowTop = rowTops[1];
+  const secondRowBottom = Math.max(...tags
+    .filter((tag) => Math.abs(tag.offsetTop - secondRowTop) < 2)
+    .map((tag) => tag.offsetTop + tag.offsetHeight));
+  list.style.setProperty("--ingredients-collapsed-height", `${secondRowBottom}px`);
 }
 
 function renderResults() {
@@ -859,10 +880,28 @@ function renderCatalogCard(recipe, index) {
   </article>`;
 }
 
+function updateCatalogResults() {
+  const count = document.querySelector(".catalog-count");
+  const grid = document.querySelector(".catalog-grid");
+  if (!count || !grid) return;
+  const filtered = orderCatalogRecipes(filteredCatalogRecipes());
+  count.textContent = `Найдено — ${filtered.length.toString().padStart(2, "0")}`;
+  grid.innerHTML = filtered.length
+    ? filtered.map((recipe) => renderCatalogCard(recipe, catalogRecipes.indexOf(recipe))).join("")
+    : `<p class="catalog-empty">Ничего не нашлось. Попробуйте убрать один из фильтров.</p>`;
+}
+
+function activateCatalogFilter(target) {
+  target.parentElement?.querySelectorAll("button").forEach((button) => {
+    button.classList.toggle("active", button === target);
+  });
+  updateCatalogResults();
+}
+
 function renderCatalogView() {
   if (catalogLoading) return `<section class="archive-page"><div class="archive-heading"><p class="eyebrow">Редакционная коллекция</p><h1>База<br>рецептов</h1>${renderPotLoader("pot-loader-large")}</div></section>`;
   if (catalogError) return `<section class="archive-page"><div class="archive-heading"><p class="eyebrow">Редакционная коллекция</p><h1>База<br>рецептов</h1><p>${escapeHtml(catalogError)}</p><button class="archive-retry" data-action="load-catalog">Попробовать ещё раз</button></div></section>`;
-  const filtered = filteredCatalogRecipes();
+  const filtered = orderCatalogRecipes(filteredCatalogRecipes());
   return `<section class="archive-page" aria-labelledby="catalog-title">
     <header class="archive-heading">
       <div><p class="eyebrow">Редакционная коллекция / ${catalogRecipes.length.toString().padStart(2, "0")}</p><h1 id="catalog-title">База<br>рецептов</h1></div>
@@ -980,7 +1019,7 @@ function setView(view) {
     swipeHintPending = true;
   }
   history.replaceState(null, "", view === "kitchen" ? `${location.pathname}${location.search}` : `#${view}`);
-  render();
+  render({ preserveScroll: false });
   window.scrollTo({ top: 0, behavior: "smooth" });
   if ((view === "catalog" || view === "swipe") && !catalogRecipes.length) loadCatalog();
 }
@@ -1326,13 +1365,7 @@ app.addEventListener("input", (event) => {
   if (event.target.id === "ingredient-input") updateIngredientSuggestions(event.target.value);
   if (event.target.matches("[data-catalog-search]")) {
     catalogQuery = event.target.value;
-    const cursor = event.target.selectionStart;
-    render();
-    requestAnimationFrame(() => {
-      const input = document.querySelector("[data-catalog-search]");
-      input?.focus({ preventScroll: true });
-      input?.setSelectionRange(cursor, cursor);
-    });
+    updateCatalogResults();
   }
 });
 
@@ -1462,35 +1495,40 @@ app.addEventListener("click", (event) => {
     const id = target.dataset.equipment;
     state.equipment = state.equipment.includes(id) ? state.equipment.filter((item) => item !== id) : [...state.equipment, id];
     saveState();
-    render();
+    const active = state.equipment.includes(id);
+    target.classList.toggle("active", active);
+    target.setAttribute("aria-pressed", String(active));
+    const mark = target.querySelector(".equipment-mark");
+    if (mark) mark.textContent = active ? "●" : "○";
   }
   if (target.dataset.difficulty) {
     state.difficulty = target.dataset.difficulty;
     saveState();
-    render();
+    target.parentElement?.querySelectorAll("button").forEach((button) => button.classList.toggle("active", button === target));
   }
   if (target.dataset.portions) {
     state.portions = Math.min(8, Math.max(1, state.portions + Number(target.dataset.portions)));
     catalogRecipes = [];
     swipeIndex = 0;
     saveState();
-    render();
+    const output = target.parentElement?.querySelector("output");
+    if (output) output.textContent = String(state.portions);
   }
   if (target.dataset.catalogDifficulty) {
     catalogDifficulty = target.dataset.catalogDifficulty;
-    render();
+    activateCatalogFilter(target);
   }
   if (target.dataset.catalogCuisine) {
     catalogCuisine = target.dataset.catalogCuisine;
-    render();
+    activateCatalogFilter(target);
   }
   if (target.dataset.catalogCourse) {
     catalogCourse = target.dataset.catalogCourse;
-    render();
+    activateCatalogFilter(target);
   }
   if (target.dataset.catalogProtein) {
     catalogProtein = target.dataset.catalogProtein;
-    render();
+    activateCatalogFilter(target);
   }
   if (target.dataset.swipe) finishSwipe(target.dataset.swipe);
   if (target.dataset.action === "restart-swipe") {
@@ -1503,7 +1541,14 @@ app.addEventListener("click", (event) => {
   if (target.dataset.action === "load-more") generateRecipes({ append: true });
   if (target.dataset.action === "toggle-ingredients") {
     ingredientsExpanded = !ingredientsExpanded;
-    render();
+    const collapsed = !ingredientsExpanded;
+    const list = document.querySelector(".selected-ingredients");
+    const quick = document.querySelector(".quick-row");
+    list?.classList.toggle("is-collapsed", collapsed);
+    quick?.classList.toggle("is-collapsed", collapsed);
+    quick?.setAttribute("aria-hidden", String(collapsed));
+    target.setAttribute("aria-expanded", String(ingredientsExpanded));
+    target.textContent = ingredientsExpanded ? "Свернуть" : `Показать все · ${state.ingredients.length}`;
   }
   if (target.dataset.action === "request-clear-products") {
     clearProductsConfirmationOpen = true;
@@ -1579,6 +1624,6 @@ document.addEventListener("keydown", (event) => {
 
 window.addEventListener("resize", () => requestAnimationFrame(clampSelectedIngredients));
 
-render();
+render({ preserveScroll: false });
 restoreSession();
 if ((currentView === "catalog" || currentView === "swipe") && !catalogRecipes.length) loadCatalog();

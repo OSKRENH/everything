@@ -217,10 +217,27 @@ h1 { font-size: var(--display-title-size); line-height: .91; }
 }
 .microcopy { margin: 10px 0 18px; color: var(--soft); font-size: 11px; line-height: 1.45; }
 .selected-ingredients, .quick-row { display: flex; flex-wrap: wrap; gap: 7px; }
-.selected-ingredients { min-height: 34px; margin-bottom: 13px; }
-.selected-ingredients.is-collapsed { max-height: 75px; overflow: hidden; }
-.selected-ingredients .ingredient-tag[hidden] { display: none; }
-.quick-row[hidden] { display: none; }
+.selected-ingredients {
+  min-height: 34px;
+  max-height: var(--ingredients-expanded-height, 1200px);
+  overflow: hidden;
+  margin-bottom: 13px;
+  transition: max-height .34s cubic-bezier(.22,.75,.24,1);
+}
+.selected-ingredients.is-collapsed { max-height: var(--ingredients-collapsed-height, 75px); }
+.quick-row {
+  max-height: var(--quick-row-height, 300px);
+  overflow: hidden;
+  opacity: 1;
+  transform: translateY(0);
+  transition: max-height .34s cubic-bezier(.22,.75,.24,1), opacity .22s ease, transform .34s cubic-bezier(.22,.75,.24,1);
+}
+.quick-row.is-collapsed {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
 .ingredient-list-actions {
   display: flex;
   align-items: center;
@@ -762,6 +779,6 @@ legend { margin-bottom: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; }
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
   .pot-loader { content: url("/illustrations/loader/pot-loader-01.png"); }
 }
