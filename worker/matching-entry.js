@@ -1,5 +1,5 @@
 import featureWorker from "./entry.js";
-import { enrichRecipeSemantics } from "../src/ingredient-semantics.js";
+import { analyzeRecipe, enrichRecipeSemantics } from "../src/ingredient-semantics.js";
 
 function json(data, status = 200, headers = {}) {
   return Response.json(data, {
@@ -14,6 +14,7 @@ function json(data, status = 200, headers = {}) {
 
 function requestWithJson(request, body) {
   const headers = new Headers(request.headers);
+  headers.delete("content-length");
   headers.set("content-type", "application/json");
   return new Request(request.url, {
     method: request.method,
@@ -31,67 +32,142 @@ function matchingContext(body = {}) {
   };
 }
 
-function enrichPayload(data, body = {}) {
-  if (!data || typeof data !== "object" || !Array.isArray(data.recipes)) return data;
-  const context = matchingContext(body);
-  return {
-    ...data,
-    recipes: data.recipes.map((recipe) => enrichRecipeSemantics(recipe, context)),
-  };
+function normalizedTitle(value = "") {
+  return String(value).toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/[^а-яa-z0-9]+/giu, " ").trim();
 }
 
-async function runGenerate(body, request, env, ctx) {
+function difficultyRank(value = "") {
+  const text = String(value).toLowerCase();
+  if (/слож|труд/.test(text)) return 2;
+  if (/обыч|сред/.test(text)) return 1;
+  return 0;
+}
+
+function recipeKey(recipe) {
+  return String(recipe?.id || recipe?.source?.id || normalizedTitle(recipe?.title));
+}
+
+function mergeRecipes(...groups) {
+  const result = [];
+  const seen = new Set();
+  for (const recipe of groups.flat()) {
+    if (!recipe?.title) continue;
+    const key = recipeKey(recipe);
+    const title = normalizedTitle(recipe.title);
+    if (seen.has(key) || result.some((item) => normalizedTitle(item.title) === title)) continue;
+    seen.add(key);
+    result.push(recipe);
+  }
+  return result;
+}
+
+function recipePassesFilters(recipe, body) {
+  if (Number(body.maxMinutes) && Number(recipe.minutes) > Number(body.maxMinutes)) return false;
+  if (body.course && body.course !== "все" && recipe.course !== body.course && !(body.course === "перекус" && ["закуска", "салат"].includes(recipe.course))) return false;
+  const excluded = Array.isArray(body.excludeTitles) ? body.excludeTitles.map(normalizedTitle) : [];
+  return !excluded.includes(normalizedTitle(recipe.title));
+}
+
+function groupAllowed(group, searchMode) {
+  if (searchMode === "plus-one") return ["ready", "substitute", "one"].includes(group);
+  return ["ready", "substitute"].includes(group);
+}
+
+function rankRecipes(recipes, body) {
+  const context = matchingContext(body);
+  const targetDifficulty = difficultyRank(body.difficulty);
+  return recipes
+    .map((recipe) => {
+      const enriched = enrichRecipeSemantics(recipe, context);
+      const analysis = analyzeRecipe(enriched, context);
+      const verifiedBonus = enriched.source?.type === "kutno-catalog" ? 40 : enriched.source?.type === "generated" ? -30 : 0;
+      return {
+        recipe: enriched,
+        analysis,
+        rank: analysis.score + verifiedBonus - Math.abs(difficultyRank(enriched.difficulty) - targetDifficulty) * 12,
+      };
+    })
+    .filter(({ recipe, analysis }) => recipePassesFilters(recipe, body) && groupAllowed(analysis.group, body.searchMode))
+    .sort((first, second) => second.rank - first.rank || Number(first.recipe.minutes) - Number(second.recipe.minutes));
+}
+
+async function loadCatalogForMatching(request, env, ctx, body) {
+  const url = new URL(request.url);
+  url.pathname = "/api/catalog";
+  url.search = `?portions=${Math.min(8, Math.max(1, Number(body.portions) || 2))}`;
+  const response = await featureWorker.fetch(new Request(url, { method: "GET", headers: request.headers }), env, ctx);
+  if (!response.ok) return [];
+  const data = await response.json().catch(() => ({}));
+  return Array.isArray(data.recipes) ? data.recipes : [];
+}
+
+async function runBaseGenerate(body, request, env, ctx) {
   const response = await featureWorker.fetch(requestWithJson(request, body), env, ctx);
   const data = await response.clone().json().catch(() => null);
-  if (!data) return { response, data: null };
-  return { response, data: enrichPayload(data, body) };
+  if (!data) return { response, data: null, recipes: [] };
+  const recipes = Array.isArray(data.recipes) ? rankRecipes(data.recipes, body).map((item) => item.recipe) : [];
+  return { response, data, recipes };
 }
 
 async function smartGenerate(request, env, ctx) {
   const body = await request.clone().json().catch(() => ({}));
-  const first = await runGenerate(body, request, env, ctx);
-  if (!first.data || !first.response.ok || first.data.recipes?.length) {
-    return first.data ? json(first.data, first.response.status) : first.response;
+  if (!Array.isArray(body.ingredients) || !body.ingredients.length) return featureWorker.fetch(request, env, ctx);
+
+  const catalog = await loadCatalogForMatching(request, env, ctx, body);
+  const strictCatalog = rankRecipes(catalog, body).map((item) => item.recipe);
+  const base = await runBaseGenerate(body, request, env, ctx);
+  if (!base.data && !base.response.ok) return base.response;
+
+  let recipes = mergeRecipes(strictCatalog, base.recipes);
+  let relaxation = null;
+
+  if (recipes.length < 3 && body.searchMode !== "plus-one") {
+    const relaxedBody = { ...body, searchMode: "plus-one" };
+    const relaxedCatalog = rankRecipes(catalog, relaxedBody).map((item) => item.recipe);
+    const before = recipes.length;
+    recipes = mergeRecipes(recipes, relaxedCatalog);
+    if (recipes.length > before) {
+      relaxation = {
+        code: "allow-one-purchase",
+        title: "Добавили варианты с одной покупкой",
+        details: "Рецепты без обязательных покупок стоят первыми, затем — ближайшие варианты.",
+      };
+    }
   }
 
-  const attempts = [];
-  if (body.searchMode !== "plus-one") {
-    attempts.push({
-      body: { ...body, searchMode: "plus-one" },
-      relaxation: {
-        code: "allow-one-purchase",
-        title: "Показали рецепты с одной покупкой",
-        details: "Строго без покупок подходящих вариантов не нашлось.",
-      },
-    });
-  }
-  if (Number(body.maxMinutes) || body.course !== "все") {
-    attempts.push({
-      body: { ...body, searchMode: "plus-one", maxMinutes: 0, course: "все" },
-      relaxation: {
+  if (recipes.length < 3 && (Number(body.maxMinutes) || body.course !== "все")) {
+    const relaxedBody = { ...body, searchMode: "plus-one", maxMinutes: 0, course: "все" };
+    const expandedCatalog = rankRecipes(catalog, relaxedBody).map((item) => item.recipe);
+    const before = recipes.length;
+    recipes = mergeRecipes(recipes, expandedCatalog);
+    if (recipes.length > before) {
+      relaxation = {
         code: "relax-filters",
         title: "Немного расширили поиск",
-        details: "Убрали ограничение по времени или типу блюда и разрешили одну покупку.",
-      },
-    });
+        details: "Сохранили ваши продукты и технику, но убрали ограничение по времени или типу блюда.",
+      };
+    }
   }
 
-  for (const attempt of attempts) {
-    const result = await runGenerate(attempt.body, request, env, ctx);
-    if (result.data?.recipes?.length) {
-      return json({
-        ...result.data,
-        relaxation: attempt.relaxation,
+  recipes = recipes.slice(0, 3);
+  if (recipes.length) {
+    return json({
+      ...(base.data || {}),
+      recipes,
+      hasMore: strictCatalog.length + base.recipes.length > 3 || Boolean(base.data?.hasMore),
+      source: recipes.every((recipe) => recipe.source?.type === "kutno-catalog") ? "semantic-catalog" : "mixed",
+      ...(relaxation ? {
+        relaxation,
         originalFilters: {
           searchMode: body.searchMode,
           maxMinutes: body.maxMinutes,
           course: body.course,
         },
-      }, 200);
-    }
+      } : {}),
+    }, 200);
   }
 
-  return json(first.data, first.response.status);
+  return json(base.data || { recipes: [], hasMore: false, error: "Добавьте ещё один основной продукт или разрешите одну покупку" }, base.response.status || 200);
 }
 
 async function enrichedCatalog(request, env, ctx) {
@@ -113,12 +189,8 @@ async function enrichedCatalog(request, env, ctx) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (url.pathname === "/api/generate" && request.method === "POST") {
-      return smartGenerate(request, env, ctx);
-    }
-    if (url.pathname === "/api/catalog" && request.method === "GET") {
-      return enrichedCatalog(request, env, ctx);
-    }
+    if (url.pathname === "/api/generate" && request.method === "POST") return smartGenerate(request, env, ctx);
+    if (url.pathname === "/api/catalog" && request.method === "GET") return enrichedCatalog(request, env, ctx);
     return featureWorker.fetch(request, env, ctx);
   },
 };
