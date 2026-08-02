@@ -2,6 +2,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { CATALOG_VERSION, INGREDIENT_GLOSSARY, WORLD_RECIPE_CATALOG } from "./recipe-catalog.js";
 
 const MODEL = "@cf/openai/gpt-oss-120b";
+const FALLBACK_MODEL = "@cf/openai/gpt-oss-20b";
 const MAX_RECIPE_GENERATION_ATTEMPTS = 3;
 const GOOGLE_JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
 
@@ -116,7 +117,7 @@ function parseAiResult(result) {
 }
 
 async function runStructuredAi(env, { messages, schema, schemaName, maxTokens, temperature }) {
-  return env.AI.run(MODEL, {
+  const options = {
     messages,
     response_format: {
       type: "json_schema",
@@ -128,7 +129,17 @@ async function runStructuredAi(env, { messages, schema, schemaName, maxTokens, t
     max_tokens: maxTokens,
     reasoning_effort: "medium",
     temperature,
-  });
+  };
+  try {
+    return await env.AI.run(MODEL, options);
+  } catch (error) {
+    console.warn("primary_ai_failed", JSON.stringify({
+      model: MODEL,
+      fallbackModel: FALLBACK_MODEL,
+      message: error instanceof Error ? error.message : String(error),
+    }));
+    return env.AI.run(FALLBACK_MODEL, options);
+  }
 }
 
 const pantryBasics = ["соль", "вод", "масло"];
