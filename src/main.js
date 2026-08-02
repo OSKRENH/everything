@@ -733,19 +733,14 @@ function render({ preserveScroll = true } = {}) {
       </main>
 
       <footer class="site-footer" aria-label="О Кутно">
-        <div class="footer-brand">
-          <button data-view="kitchen" aria-label="Кутно, на главную">Кутно</button>
-          <p>Не заменяет вкус — помогает начать.</p>
-          <span>© ${new Date().getFullYear()} Кутно</span>
-        </div>
         <section class="footer-about" aria-labelledby="footer-about-title">
           <h2 id="footer-about-title">О сайте</h2>
-          <p>Кутно помогает выбрать, что приготовить из продуктов, которые уже есть дома. Рецепты из базы и новые варианты проверяются по вашему списку.</p>
+          <p>Подбирает блюда из продуктов, которые уже есть дома, с учётом доступной техники, сложности и числа порций. Рецепты из базы и новые варианты проверяются перед показом.</p>
         </section>
-        <nav class="footer-contact" aria-label="Обратная связь">
-          <span>Связаться</span>
-          <a href="https://t.me/oskrenh" target="_blank" rel="noopener noreferrer">Обратная связь <span aria-hidden="true">↗</span></a>
-        </nav>
+        <div class="footer-bottom">
+          <a class="footer-feedback" href="https://t.me/oskrenh" target="_blank" rel="noopener noreferrer">Обратная связь <span aria-hidden="true">↗</span></a>
+          <span class="footer-copyright">© ${new Date().getFullYear()} Кутно</span>
+        </div>
       </footer>
     </div>
     ${activeRecipe ? renderRecipeOverlay(activeRecipe) : ""}
