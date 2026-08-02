@@ -9,7 +9,7 @@ const semanticImport = `import {
   ingredientMatch as semanticIngredientMatch,
   normalizeIngredient as semanticNormalizeIngredient,
   DEFAULT_BASE_INGREDIENTS as SEMANTIC_DEFAULT_BASE_INGREDIENTS,
-} from "./ingredient-semantics.js";`;
+} from "./ingredient-semantics-v2.js";`;
 
 export default defineConfig({
   plugins: [
