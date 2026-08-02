@@ -54,12 +54,14 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
   background: transparent;
   padding: 0;
   color: var(--ink);
-  font-family: "Prata", Georgia, serif;
-  font-size: 34px;
-  letter-spacing: -2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   justify-self: start;
   cursor: pointer;
 }
+.wordmark-symbol { display: block; width: 29px; height: 29px; }
+.wordmark-lettering { display: block; width: auto; height: 31px; }
 
 .header-note {
   font-size: 10px;
@@ -698,7 +700,9 @@ legend { margin-bottom: 12px; }
   .header-nav { grid-column: 1 / -1; grid-row: 2; width: calc(100% + 32px); margin-left: -16px; justify-content: flex-start; overflow-x: auto; padding: 9px 16px 11px; border-top: 1px solid var(--line); scrollbar-width: none; }
   .header-nav::-webkit-scrollbar { display: none; }
   .header-nav button { flex: 0 0 auto; }
-  .wordmark { font-size: 28px; }
+  .wordmark { gap: 7px; }
+  .wordmark-symbol { width: 25px; height: 25px; }
+  .wordmark-lettering { height: 27px; }
   .header-actions { gap: 0; }
   .header-clear { display: none; }
   .account-button { padding: 7px 12px; font-size: 10px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
