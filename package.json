@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
+    "build": "npm test && vite build",
     "deploy": "wrangler deploy",
     "check": "npm run build && wrangler deploy --dry-run",
     "test": "node --test test/*.test.mjs"
