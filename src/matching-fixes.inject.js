@@ -89,12 +89,32 @@ document.addEventListener("click", (event) => {
   }, 0);
 }, false);
 
+function matchingRequestMeta(input, init = {}) {
+  let method = String(init.method || "GET").toUpperCase();
+  let pathname = "";
+  try {
+    if (typeof Request !== "undefined" && input instanceof Request) {
+      method = String(init.method || input.method || "GET").toUpperCase();
+      pathname = new URL(input.url, location.origin).pathname;
+    } else {
+      const raw = typeof input === "string"
+        ? input
+        : typeof URL !== "undefined" && input instanceof URL
+          ? input.href
+          : String(input?.url || "");
+      pathname = raw ? new URL(raw, location.origin).pathname : "";
+    }
+  } catch {
+    pathname = "";
+  }
+  return { method, pathname };
+}
+
 const matchingFetchWithRefresh = window.fetch.bind(window);
 window.fetch = async function matchingRefreshFetch(input, init = {}) {
   const response = await matchingFetchWithRefresh(input, init);
-  const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url, location.href);
-  const method = String(init.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
-  if (url.pathname === "/api/generate" && method === "POST") {
+  const { pathname, method } = matchingRequestMeta(input, init);
+  if (pathname === "/api/generate" && method === "POST") {
     response.clone().json().then((data) => {
       matchingRelaxation = data?.relaxation || null;
       if (data?.recipes?.length) requestAnimationFrame(() => {
