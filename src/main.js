@@ -711,9 +711,20 @@ function render() {
         ${currentView === "kitchen" ? renderKitchenView() : currentView === "catalog" ? renderCatalogView() : currentView === "swipe" ? renderSwipeView() : renderFavoritesView()}
       </main>
 
-      <footer>
-        <span>Кутно</span>
-        <span>Не заменяет вкус — помогает начать.</span>
+      <footer class="site-footer" aria-label="О Кутно">
+        <div class="footer-brand">
+          <button data-view="kitchen" aria-label="Кутно, на главную">Кутно</button>
+          <p>Не заменяет вкус — помогает начать.</p>
+          <span>© ${new Date().getFullYear()} Кутно</span>
+        </div>
+        <section class="footer-about" aria-labelledby="footer-about-title">
+          <h2 id="footer-about-title">О сайте</h2>
+          <p>Кутно помогает выбрать, что приготовить из продуктов, которые уже есть дома. Рецепты из базы и новые варианты проверяются по вашему списку.</p>
+        </section>
+        <nav class="footer-contact" aria-label="Обратная связь">
+          <span>Связаться</span>
+          <a href="https://t.me/oskrenh" target="_blank" rel="noopener noreferrer">Обратная связь <span aria-hidden="true">↗</span></a>
+        </nav>
       </footer>
     </div>
     ${activeRecipe ? renderRecipeOverlay(activeRecipe) : ""}
