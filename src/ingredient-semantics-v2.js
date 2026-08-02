@@ -1,5 +1,5 @@
 import {
-  DEFAULT_BASE_INGREDIENTS,
+  DEFAULT_BASE_INGREDIENTS as LEGACY_DEFAULT_BASE_INGREDIENTS,
   analyzeRecipe as baseAnalyzeRecipe,
   enrichRecipeSemantics as baseEnrichRecipeSemantics,
   ingredientMatch as baseIngredientMatch,
@@ -21,6 +21,20 @@ const SPECIAL_LABELS = {
   "special:condensed-milk": "сгущённое молоко",
   "special:milk-powder": "сухое молоко",
 };
+
+export const DEFAULT_BASE_INGREDIENTS = [
+  "соль",
+  "вода",
+  "растительное масло",
+];
+
+export const SUGGESTED_BASE_INGREDIENTS = [
+  ...DEFAULT_BASE_INGREDIENTS,
+  "чёрный перец",
+  "сахар",
+  "пшеничная мука",
+  "уксус",
+];
 
 export const MANUAL_EQUIPMENT = [
   "руки",
@@ -120,4 +134,4 @@ export function enrichRecipeSemantics(recipe, context = {}) {
   };
 }
 
-export { DEFAULT_BASE_INGREDIENTS, ingredientRole, normalizeIngredient };
+export { ingredientRole, normalizeIngredient };
