@@ -2,9 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   analyzeRecipe,
+  DEFAULT_BASE_INGREDIENTS,
   ingredientMatch,
   ingredientRole,
 } from "../src/ingredient-semantics-v2.js";
+
+test("базовый набор по умолчанию консервативный", () => {
+  assert.deepEqual(DEFAULT_BASE_INGREDIENTS, ["соль", "вода", "растительное масло"]);
+  assert.ok(!DEFAULT_BASE_INGREDIENTS.some((item) => /оливков/i.test(item)));
+  assert.ok(!DEFAULT_BASE_INGREDIENTS.some((item) => /перец|сахар|мука|уксус/i.test(item)));
+});
 
 test("синонимы считаются точным совпадением", () => {
   assert.equal(ingredientMatch("помидоры", "томаты").type, "exact");
@@ -44,7 +51,7 @@ test("базовые продукты не блокируют рецепт", () 
   assert.equal(analysis.requiredMissing.length, 0);
 });
 
-test("пустой список техники означает отсутствие техники", () => {
+test("пустой список техники означает отсутствие нагревательной техники", () => {
   const recipe = {
     title: "Жареный картофель",
     ingredients: [{ name: "картофель" }],
