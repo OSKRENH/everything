@@ -222,6 +222,14 @@ test("возвращает проверенные новые варианты п
   assert.equal(recipes.length, 3);
   assert.equal(recipes.some((item) => excludeTitles.some((title) => recipeTitlesAreDuplicate(title, item.title))), false);
   for (const item of recipes) assert.deepEqual(recipeQualityIssues(item, ingredients), []);
+  const chickenSteps = recipes.find((item) => item.title === "Курица с брокколи в соевом соусе").steps.join(" ");
+  assert.match(chickenSteps, /нарежьте курицу/iu);
+  assert.doesNotMatch(chickenSteps, /нарежьте курица|продуктом «/iu);
+  const omeletSteps = recipes.find((item) => item.title === "Омлет с брокколи и сыром").steps.join(" ");
+  assert.match(omeletSteps, /посыпьте омлет сыром/iu);
+  const noodleRecipe = recipes.find((item) => item.title === "Лапша с курицей и брокколи");
+  assert.ok(noodleRecipe);
+  assert.match(noodleRecipe.steps.join(" "), /опустите лапшу/iu);
 
   const env = {
     AI: { run: async () => { throw new Error("daily limit exceeded"); } },
