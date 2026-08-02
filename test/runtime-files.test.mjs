@@ -10,6 +10,7 @@ const runtimeFiles = [
   "src/ingredient-semantics.js",
   "src/kutno-bridge.inject.js",
   "src/matching-engine.inject.js",
+  "src/matching-fixes.inject.js",
   "public/kutno-features.js",
   "public/dom-stability.js",
   "public/feature-sync-throttle.js",
@@ -28,12 +29,14 @@ test("runtime-файлы Кутно проходят синтаксическу�
 test("сборочный мост подключает API состояния и подбор", () => {
   const bridge = readFileSync("src/kutno-bridge.inject.js", "utf8");
   const matching = readFileSync("src/matching-engine.inject.js", "utf8");
+  const fixes = readFileSync("src/matching-fixes.inject.js", "utf8");
   assert.match(bridge, /window\.kutnoBridge\s*=/);
   assert.match(bridge, /restoreSwipeSnapshot/);
   assert.match(bridge, /restoreCookingSession/);
   assert.match(matching, /matchingGroupRecipes/);
   assert.match(matching, /Готовить сейчас/);
   assert.match(matching, /Хочу использовать/);
+  assert.match(fixes, /loadCatalog\(true\)/);
 });
 
 test("расширенные Worker-слои делегируют основной API", () => {
