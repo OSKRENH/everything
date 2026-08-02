@@ -2,30 +2,18 @@
   opacity: 1;
 }
 
-.catalog-load-more {
+.catalog-scroll-sentinel {
   grid-column: 1 / -1;
   width: 100%;
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border: 1px solid var(--ink);
-  background: transparent;
-  margin: 8px 0 44px;
-  padding: 0 16px;
-  color: var(--ink);
-  font-family: "Golos Text", Arial, sans-serif;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: .07em;
-  cursor: pointer;
+  height: 2px;
+  margin: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.catalog-load-more small {
-  color: var(--soft);
-  font-size: 9px;
-  font-weight: 400;
+.catalog-scroll-sentinel span {
+  display: none;
 }
 
 @media (max-width: 700px) {
@@ -33,9 +21,30 @@
     overflow: visible;
   }
 
+  .archive-page .catalog-grid,
+  .archive-page .catalog-grid .matching-group-grid,
+  .archive-page .catalog-grid .matching-group,
+  .archive-page .catalog-grid .catalog-card {
+    border-left: 0 !important;
+    border-right: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .archive-page .catalog-grid,
   .catalog-grid {
     display: block;
-    border: 0;
+    width: 100%;
+    margin: 0;
+    border: 0 !important;
+    outline: 0 !important;
+  }
+
+  .catalog-grid::before,
+  .catalog-grid::after,
+  .catalog-grid .matching-group-grid::before,
+  .catalog-grid .matching-group-grid::after {
+    display: none !important;
+    content: none !important;
   }
 
   .catalog-grid .matching-group {
@@ -48,7 +57,9 @@
     margin: 0;
     padding: 18px 0 15px;
     border-top: 1px solid var(--ink);
+    border-right: 0 !important;
     border-bottom: 1px solid var(--ink);
+    border-left: 0 !important;
   }
 
   .catalog-grid .matching-group > header > div {
@@ -85,14 +96,21 @@
 
   .catalog-grid .matching-group-grid {
     display: block;
+    width: 100%;
+    margin: 0;
+    border: 0 !important;
   }
 
   .catalog-grid .catalog-card {
+    width: 100%;
     min-height: 0 !important;
-    padding: 22px 0 26px !important;
-    border-left: 0 !important;
+    margin: 0 !important;
+    padding: 22px 18px 26px !important;
+    border-top: 0 !important;
     border-right: 0 !important;
     border-bottom: 1px solid var(--ink) !important;
+    border-left: 0 !important;
+    outline: 0 !important;
   }
 
   .catalog-grid .catalog-card-index {
@@ -126,9 +144,5 @@
 
   .catalog-grid .catalog-open {
     margin-top: 22px;
-  }
-
-  .catalog-load-more {
-    margin: 8px 0 34px;
   }
 }
