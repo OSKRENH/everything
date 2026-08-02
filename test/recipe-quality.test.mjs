@@ -177,3 +177,33 @@ test("использует третью попытку, если первые д
   assert.deepEqual(temperatures, [0.35, 0.2, 0.65]);
   assert.equal(body.recipes[0].title, "Жареный сыр");
 });
+
+test("переключается на лёгкую модель, если основная недоступна", async () => {
+  const models = [];
+  const env = {
+    AI: {
+      async run(model) {
+        models.push(model);
+        if (model === "@cf/openai/gpt-oss-120b") throw new Error("model capacity exceeded");
+        return aiResponse({ recipes: [recipe([
+          "Натрите сыр на крупной тёрке.",
+          "Разогрейте сухую сковороду на среднем огне.",
+          "Выложите сыр на сковороду и готовьте 2 минуты, пока он не расплавится.",
+          "Снимите готовый сыр лопаткой и подавайте горячим.",
+        ])] });
+      },
+    },
+    ASSETS: { fetch: () => new Response("not found", { status: 404 }) },
+  };
+
+  const response = await worker.fetch(new Request("https://kutno.ru/api/generate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ingredients: ["сыр"], equipment: ["сковорода"], portions: 2 }),
+  }), env);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(models, ["@cf/openai/gpt-oss-120b", "@cf/openai/gpt-oss-20b"]);
+  assert.equal(body.recipes[0].title, "Жареный сыр");
+});
