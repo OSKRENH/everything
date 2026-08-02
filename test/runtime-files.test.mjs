@@ -33,7 +33,7 @@ test("runtime-файлы Кутно проходят синтаксическу�
   }
 });
 
-test("сборочный мост подключает API состояния, подбор и пакетный каталог", () => {
+test("сборочный мост подключает API состояния, подбор и последовательный каталог", () => {
   const bridge = readFileSync("src/kutno-bridge.inject.js", "utf8");
   const matching = readFileSync("src/matching-engine.inject.js", "utf8");
   const reset = readFileSync("src/fetch-reset.inject.js", "utf8");
@@ -51,8 +51,11 @@ test("сборочный мост подключает API состояния, �
   assert.match(reset, /window\.fetch = async function kutnoSafeMatchingFetch/);
   assert.match(fixes, /loadCatalog\(true\)/);
   assert.match(fixes, /catch\s*\{\s*pathname = ""/);
-  assert.match(performance, /CATALOG_BATCH_SIZE = 12/);
+  assert.match(performance, /CATALOG_INITIAL_SIZE = 5/);
+  assert.match(performance, /CATALOG_INCREMENT = 1/);
+  assert.match(performance, /CATALOG_RETRY_COUNT = 3/);
   assert.match(performance, /IntersectionObserver/);
+  assert.match(performance, /resilientCatalogLoad/);
   assert.match(performance, /performantCatalogResults/);
   assert.match(throttle, /catch\s*\{\s*pathname = ""/);
   assert.match(vite, /const kutnoFetchBeforeMatching = window\.fetch\.bind\(window\)/);
