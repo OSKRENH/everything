@@ -351,13 +351,28 @@ let cookingTimerInterval = null;
 let cookingWakeLock = null;
 let generationError = "";
 let authUser = null;
-let authModalOpen = false;
-let authError = "";
+const initialUrl = new URL(location.href);
+const initialAuthError = {
+  yandex_config: "Вход через Яндекс ещё не настроен.",
+  yandex_cancelled: "Вход через Яндекс отменён.",
+  yandex_state: "Сессия входа через Яндекс устарела. Попробуйте ещё раз.",
+  yandex_failed: "Яндекс не подтвердил вход. Попробуйте ещё раз.",
+}[initialUrl.searchParams.get("auth_error")] || "";
+if (initialUrl.searchParams.has("auth_error")) {
+  initialUrl.searchParams.delete("auth_error");
+  history.replaceState(null, "", `${initialUrl.pathname}${initialUrl.search}${initialUrl.hash}`);
+}
+let authModalOpen = Boolean(initialAuthError);
+let authError = initialAuthError;
 let authBusy = false;
+let authMode = "login";
+let authFormName = "";
+let authFormEmail = "";
 let remoteSaveTimer = null;
 let googleClientPromise = null;
-let googleConfigPromise = null;
+let authConfigPromise = null;
 let googleConfigured = false;
+let yandexEnabled = false;
 let ingredientSuggestions = [];
 let activeSuggestionIndex = -1;
 let recentRecipeTitles = [];
@@ -621,27 +636,31 @@ function loadGoogleClient() {
   return googleClientPromise;
 }
 
-function getGoogleConfig() {
-  if (!googleConfigPromise) {
-    googleConfigPromise = fetch("/api/config")
+function getAuthConfig() {
+  if (!authConfigPromise) {
+    authConfigPromise = fetch("/api/config")
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("Config unavailable")))
       .then((data) => {
         if (!data.googleClientId) throw new Error("Google Client ID missing");
-        return data.googleClientId;
+        yandexEnabled = Boolean(data.yandexEnabled);
+        return data;
       });
   }
-  return googleConfigPromise;
+  return authConfigPromise;
 }
 
 async function mountGoogleButton() {
   const container = document.querySelector("#google-signin-button");
   if (!container || authBusy) return;
   try {
-    const [google, clientId] = await Promise.all([loadGoogleClient(), getGoogleConfig()]);
+    const config = await getAuthConfig();
+    const yandexButton = document.querySelector("#yandex-signin-button");
+    if (yandexButton) yandexButton.hidden = !config.yandexEnabled;
+    const google = await loadGoogleClient();
     if (!document.body.contains(container)) return;
     if (!googleConfigured) {
       google.accounts.id.initialize({
-        client_id: clientId,
+        client_id: config.googleClientId,
         callback: handleGoogleCredential,
         ux_mode: "popup",
         use_fedcm_for_button: true,
@@ -664,6 +683,13 @@ async function mountGoogleButton() {
   }
 }
 
+async function acceptAuth(data) {
+  authUser = data.user;
+  if (!applyRemoteKitchen(data.kitchen)) await syncKitchen();
+  await restoreFavorites();
+  authModalOpen = false;
+}
+
 async function handleGoogleCredential(response) {
   if (authBusy || !response?.credential) return;
   authBusy = true;
@@ -677,15 +703,43 @@ async function handleGoogleCredential(response) {
     });
     const data = await authResponse.json();
     if (!authResponse.ok) throw new Error(data.error || "Не получилось войти через Google");
-    authUser = data.user;
-    if (!applyRemoteKitchen(data.kitchen)) await syncKitchen();
-    await restoreFavorites();
-    authModalOpen = false;
+    await acceptAuth(data);
   } catch (error) {
     authError = error instanceof Error ? error.message : "Попробуйте ещё раз";
   } finally {
     authBusy = false;
-    render();
+    if (authUser) render();
+    else renderOverlayLayer();
+  }
+}
+
+async function submitPasswordAuth(form) {
+  if (authBusy) return;
+  const formData = new FormData(form);
+  authFormName = String(formData.get("name") || "").trim();
+  authFormEmail = String(formData.get("email") || "").trim();
+  const password = String(formData.get("password") || "");
+  authBusy = true;
+  authError = "";
+  renderOverlayLayer();
+  try {
+    const response = await fetch(authMode === "register" ? "/api/auth/register" : "/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: authFormName, email: authFormEmail, password }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Не получилось войти");
+    await acceptAuth(data);
+  } catch (error) {
+    authError = error instanceof Error ? error.message : "Попробуйте ещё раз";
+  } finally {
+    authBusy = false;
+    if (authUser) render();
+    else {
+      renderOverlayLayer();
+      requestAnimationFrame(() => document.querySelector("#auth-password")?.focus());
+    }
   }
 }
 
@@ -987,7 +1041,7 @@ function renderKitchenResults() {
   restorePageScroll(scrollTop);
 }
 
-function renderOverlayLayer({ animateRecipe = false } = {}) {
+function renderOverlayLayer({ animateRecipe = false, animateAuth = false } = {}) {
   const sheetScroll = document.querySelector(".recipe-sheet")?.scrollTop || 0;
   app.querySelectorAll(":scope > .recipe-overlay, :scope > .auth-overlay").forEach((overlay) => overlay.remove());
   let markup = "";
@@ -995,8 +1049,14 @@ function renderOverlayLayer({ animateRecipe = false } = {}) {
     const recipeMarkup = renderRecipeOverlay(activeRecipe);
     markup += animateRecipe ? recipeMarkup : recipeMarkup.replace('class="recipe-overlay"', 'class="recipe-overlay no-enter"');
   }
-  if (authModalOpen) markup += renderAuthOverlay();
-  if (clearProductsConfirmationOpen) markup += renderClearProductsConfirmation();
+  if (authModalOpen) {
+    const authMarkup = renderAuthOverlay();
+    markup += animateAuth ? authMarkup : authMarkup.replace('class="auth-overlay"', 'class="auth-overlay no-enter"');
+  }
+  if (clearProductsConfirmationOpen) {
+    const confirmMarkup = renderClearProductsConfirmation();
+    markup += animateAuth ? confirmMarkup : confirmMarkup.replace('class="auth-overlay confirm-overlay"', 'class="auth-overlay confirm-overlay no-enter"');
+  }
   if (markup) app.insertAdjacentHTML("beforeend", markup);
 
   requestAnimationFrame(() => {
@@ -1218,11 +1278,18 @@ function renderSwipeControls() {
   return `<div class="swipe-controls"><button class="swipe-no" data-swipe="left" aria-label="Пропустить рецепт"><span>←</span> Пропустить</button><button class="swipe-yes" data-swipe="right" aria-label="Добавить рецепт в избранное">Сохранить <span>♥</span></button></div>`;
 }
 
+function renderSwipeDeckMarkup() {
+  const recipe = swipeRecipes[swipeIndex];
+  if (!recipe) return renderSwipeFinished();
+  const nextRecipe = swipeRecipes[swipeIndex + 1];
+  const queuedRecipe = swipeRecipes[swipeIndex + 2];
+  return `${queuedRecipe ? renderSwipeCard(queuedRecipe, "queued") : ""}${nextRecipe ? renderSwipeCard(nextRecipe, "behind") : ""}${renderSwipeCard(recipe)}`;
+}
+
 function renderSwipeView() {
   if (catalogLoading) return `<section class="swipe-page"><div class="swipe-heading"><p class="eyebrow">Выбирать можно быстрее</p><h1>АМ <span class="am-heart">❤️</span></h1>${renderPotLoader("pot-loader-large")}</div></section>`;
   if (catalogError) return `<section class="swipe-page"><div class="swipe-heading"><p class="eyebrow">Выбирать можно быстрее</p><h1>АМ <span class="am-heart">❤️</span></h1><button class="archive-retry" data-action="load-catalog">Попробовать ещё раз</button></div></section>`;
   const recipe = swipeRecipes[swipeIndex];
-  const nextRecipe = swipeRecipes[swipeIndex + 1];
   return `<section class="swipe-page" aria-labelledby="swipe-title">
     <header class="swipe-heading">
       <p class="eyebrow">Влево — пропустить · вправо — сохранить</p>
@@ -1233,7 +1300,7 @@ function renderSwipeView() {
       </figure>
     </header>
     <div class="swipe-stage">
-      ${recipe ? `${nextRecipe ? renderSwipeCard(nextRecipe, "behind") : ""}${renderSwipeCard(recipe)}` : renderSwipeFinished()}
+      ${renderSwipeDeckMarkup()}
     </div>
     ${recipe ? renderSwipeControls() : ""}
   </section>`;
@@ -1249,8 +1316,10 @@ function promoteSwipeDeck() {
 
   const recipe = swipeRecipes[swipeIndex];
   const nextRecipe = swipeRecipes[swipeIndex + 1];
+  const queuedRecipe = swipeRecipes[swipeIndex + 2];
   const outgoing = stage.querySelector(".swipe-card.front");
   const promoted = stage.querySelector(".swipe-card.behind");
+  const revealed = stage.querySelector(".swipe-card.queued");
   outgoing?.remove();
 
   if (!recipe) {
@@ -1260,18 +1329,30 @@ function promoteSwipeDeck() {
   }
 
   if (promoted) {
-    promoted.classList.remove("behind", "promoting");
+    promoted.classList.remove("behind", "promoting", "tracking");
     promoted.classList.add("front");
+    promoted.style.removeProperty("transform");
+    promoted.style.removeProperty("opacity");
     promoted.removeAttribute("aria-hidden");
     promoted.setAttribute("tabindex", "0");
     const counter = promoted.querySelector(".swipe-card-counter");
     if (counter) counter.textContent = `${String(swipeIndex + 1).padStart(2, "0")} / ${swipeRecipes.length.toString().padStart(2, "0")}`;
   } else {
-    stage.innerHTML = renderSwipeCard(recipe);
+    stage.innerHTML = renderSwipeDeckMarkup();
+    if (!page.querySelector(".swipe-controls")) page.insertAdjacentHTML("beforeend", renderSwipeControls());
+    return;
   }
 
-  if (nextRecipe) {
+  if (revealed && nextRecipe) {
+    revealed.classList.remove("queued", "revealing", "tracking");
+    revealed.classList.add("behind");
+    revealed.style.removeProperty("transform");
+    revealed.style.removeProperty("opacity");
+  } else if (nextRecipe) {
     stage.insertAdjacentHTML("afterbegin", renderSwipeCard(nextRecipe, "behind").replace("swipe-card behind", "swipe-card behind entering"));
+  }
+  if (queuedRecipe) {
+    stage.insertAdjacentHTML("afterbegin", renderSwipeCard(queuedRecipe, "queued"));
   }
   if (!page.querySelector(".swipe-controls")) page.insertAdjacentHTML("beforeend", renderSwipeControls());
 }
@@ -1284,10 +1365,7 @@ function refreshSwipeDeck() {
     return;
   }
   const recipe = swipeRecipes[swipeIndex];
-  const nextRecipe = swipeRecipes[swipeIndex + 1];
-  stage.innerHTML = recipe
-    ? `${nextRecipe ? renderSwipeCard(nextRecipe, "behind") : ""}${renderSwipeCard(recipe)}`
-    : renderSwipeFinished();
+  stage.innerHTML = renderSwipeDeckMarkup();
   page.querySelector(".swipe-controls")?.remove();
   if (recipe) page.insertAdjacentHTML("beforeend", renderSwipeControls());
   if (swipeHintPending && recipe) swipeHintPending = false;
@@ -1391,8 +1469,20 @@ function finishSwipe(direction) {
   swipeBusy = true;
   const card = document.querySelector(".swipe-card.front");
   const nextCard = document.querySelector(".swipe-card.behind");
+  const queuedCard = document.querySelector(".swipe-card.queued");
   card?.classList.add(direction === "right" ? "fly-right" : "fly-left");
-  if (nextCard) requestAnimationFrame(() => nextCard.classList.add("promoting"));
+  if (nextCard) {
+    nextCard.classList.remove("tracking");
+    nextCard.style.removeProperty("transform");
+    nextCard.style.removeProperty("opacity");
+    nextCard.classList.add("promoting");
+  }
+  if (queuedCard) {
+    queuedCard.classList.remove("tracking");
+    queuedCard.style.removeProperty("transform");
+    queuedCard.style.removeProperty("opacity");
+    queuedCard.classList.add("revealing");
+  }
   const recipe = swipeRecipes[swipeIndex];
   window.setTimeout(() => {
     swipeIndex += 1;
@@ -1401,7 +1491,7 @@ function finishSwipe(direction) {
     saveSwipeHistory();
     if (direction === "right" && !isFavorite(recipe)) toggleFavorite(recipe);
     promoteSwipeDeck();
-  }, 380);
+  }, 400);
 }
 
 function renderRecipeCard(recipe, index, source = "recipes") {
@@ -1463,13 +1553,22 @@ function renderAuthOverlay() {
     <section class="auth-card">
       <button class="auth-close" data-action="close-auth" aria-label="Закрыть">×</button>
       <p class="eyebrow">Один аккаунт для всей кухни</p>
-      <h2 id="account-title">Войти в Кутно</h2>
+      <h2 id="account-title">${authMode === "register" ? "Создать аккаунт" : "Войти в Кутно"}</h2>
       <p class="auth-lead">Продукты и инвентарь будут доступны на телефоне и компьютере.</p>
-      <div class="google-signin-wrap">
+      <div class="oauth-options">
+        <a id="yandex-signin-button" class="yandex-signin" href="/api/auth/yandex" ${yandexEnabled ? "" : "hidden"}><span aria-hidden="true">Я</span> Продолжить с Яндекс ID</a>
         <div id="google-signin-button" aria-live="polite">${authBusy ? "Проверяем аккаунт…" : "Загружаем Google…"}</div>
       </div>
+      <div class="auth-divider"><span>или</span></div>
+      <form id="auth-form" class="auth-form">
+        ${authMode === "register" ? `<label><span>Имя</span><input name="name" value="${escapeHtml(authFormName)}" autocomplete="name" minlength="2" maxlength="60" required></label>` : ""}
+        <label><span>Почта</span><input name="email" type="email" value="${escapeHtml(authFormEmail)}" autocomplete="email" maxlength="160" required></label>
+        <label><span>Пароль</span><input id="auth-password" name="password" type="password" autocomplete="${authMode === "register" ? "new-password" : "current-password"}" minlength="8" maxlength="128" required></label>
+        <button class="auth-primary" type="submit" ${authBusy ? "disabled" : ""}>${authBusy ? "Проверяем…" : authMode === "register" ? "Зарегистрироваться" : "Войти"}</button>
+      </form>
+      <button class="auth-mode-switch" data-auth-mode="${authMode === "register" ? "login" : "register"}">${authMode === "register" ? "Уже есть аккаунт — войти" : "Нет аккаунта — зарегистрироваться"}</button>
       ${authError ? `<p class="auth-error" role="alert">${escapeHtml(authError)}</p>` : ""}
-      <p class="google-auth-note">Google передаст Кутно только имя, адрес почты и идентификатор аккаунта. Пароль Google остаётся у Google.</p>
+      <p class="google-auth-note">При входе через Google или Яндекс Кутно получает только имя, почту и идентификатор аккаунта. Пароли этих сервисов остаются у них.</p>
     </section>
   </div>`;
 }
@@ -1838,6 +1937,10 @@ app.addEventListener("submit", (event) => {
       addIngredients([input.value]);
     }
   }
+  if (event.target.id === "auth-form") {
+    event.preventDefault();
+    submitPasswordAuth(event.target);
+  }
 });
 
 app.addEventListener("input", (event) => {
@@ -1903,7 +2006,12 @@ app.addEventListener("pointerdown", (event) => {
   const card = event.target.closest(".swipe-card.front");
   if (!card || event.target.closest("button") || swipeBusy) return;
   card.classList.remove("swipe-hint");
-  swipeGesture = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, card, dragging: false };
+  const stage = card.closest(".swipe-stage");
+  const behind = stage?.querySelector(".swipe-card.behind") || null;
+  const queued = stage?.querySelector(".swipe-card.queued") || null;
+  behind?.classList.add("tracking");
+  queued?.classList.add("tracking");
+  swipeGesture = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, card, behind, queued, dragging: false };
   card.setPointerCapture?.(event.pointerId);
 });
 
@@ -1913,6 +2021,8 @@ app.addEventListener("pointermove", (event) => {
   const dy = event.clientY - swipeGesture.startY;
   if (!swipeGesture.dragging && Math.abs(dx) < 8) return;
   if (!swipeGesture.dragging && Math.abs(dy) > Math.abs(dx)) {
+    swipeGesture.behind?.classList.remove("tracking");
+    swipeGesture.queued?.classList.remove("tracking");
     swipeGesture = null;
     return;
   }
@@ -1922,22 +2032,38 @@ app.addEventListener("pointermove", (event) => {
   swipeGesture.card.style.transform = `translateX(${dx}px) rotate(${rotation}deg)`;
   swipeGesture.card.style.setProperty("--swipe-progress", String(Math.min(1, Math.abs(dx) / 110)));
   swipeGesture.card.dataset.swipeDirection = dx >= 0 ? "right" : "left";
+  const deckProgress = Math.min(1, Math.abs(dx) / 125);
+  if (swipeGesture.behind) {
+    swipeGesture.behind.style.transform = `translateY(${13 * (1 - deckProgress)}px) scale(${.965 + .035 * deckProgress}) rotate(${1.2 * (1 - deckProgress)}deg)`;
+    swipeGesture.behind.style.opacity = String(.94 + .06 * deckProgress);
+  }
+  if (swipeGesture.queued) {
+    swipeGesture.queued.style.transform = `translateY(${24 - 11 * deckProgress}px) scale(${.94 + .025 * deckProgress}) rotate(${1.8 - .6 * deckProgress}deg)`;
+    swipeGesture.queued.style.opacity = String(.94 * deckProgress);
+  }
 });
 
 function endSwipeGesture(event) {
   if (!swipeGesture || swipeGesture.pointerId !== event.pointerId) return;
-  const { card, startX, dragging } = swipeGesture;
+  const { card, behind, queued, startX, dragging } = swipeGesture;
   const dx = event.clientX - startX;
   swipeGesture = null;
   card.releasePointerCapture?.(event.pointerId);
   if (dragging && Math.abs(dx) >= 75) {
-    card.style.removeProperty("transform");
     finishSwipe(dx > 0 ? "right" : "left");
     return;
   }
   card.style.removeProperty("transform");
   card.style.removeProperty("--swipe-progress");
   delete card.dataset.swipeDirection;
+  behind?.classList.remove("tracking");
+  queued?.classList.remove("tracking");
+  requestAnimationFrame(() => {
+    behind?.style.removeProperty("transform");
+    behind?.style.removeProperty("opacity");
+    queued?.style.removeProperty("transform");
+    queued?.style.removeProperty("opacity");
+  });
 }
 
 app.addEventListener("pointerup", endSwipeGesture);
@@ -2075,7 +2201,7 @@ app.addEventListener("click", (event) => {
   if (target.dataset.action === "request-clear-products") {
     clearProductsConfirmationOpen = true;
     document.body.classList.add("no-scroll");
-    renderOverlayLayer();
+    renderOverlayLayer({ animateAuth: true });
   }
   if (target.dataset.action === "cancel-clear-products") {
     clearProductsConfirmationOpen = false;
@@ -2099,12 +2225,18 @@ app.addEventListener("click", (event) => {
   if (target.dataset.action === "account") {
     authModalOpen = true;
     authError = "";
-    renderOverlayLayer();
+    renderOverlayLayer({ animateAuth: true });
   }
   if (target.dataset.action === "close-auth") {
     authModalOpen = false;
     authError = "";
     renderOverlayLayer();
+  }
+  if (target.dataset.authMode) {
+    authMode = target.dataset.authMode === "register" ? "register" : "login";
+    authError = "";
+    renderOverlayLayer();
+    requestAnimationFrame(() => document.querySelector(authMode === "register" ? "#auth-form input[name='name']" : "#auth-form input[name='email']")?.focus());
   }
   if (target.dataset.action === "logout") logout();
   if (target.dataset.toggleFavoriteSource) {

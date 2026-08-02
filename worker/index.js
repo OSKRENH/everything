@@ -704,6 +704,9 @@ export function findRecoveryRecipes({ ingredients, equipment, difficulty, portio
 
 const SESSION_COOKIE = "kutno_session";
 const SESSION_TTL = 60 * 60 * 24 * 30;
+const YANDEX_STATE_COOKIE = "kutno_yandex_state";
+const YANDEX_VERIFIER_COOKIE = "kutno_yandex_verifier";
+const YANDEX_OAUTH_TTL = 60 * 10;
 
 function bytesToBase64(bytes) {
   let value = "";
@@ -726,6 +729,10 @@ async function sha256(value) {
   return bytesToBase64(new Uint8Array(digest));
 }
 
+async function sha256Url(value) {
+  return (await sha256(value)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
 async function passwordHash(password, salt) {
   const key = await crypto.subtle.importKey(
     "raw",
@@ -742,13 +749,12 @@ async function passwordHash(password, salt) {
   return bytesToBase64(new Uint8Array(bits));
 }
 
-function safeEqual(first, second) {
-  if (first.length !== second.length) return false;
-  let difference = 0;
-  for (let index = 0; index < first.length; index += 1) {
-    difference |= first.charCodeAt(index) ^ second.charCodeAt(index);
-  }
-  return difference === 0;
+async function safeEqual(first, second) {
+  const [firstHash, secondHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(first))),
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(second))),
+  ]);
+  return crypto.subtle.timingSafeEqual(firstHash, secondHash);
 }
 
 async function ensureDatabase(env) {
@@ -775,6 +781,12 @@ async function ensureDatabase(env) {
         created_at INTEGER NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS yandex_accounts (
+        yandex_id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS favorites (
         id TEXT NOT NULL,
         user_id TEXT NOT NULL,
@@ -785,6 +797,7 @@ async function ensureDatabase(env) {
       )`),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS sessions_user_id ON sessions(user_id)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS google_accounts_user_id ON google_accounts(user_id)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS yandex_accounts_user_id ON yandex_accounts(user_id)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS favorites_user_id ON favorites(user_id, created_at DESC)"),
   ]);
 }
@@ -842,6 +855,16 @@ function cookieValue(request, name) {
 
 function sessionCookie(token, maxAge = SESSION_TTL) {
   return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+}
+
+function shortLivedCookie(name, value, maxAge = YANDEX_OAUTH_TTL) {
+  return `${name}=${value}; Path=/api/auth/yandex; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+}
+
+function redirect(location, cookies = []) {
+  const headers = new Headers({ location, "cache-control": "no-store" });
+  cookies.forEach((cookie) => headers.append("set-cookie", cookie));
+  return new Response(null, { status: 302, headers });
 }
 
 function publicUser(user) {
@@ -938,7 +961,7 @@ async function findGoogleUser(env, googleSub) {
   `).bind(googleSub).first();
 }
 
-async function createGoogleOnlyUser(env, profile) {
+async function createOauthOnlyUser(env, profile) {
   const salt = new Uint8Array(16);
   const impossiblePassword = new Uint8Array(32);
   crypto.getRandomValues(salt);
@@ -975,7 +998,7 @@ async function googleLogin(request, env) {
     if (existing && !profile.googleIsAuthoritative) {
       return json({ error: "Этот адрес уже связан с другим способом входа" }, 409);
     }
-    user = existing || await createGoogleOnlyUser(env, profile);
+    user = existing || await createOauthOnlyUser(env, profile);
     try {
       await env.DB.prepare("INSERT INTO google_accounts (google_sub, user_id, created_at) VALUES (?, ?, ?)")
         .bind(profile.googleSub, user.id, Date.now())
@@ -992,6 +1015,97 @@ async function googleLogin(request, env) {
     200,
     { "set-cookie": sessionCookie(token) },
   );
+}
+
+async function findYandexUser(env, yandexId) {
+  return env.DB.prepare(`
+    SELECT users.* FROM yandex_accounts
+    JOIN users ON users.id = yandex_accounts.user_id
+    WHERE yandex_accounts.yandex_id = ?
+  `).bind(yandexId).first();
+}
+
+async function startYandexLogin(request, env) {
+  if (!env.YANDEX_CLIENT_ID || !env.YANDEX_CLIENT_SECRET) return redirect("/?auth_error=yandex_config");
+  const state = randomToken(24);
+  const verifier = randomToken(48);
+  const redirectUri = "https://kutno.ru/api/auth/yandex/callback";
+  const authorizationUrl = new URL("https://oauth.yandex.com/authorize");
+  authorizationUrl.searchParams.set("response_type", "code");
+  authorizationUrl.searchParams.set("client_id", env.YANDEX_CLIENT_ID);
+  authorizationUrl.searchParams.set("redirect_uri", redirectUri);
+  authorizationUrl.searchParams.set("state", state);
+  authorizationUrl.searchParams.set("code_challenge", await sha256Url(verifier));
+  authorizationUrl.searchParams.set("code_challenge_method", "S256");
+  return redirect(authorizationUrl.toString(), [
+    shortLivedCookie(YANDEX_STATE_COOKIE, state),
+    shortLivedCookie(YANDEX_VERIFIER_COOKIE, verifier),
+  ]);
+}
+
+async function finishYandexLogin(request, env) {
+  const url = new URL(request.url);
+  const clearOauthCookies = [
+    shortLivedCookie(YANDEX_STATE_COOKIE, "", 0),
+    shortLivedCookie(YANDEX_VERIFIER_COOKIE, "", 0),
+  ];
+  if (url.searchParams.get("error")) return redirect("/?auth_error=yandex_cancelled", clearOauthCookies);
+
+  const code = String(url.searchParams.get("code") || "").slice(0, 2048);
+  const state = String(url.searchParams.get("state") || "").slice(0, 2048);
+  const expectedState = cookieValue(request, YANDEX_STATE_COOKIE);
+  const verifier = cookieValue(request, YANDEX_VERIFIER_COOKIE);
+  if (!code || !state || !expectedState || !verifier || !(await safeEqual(state, expectedState))) {
+    return redirect("/?auth_error=yandex_state", clearOauthCookies);
+  }
+
+  try {
+    const tokenResponse = await fetch("https://oauth.yandex.com/token", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        client_id: env.YANDEX_CLIENT_ID,
+        client_secret: env.YANDEX_CLIENT_SECRET,
+        code_verifier: verifier,
+      }),
+    });
+    const tokenData = await tokenResponse.json();
+    if (!tokenResponse.ok || !tokenData.access_token) throw new Error(String(tokenData.error || "token_exchange_failed"));
+
+    const profileResponse = await fetch("https://login.yandex.ru/info?format=json", {
+      headers: { authorization: `OAuth ${tokenData.access_token}` },
+    });
+    const profileData = await profileResponse.json();
+    if (!profileResponse.ok) throw new Error("profile_request_failed");
+    const yandexId = String(profileData.id || "").trim().slice(0, 255);
+    const email = String(profileData.default_email || profileData.emails?.[0] || "").trim().toLowerCase().slice(0, 160);
+    const name = String(profileData.display_name || profileData.real_name || profileData.first_name || profileData.login || email.split("@")[0] || "Пользователь").trim().slice(0, 60);
+    if (!yandexId || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("profile_incomplete");
+    if (profileData.client_id && String(profileData.client_id) !== String(env.YANDEX_CLIENT_ID)) throw new Error("client_mismatch");
+
+    await ensureDatabase(env);
+    let user = await findYandexUser(env, yandexId);
+    if (!user) {
+      const existing = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+      user = existing || await createOauthOnlyUser(env, { email, name });
+      try {
+        await env.DB.prepare("INSERT INTO yandex_accounts (yandex_id, user_id, created_at) VALUES (?, ?, ?)")
+          .bind(yandexId, user.id, Date.now())
+          .run();
+      } catch {
+        user = await findYandexUser(env, yandexId);
+        if (!user) throw new Error("account_link_failed");
+      }
+    }
+
+    const token = await createSession(env, user);
+    return redirect("/", [sessionCookie(token), ...clearOauthCookies]);
+  } catch (error) {
+    console.warn(JSON.stringify({ message: "yandex_auth_failed", error: error instanceof Error ? error.message : String(error) }));
+    return redirect("/?auth_error=yandex_failed", clearOauthCookies);
+  }
 }
 
 async function register(request, env) {
@@ -1030,7 +1144,7 @@ async function login(request, env) {
   const user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
   if (!user) return json({ error: "Неверная почта или пароль" }, 401);
   const hash = await passwordHash(password, base64ToBytes(user.password_salt));
-  if (!safeEqual(hash, user.password_hash)) return json({ error: "Неверная почта или пароль" }, 401);
+  if (!(await safeEqual(hash, user.password_hash))) return json({ error: "Неверная почта или пароль" }, 401);
   const token = await createSession(env, user);
   return json({ user: publicUser(user), kitchen: parseKitchen(user.kitchen_json) }, 200, { "set-cookie": sessionCookie(token) });
 }
@@ -1757,7 +1871,10 @@ export default {
     }
 
     if (url.pathname === "/api/config" && request.method === "GET") {
-      return json({ googleClientId: env.GOOGLE_CLIENT_ID });
+      return json({
+        googleClientId: env.GOOGLE_CLIENT_ID,
+        yandexEnabled: Boolean(env.YANDEX_CLIENT_ID && env.YANDEX_CLIENT_SECRET),
+      });
     }
 
     if (url.pathname === "/api/source-status" && request.method === "GET") {
@@ -1771,6 +1888,14 @@ export default {
 
     if (url.pathname === "/api/auth/google" && request.method === "POST") {
       return googleLogin(request, env);
+    }
+
+    if (url.pathname === "/api/auth/yandex" && request.method === "GET") {
+      return startYandexLogin(request, env);
+    }
+
+    if (url.pathname === "/api/auth/yandex/callback" && request.method === "GET") {
+      return finishYandexLogin(request, env);
     }
 
     if (url.pathname === "/api/auth/register" && request.method === "POST") {
