@@ -1,5 +1,4 @@
 import {
-  DEFAULT_BASE_INGREDIENTS as LEGACY_DEFAULT_BASE_INGREDIENTS,
   analyzeRecipe as baseAnalyzeRecipe,
   enrichRecipeSemantics as baseEnrichRecipeSemantics,
   ingredientMatch as baseIngredientMatch,
@@ -55,24 +54,60 @@ function restoreText(value = "") {
   return result;
 }
 
-function transformedRecipe(recipe) {
+function selectedBaseMatch(name, baseIngredients) {
+  let best = { type: "none" };
+  for (const base of baseIngredients) {
+    const match = baseIngredientMatch(semanticValue(name), semanticValue(base));
+    const rank = { none: 0, substitute: 1, category: 2, exact: 3 };
+    if (rank[match.type] > rank[best.type]) best = match;
+  }
+  return best;
+}
+
+function transformedRecipe(recipe, baseIngredients) {
   return {
     ...recipe,
-    ingredients: (Array.isArray(recipe?.ingredients) ? recipe.ingredients : []).map((item) => ({
-      ...item,
-      name: semanticValue(item?.name),
-      aliases: (Array.isArray(item?.aliases) ? item.aliases : []).map(semanticValue),
-    })),
+    ingredients: (Array.isArray(recipe?.ingredients) ? recipe.ingredients : []).map((item) => {
+      const name = semanticValue(item?.name);
+      const normalized = normalizeIngredient(item?.name);
+      const baseMatch = selectedBaseMatch(item?.name, baseIngredients);
+      let role = item?.role;
+      let pantry = item?.pantry;
+
+      if (["exact", "category"].includes(baseMatch.type)) {
+        role = "base";
+        pantry = true;
+      } else if (/оливков.*масл/.test(normalized)) {
+        role = item?.role === "optional" ? "optional" : "required";
+        pantry = false;
+      } else if (/черн.*перец|перец.*черн/.test(normalized)) {
+        role = "optional";
+        pantry = false;
+      } else if (/сахар|мук|уксус/.test(normalized)) {
+        pantry = false;
+        if (role === "base") role = undefined;
+      }
+
+      return {
+        ...item,
+        name,
+        role,
+        pantry,
+        aliases: (Array.isArray(item?.aliases) ? item.aliases : []).map(semanticValue),
+      };
+    }),
   };
 }
 
 function transformedContext(context = {}) {
   const selectedEquipment = Array.isArray(context.equipment) ? context.equipment : [];
+  const baseIngredients = Array.isArray(context.baseIngredients) ? context.baseIngredients : DEFAULT_BASE_INGREDIENTS;
+  const ownedIngredients = Array.isArray(context.ingredients) ? context.ingredients : [];
   return {
     ...context,
-    ingredients: (Array.isArray(context.ingredients) ? context.ingredients : []).map(semanticValue),
+    ingredients: [...new Set([...ownedIngredients, ...baseIngredients])].map(semanticValue),
     priorityIngredients: (Array.isArray(context.priorityIngredients) ? context.priorityIngredients : []).map(semanticValue),
-    baseIngredients: (Array.isArray(context.baseIngredients) ? context.baseIngredients : DEFAULT_BASE_INGREDIENTS).map(semanticValue),
+    baseIngredients: baseIngredients.map(semanticValue),
     equipment: [...new Set([...MANUAL_EQUIPMENT, ...selectedEquipment])],
   };
 }
@@ -83,7 +118,8 @@ export function ingredientMatch(recipeIngredient, ownedIngredient) {
 
 export function analyzeRecipe(recipe, context = {}) {
   const originalIngredients = Array.isArray(recipe?.ingredients) ? recipe.ingredients : [];
-  const analysis = baseAnalyzeRecipe(transformedRecipe(recipe), transformedContext(context));
+  const baseIngredients = Array.isArray(context.baseIngredients) ? context.baseIngredients : DEFAULT_BASE_INGREDIENTS;
+  const analysis = baseAnalyzeRecipe(transformedRecipe(recipe, baseIngredients), transformedContext(context));
   const ingredients = analysis.ingredients.map((item, index) => ({
     ...item,
     name: originalIngredients[index]?.name || restoreText(item.name),
