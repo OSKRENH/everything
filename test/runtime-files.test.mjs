@@ -6,7 +6,10 @@ import test from "node:test";
 const runtimeFiles = [
   "vite.config.js",
   "worker/entry.js",
+  "worker/matching-entry.js",
+  "src/ingredient-semantics.js",
   "src/kutno-bridge.inject.js",
+  "src/matching-engine.inject.js",
   "public/kutno-features.js",
   "public/dom-stability.js",
   "public/feature-sync-throttle.js",
@@ -22,16 +25,23 @@ test("runtime-файлы Кутно проходят синтаксическу�
   }
 });
 
-test("сборочный мост подключает API состояния", () => {
-  const source = readFileSync("src/kutno-bridge.inject.js", "utf8");
-  assert.match(source, /window\.kutnoBridge\s*=/);
-  assert.match(source, /restoreSwipeSnapshot/);
-  assert.match(source, /restoreCookingSession/);
+test("сборочный мост подключает API состояния и подбор", () => {
+  const bridge = readFileSync("src/kutno-bridge.inject.js", "utf8");
+  const matching = readFileSync("src/matching-engine.inject.js", "utf8");
+  assert.match(bridge, /window\.kutnoBridge\s*=/);
+  assert.match(bridge, /restoreSwipeSnapshot/);
+  assert.match(bridge, /restoreCookingSession/);
+  assert.match(matching, /matchingGroupRecipes/);
+  assert.match(matching, /Готовить сейчас/);
+  assert.match(matching, /Хочу использовать/);
 });
 
-test("расширенный Worker делегирует основной API", () => {
-  const source = readFileSync("worker/entry.js", "utf8");
-  assert.match(source, /return baseWorker\.fetch\(request, env, ctx\)/);
-  assert.match(source, /\/api\/feature-state/);
-  assert.match(source, /shared_recipes/);
+test("расширенные Worker-слои делегируют основной API", () => {
+  const featureWorker = readFileSync("worker/entry.js", "utf8");
+  const matchingWorker = readFileSync("worker/matching-entry.js", "utf8");
+  assert.match(featureWorker, /return baseWorker\.fetch\(request, env, ctx\)/);
+  assert.match(featureWorker, /\/api\/feature-state/);
+  assert.match(featureWorker, /shared_recipes/);
+  assert.match(matchingWorker, /return featureWorker\.fetch\(request, env, ctx\)/);
+  assert.match(matchingWorker, /allow-one-purchase/);
 });
