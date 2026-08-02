@@ -51,6 +51,23 @@
   letter-spacing: var(--section-title-spacing);
 }
 
+/* Визуально заменяем старый трёхстрочный заголовок кухни без вмешательства в приложение. */
+#main-title {
+  font-size: 0;
+}
+
+#main-title::before {
+  content: "Что есть\Aна кухне?";
+  display: block;
+  white-space: pre-line;
+  color: var(--section-title-color);
+  font-family: "Prata", Georgia, serif;
+  font-size: var(--section-title-size);
+  font-weight: var(--section-title-weight);
+  line-height: var(--section-title-line-height);
+  letter-spacing: var(--section-title-spacing);
+}
+
 .intro-copy > .eyebrow,
 .archive-heading .eyebrow,
 .swipe-heading .eyebrow,
@@ -118,23 +135,23 @@
     --section-kicker-line-height: 1.35;
     --section-lead-size: 12px;
     --section-lead-line-height: 1.55;
-    --mobile-hero-height: 620px;
-    --mobile-title-bottom: 416px;
-    --mobile-lead-top: 230px;
-    --mobile-lead-height: 58px;
-    --mobile-art-top: 312px;
-    --mobile-art-height: 260px;
+    --mobile-hero-height: 520px;
+    --mobile-title-bottom: 350px;
+    --mobile-lead-top: 190px;
+    --mobile-lead-height: 56px;
+    --mobile-art-top: 258px;
+    --mobile-art-height: 230px;
   }
 
   /* Все четыре верхних блока начинаются и заканчиваются на одной высоте. */
   .intro-grid {
-    padding-top: 44px;
+    padding-top: 36px;
     gap: 0;
   }
 
   .archive-page,
   .swipe-page {
-    padding-top: 44px;
+    padding-top: 36px;
   }
 
   .swipe-page {
@@ -142,7 +159,7 @@
   }
 
   .favorites-empty {
-    margin: 44px 0 0;
+    margin: 36px 0 0;
     padding: 0;
   }
 
@@ -169,7 +186,6 @@
     display: block;
   }
 
-  /* Одинаковая точка надзаголовка. */
   .intro-copy > .eyebrow,
   .archive-heading .eyebrow,
   .swipe-heading .eyebrow,
@@ -182,7 +198,6 @@
     margin: 0;
   }
 
-  /* Заголовки имеют один размер и одну нижнюю линию независимо от числа строк. */
   .intro-copy h1,
   .archive-heading h1,
   .swipe-heading h1,
@@ -199,7 +214,6 @@
     overflow-wrap: normal;
   }
 
-  /* Описания занимают один и тот же слот. В кухне он остаётся пустым. */
   .archive-heading .archive-visual > p,
   .swipe-heading > p:last-of-type,
   .favorites-copy > p:last-of-type,
@@ -216,7 +230,6 @@
     overflow: hidden;
   }
 
-  /* Единое окно иллюстрации. Оно обрезает прозрачные поля исходников. */
   .intro-copy .kitchen-illustration,
   .archive-heading .base-illustration,
   .swipe-heading .swipe-illustration,
@@ -250,7 +263,6 @@
     transform-origin: center center;
   }
 
-  /* Индивидуальная компенсация прозрачных краёв без изменения файлов. */
   .intro-copy .kitchen-illustration img {
     width: 95%;
     transform: translate(-50%, -50%) scale(1.08);
@@ -271,7 +283,6 @@
     transform: translate(-50%, -48%) scale(1.12);
   }
 
-  /* Избранное со списком также не меняет высоту после загрузки изображения. */
   .favorites-list-illustration {
     position: relative;
     width: 100%;
