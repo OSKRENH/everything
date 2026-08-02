@@ -4,7 +4,7 @@ import {
   analyzeRecipe,
   ingredientMatch,
   ingredientRole,
-} from "../src/ingredient-semantics.js";
+} from "../src/ingredient-semantics-v2.js";
 
 test("синонимы считаются точным совпадением", () => {
   assert.equal(ingredientMatch("помидоры", "томаты").type, "exact");
@@ -13,6 +13,11 @@ test("синонимы считаются точным совпадением", 
 
 test("репчатый и зелёный лук не считаются одним продуктом", () => {
   assert.equal(ingredientMatch("репчатый лук", "зелёный лук").type, "none");
+});
+
+test("кокосовое и обычное молоко не считаются одним продуктом", () => {
+  assert.equal(ingredientMatch("молоко", "кокосовое молоко").type, "none");
+  assert.equal(ingredientMatch("кокосовое молоко", "кокосовое молоко").type, "exact");
 });
 
 test("частный вид подходит общей категории, но обратное считается заменой", () => {
@@ -37,6 +42,20 @@ test("базовые продукты не блокируют рецепт", () 
   });
   assert.equal(analysis.group, "ready");
   assert.equal(analysis.requiredMissing.length, 0);
+});
+
+test("пустой список техники означает отсутствие техники", () => {
+  const recipe = {
+    title: "Жареный картофель",
+    ingredients: [{ name: "картофель" }],
+    equipment: ["Сковорода"],
+  };
+  const analysis = analyzeRecipe(recipe, {
+    ingredients: ["картофель"],
+    equipment: [],
+  });
+  assert.equal(analysis.group, "more");
+  assert.deepEqual(analysis.missingEquipment, ["Сковорода"]);
 });
 
 test("необязательная зелень не переводит рецепт в покупки", () => {
