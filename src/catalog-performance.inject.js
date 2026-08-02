@@ -1,6 +1,7 @@
 const CATALOG_INITIAL_SIZE = 5;
 const CATALOG_INCREMENT = 1;
 const CATALOG_RETRY_COUNT = 3;
+const CATALOG_BACKGROUND_RECOVERY_LIMIT = 2;
 const CATALOG_REVEAL_DURATION = 480;
 const catalogDirectFetch = typeof kutnoFetchBeforeMatching === "function"
   ? kutnoFetchBeforeMatching
@@ -10,7 +11,10 @@ let catalogResultKey = "";
 let catalogLoadObserver = null;
 let catalogLoadPending = false;
 let catalogAnimateNext = false;
-let catalogRecoveryTimer = 0;
+let catalogInitialRecoveryTimer = 0;
+let catalogBackgroundRecoveryTimer = 0;
+let catalogBackgroundRecoveryAttempts = 0;
+let catalogBackgroundRecoveryInFlight = false;
 let catalogUsingFallback = false;
 
 function catalogDelay(milliseconds) {
@@ -61,21 +65,52 @@ async function requestCatalogDirectly() {
   return data.recipes;
 }
 
-function scheduleFullCatalogRecovery() {
-  window.clearTimeout(catalogRecoveryTimer);
-  catalogRecoveryTimer = window.setTimeout(async () => {
-    if (currentView !== "catalog" || catalogLoading || !catalogUsingFallback) return;
-    await loadCatalog(true);
-  }, 1800);
+function stopCatalogRecovery() {
+  window.clearTimeout(catalogInitialRecoveryTimer);
+  window.clearTimeout(catalogBackgroundRecoveryTimer);
+  catalogInitialRecoveryTimer = 0;
+  catalogBackgroundRecoveryTimer = 0;
+}
+
+async function recoverFullCatalogSilently() {
+  if (
+    currentView !== "catalog"
+    || !catalogUsingFallback
+    || catalogBackgroundRecoveryInFlight
+    || catalogBackgroundRecoveryAttempts >= CATALOG_BACKGROUND_RECOVERY_LIMIT
+  ) return;
+
+  catalogBackgroundRecoveryInFlight = true;
+  catalogBackgroundRecoveryAttempts += 1;
+  try {
+    const recipesFromApi = await requestCatalogDirectly();
+    applyCatalogRecipes(recipesFromApi);
+    catalogBackgroundRecoveryAttempts = 0;
+    catalogError = "";
+    renderMainView();
+  } catch {
+    if (catalogBackgroundRecoveryAttempts < CATALOG_BACKGROUND_RECOVERY_LIMIT) {
+      scheduleFullCatalogRecovery(4000 * catalogBackgroundRecoveryAttempts);
+    }
+  } finally {
+    catalogBackgroundRecoveryInFlight = false;
+  }
+}
+
+function scheduleFullCatalogRecovery(delay = 4000) {
+  window.clearTimeout(catalogBackgroundRecoveryTimer);
+  catalogBackgroundRecoveryTimer = 0;
+  if (!catalogUsingFallback || catalogBackgroundRecoveryAttempts >= CATALOG_BACKGROUND_RECOVERY_LIMIT) return;
+  catalogBackgroundRecoveryTimer = window.setTimeout(recoverFullCatalogSilently, delay);
 }
 
 /*
- * Каталог не должен падать целиком из-за одного временного запроса или рецепта.
- * Три раза пробуем получить полный список напрямую. Если сеть не отвечает,
- * сразу показываем встроенную базу и продолжаем восстановление в фоне.
+ * При первом открытии трижды пробуем получить полный каталог. Если сеть не
+ * отвечает, один раз показываем встроенную базу. Фоновое восстановление не
+ * включает загрузчик и ограничено двумя попытками.
  */
 loadCatalog = async function resilientCatalogLoad(force = false) {
-  if ((catalogRecipes.length && !force && !catalogUsingFallback) || catalogLoading) return;
+  if ((catalogRecipes.length && !force) || catalogLoading) return;
   catalogLoading = true;
   catalogError = "";
   renderMainView();
@@ -85,6 +120,7 @@ loadCatalog = async function resilientCatalogLoad(force = false) {
     try {
       const recipesFromApi = await requestCatalogDirectly();
       applyCatalogRecipes(recipesFromApi);
+      catalogBackgroundRecoveryAttempts = 0;
       loaded = true;
       break;
     } catch {
@@ -107,16 +143,16 @@ loadCatalog = async function resilientCatalogLoad(force = false) {
   if (catalogUsingFallback) scheduleFullCatalogRecovery();
 };
 
-function recoverInitialCatalogLoad() {
-  window.clearTimeout(catalogRecoveryTimer);
-  catalogRecoveryTimer = window.setTimeout(async function recover() {
-    if (currentView !== "catalog" || (catalogRecipes.length && !catalogUsingFallback)) return;
+function recoverInitialCatalogLoad(attempt = 0) {
+  window.clearTimeout(catalogInitialRecoveryTimer);
+  catalogInitialRecoveryTimer = window.setTimeout(() => {
+    if (currentView !== "catalog" || catalogRecipes.length) return;
     if (catalogLoading) {
-      catalogRecoveryTimer = window.setTimeout(recover, 250);
+      if (attempt < 8) recoverInitialCatalogLoad(attempt + 1);
       return;
     }
-    await loadCatalog(true);
-  }, 300);
+    loadCatalog();
+  }, attempt ? 250 : 300);
 }
 
 function catalogQuickKey() {
@@ -294,5 +330,9 @@ updateCatalogResults = function performantCatalogResults() {
   const animated = animateNewCatalogCard(grid);
   if (!animated) requestAnimationFrame(armCatalogAutoLoad);
 };
+
+window.addEventListener("hashchange", () => {
+  if (location.hash !== "#catalog") stopCatalogRecovery();
+});
 
 recoverInitialCatalogLoad();
