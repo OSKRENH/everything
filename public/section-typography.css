@@ -117,12 +117,73 @@
 
 @media (max-width: 700px) {
   :root {
-    --section-title-size: clamp(48px, 12.8vw, 54px);
-    --section-title-line-height: .98;
+    --section-title-size: 46px;
+    --section-title-line-height: .97;
     --section-kicker-size: 11px;
     --section-kicker-line-height: 1.35;
-    --section-lead-size: 13px;
-    --section-lead-line-height: 1.65;
+    --section-lead-size: 12px;
+    --section-lead-line-height: 1.55;
+    --section-mobile-kicker-row: 18px;
+    --section-mobile-title-row: 145px;
+    --section-mobile-lead-row: 66px;
+    --section-mobile-illustration-row: 250px;
+    --section-mobile-row-gap: 18px;
+  }
+
+  /* Убираем разные исходные отступы, но не растягиваем блок на высоту экрана. */
+  .intro-grid {
+    padding-top: 0;
+  }
+
+  .intro-copy {
+    min-height: 0;
+  }
+
+  .archive-page,
+  .swipe-page {
+    padding-top: 0;
+  }
+
+  .archive-heading,
+  .favorites-empty {
+    gap: 0;
+  }
+
+  /* Компактная общая сетка по трём красным линиям:
+     низ заголовка, низ описания, начало иллюстрации. */
+  .intro-copy,
+  .archive-heading,
+  .swipe-heading,
+  .favorites-empty {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows:
+      var(--section-mobile-kicker-row)
+      var(--section-mobile-title-row)
+      var(--section-mobile-lead-row)
+      var(--section-mobile-illustration-row);
+    row-gap: var(--section-mobile-row-gap);
+    align-content: start;
+    align-items: stretch;
+    min-height: 0;
+    padding: 44px 0 36px;
+  }
+
+  /* В базе и избранном содержимое лежит во вложенных контейнерах. */
+  .archive-heading > div:first-child,
+  .archive-heading .archive-visual,
+  .favorites-empty .favorites-copy {
+    display: contents;
+  }
+
+  .intro-copy > .eyebrow,
+  .archive-heading .eyebrow,
+  .swipe-heading .eyebrow,
+  .favorites-empty .eyebrow {
+    grid-row: 1;
+    align-self: start;
+    margin: 0;
   }
 
   .intro-copy h1,
@@ -130,32 +191,69 @@
   .swipe-heading h1,
   .favorites-copy h1,
   .favorites-empty h1 {
+    grid-row: 2;
+    align-self: end;
     overflow-wrap: normal;
     word-break: normal;
   }
 
-  /* Safari больше не вычисляет высоту избранного после вставки картинки. */
-  .favorites-empty {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto 300px;
-    align-content: start;
+  .archive-heading .archive-visual > p,
+  .swipe-heading > p:last-of-type,
+  .favorites-empty .favorites-copy > p:last-of-type {
+    grid-row: 3;
+    align-self: end;
+    width: 100%;
+    max-width: none;
+    margin: 0;
   }
 
-  .favorites-illustration {
+  .intro-copy .kitchen-illustration,
+  .archive-heading .base-illustration,
+  .swipe-heading .swipe-illustration,
+  .favorites-empty .favorites-illustration {
+    grid-row: 4;
+    align-self: start;
     width: 100%;
-    height: 300px;
-    min-height: 300px;
+    height: var(--section-mobile-illustration-row);
+    min-height: var(--section-mobile-illustration-row);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
     overflow: hidden;
   }
 
-  .favorites-illustration img {
-    width: min(100%, 300px);
-    height: 300px;
-    max-width: 300px;
-    max-height: 300px;
+  .intro-copy .kitchen-illustration img,
+  .archive-heading .base-illustration img,
+  .swipe-heading .swipe-illustration img,
+  .favorites-empty .favorites-illustration img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-height: 235px;
+    margin: 0 auto;
     object-fit: contain;
+    object-position: center top;
   }
 
+  .intro-copy .kitchen-illustration img {
+    max-width: 78%;
+  }
+
+  .archive-heading .base-illustration img {
+    max-width: 100%;
+  }
+
+  .swipe-heading .swipe-illustration img {
+    max-width: 84%;
+  }
+
+  .favorites-empty .favorites-illustration img {
+    max-width: 72%;
+  }
+
+  /* Список избранного тоже заранее резервирует место под рисунок. */
   .favorites-list-illustration {
     width: 100%;
     height: 210px;
