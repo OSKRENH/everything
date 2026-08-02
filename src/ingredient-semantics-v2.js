@@ -25,12 +25,12 @@ export const DEFAULT_BASE_INGREDIENTS = [
   "соль",
   "вода",
   "растительное масло",
+  "сахар",
 ];
 
 export const SUGGESTED_BASE_INGREDIENTS = [
   ...DEFAULT_BASE_INGREDIENTS,
   "чёрный перец",
-  "сахар",
   "пшеничная мука",
   "уксус",
 ];
