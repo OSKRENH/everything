@@ -83,7 +83,6 @@
   vertical-align: .1em;
 }
 
-/* Иллюстрации избранного центрируются и не меняют геометрию после загрузки. */
 .favorites-illustration,
 .favorites-list-illustration {
   width: 100%;
@@ -119,16 +118,18 @@
     --section-kicker-line-height: 1.35;
     --section-lead-size: 12px;
     --section-lead-line-height: 1.55;
-    --mobile-title-box: 134px;
-    --mobile-lead-box: 56px;
-    --mobile-title-lead-gap: 18px;
-    --mobile-lead-art-gap: 22px;
-    --mobile-art-box: 250px;
+    --mobile-hero-height: 620px;
+    --mobile-title-bottom: 416px;
+    --mobile-lead-top: 230px;
+    --mobile-lead-height: 58px;
+    --mobile-art-top: 312px;
+    --mobile-art-height: 260px;
   }
 
-  /* Оставляем исходную структуру каждого раздела. Меняем только размеры и отступы. */
+  /* Все четыре верхних блока начинаются и заканчиваются на одной высоте. */
   .intro-grid {
     padding-top: 44px;
+    gap: 0;
   }
 
   .archive-page,
@@ -136,138 +137,143 @@
     padding-top: 44px;
   }
 
+  .swipe-page {
+    row-gap: 0;
+  }
+
   .favorites-empty {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-    padding-top: 44px;
+    margin: 44px 0 0;
+    padding: 0;
+  }
+
+  .intro-copy,
+  .archive-heading,
+  .swipe-heading,
+  .favorites-empty {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: var(--mobile-hero-height);
+    min-height: var(--mobile-hero-height);
+    padding: 0;
   }
 
   .archive-heading {
+    grid-template-columns: none;
     gap: 0;
+    padding-bottom: 0;
   }
 
-  .archive-visual {
+  .archive-visual,
+  .favorites-copy {
     display: block;
   }
 
-  .favorites-copy {
-    align-items: stretch;
-  }
-
+  /* Одинаковая точка надзаголовка. */
   .intro-copy > .eyebrow,
   .archive-heading .eyebrow,
   .swipe-heading .eyebrow,
   .favorites-copy > .eyebrow,
   .favorites-empty .eyebrow {
-    margin: 0 0 24px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
   }
 
-  /* Одинаковая нижняя линия заголовков без grid и display: contents. */
+  /* Заголовки имеют один размер и одну нижнюю линию независимо от числа строк. */
   .intro-copy h1,
   .archive-heading h1,
   .swipe-heading h1,
   .favorites-copy h1,
   .favorites-empty h1 {
-    box-sizing: border-box;
-    height: var(--mobile-title-box);
-    min-height: var(--mobile-title-box);
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: var(--mobile-title-bottom);
+    margin: 0;
+    padding: 0;
     overflow: visible;
     word-break: normal;
     overflow-wrap: normal;
   }
 
-  .intro-copy h1 {
-    padding-top: 0;
-  }
-
-  .archive-heading h1,
-  .favorites-copy h1,
-  .favorites-empty h1 {
-    padding-top: 45px;
-  }
-
-  .swipe-heading h1 {
-    padding-top: 89px;
-  }
-
-  /* Одинаковая зона описания. */
-  .archive-heading > div:first-child {
-    margin-bottom: var(--mobile-title-lead-gap);
-  }
-
+  /* Описания занимают один и тот же слот. В кухне он остаётся пустым. */
   .archive-heading .archive-visual > p,
   .swipe-heading > p:last-of-type,
   .favorites-copy > p:last-of-type,
   .favorites-empty .favorites-copy > p:last-of-type {
-    box-sizing: border-box;
+    position: absolute;
+    top: var(--mobile-lead-top);
+    left: 0;
+    right: 0;
     width: 100%;
     max-width: none;
-    height: var(--mobile-lead-box);
-    min-height: var(--mobile-lead-box);
+    height: var(--mobile-lead-height);
+    min-height: var(--mobile-lead-height);
     margin: 0;
+    overflow: hidden;
   }
 
-  .swipe-heading h1,
-  .favorites-copy h1,
-  .favorites-empty h1 {
-    margin-bottom: var(--mobile-title-lead-gap);
-  }
-
-  /* Все иллюстрации начинаются на одной линии и сразу занимают окончательное место. */
-  .intro-copy .kitchen-illustration {
-    margin: calc(var(--mobile-title-lead-gap) + var(--mobile-lead-box) + var(--mobile-lead-art-gap)) 0 0;
-  }
-
-  .archive-heading .base-illustration,
-  .swipe-heading .swipe-illustration,
-  .favorites-empty .favorites-illustration {
-    margin: var(--mobile-lead-art-gap) 0 0;
-  }
-
+  /* Единое окно иллюстрации. Оно обрезает прозрачные поля исходников. */
   .intro-copy .kitchen-illustration,
   .archive-heading .base-illustration,
   .swipe-heading .swipe-illustration,
   .favorites-empty .favorites-illustration {
+    position: absolute;
+    top: var(--mobile-art-top);
+    left: 0;
+    right: 0;
     width: 100%;
-    height: var(--mobile-art-box);
-    min-height: var(--mobile-art-box);
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
+    height: var(--mobile-art-height);
+    min-height: var(--mobile-art-height);
+    margin: 0;
     padding: 0;
     overflow: hidden;
+    display: block;
   }
 
   .intro-copy .kitchen-illustration img,
   .archive-heading .base-illustration img,
   .swipe-heading .swipe-illustration img,
   .favorites-empty .favorites-illustration img {
+    position: absolute;
+    left: 50%;
+    top: 50%;
     display: block;
-    width: auto;
     height: auto;
-    max-height: var(--mobile-art-box);
-    margin: 0 auto;
+    max-width: none;
+    max-height: none;
+    margin: 0;
     object-fit: contain;
-    object-position: center top;
+    transform-origin: center center;
   }
 
+  /* Индивидуальная компенсация прозрачных краёв без изменения файлов. */
   .intro-copy .kitchen-illustration img {
-    max-width: 78%;
+    width: 95%;
+    transform: translate(-50%, -50%) scale(1.08);
   }
 
   .archive-heading .base-illustration img {
-    max-width: 100%;
+    width: 112%;
+    transform: translate(-50%, -49%) scale(1.05);
   }
 
   .swipe-heading .swipe-illustration img {
-    max-width: 84%;
+    width: 96%;
+    transform: translate(-50%, -50%) scale(1.08);
   }
 
   .favorites-empty .favorites-illustration img {
-    max-width: 72%;
+    width: 82%;
+    transform: translate(-50%, -48%) scale(1.12);
   }
 
+  /* Избранное со списком также не меняет высоту после загрузки изображения. */
   .favorites-list-illustration {
+    position: relative;
     width: 100%;
     height: 210px;
     min-height: 210px;
@@ -276,10 +282,14 @@
   }
 
   .favorites-list-illustration img {
-    width: min(100%, 260px);
-    height: 210px;
-    max-width: 260px;
-    max-height: 210px;
-    object-fit: contain;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 290px;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    margin: 0;
+    transform: translate(-50%, -50%) scale(1.08);
   }
 }
