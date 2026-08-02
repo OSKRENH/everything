@@ -15,6 +15,7 @@ const runtimeFiles = [
   "src/ingredient-semantics-v3.js",
   "src/kutno-bridge.inject.js",
   "src/matching-engine.inject.js",
+  "src/fetch-reset.inject.js",
   "src/matching-fixes.inject.js",
   "public/kutno-features.js",
   "public/dom-stability.js",
@@ -34,6 +35,7 @@ test("runtime-файлы Кутно проходят синтаксическу�
 test("сборочный мост подключает API состояния и подбор", () => {
   const bridge = readFileSync("src/kutno-bridge.inject.js", "utf8");
   const matching = readFileSync("src/matching-engine.inject.js", "utf8");
+  const reset = readFileSync("src/fetch-reset.inject.js", "utf8");
   const fixes = readFileSync("src/matching-fixes.inject.js", "utf8");
   const throttle = readFileSync("public/feature-sync-throttle.js", "utf8");
   const vite = readFileSync("vite.config.js", "utf8");
@@ -43,9 +45,13 @@ test("сборочный мост подключает API состояния и
   assert.match(matching, /matchingGroupRecipes/);
   assert.match(matching, /Готовить сейчас/);
   assert.match(matching, /Хочу использовать/);
+  assert.match(reset, /kutnoFetchBeforeMatching/);
+  assert.match(reset, /window\.fetch = async function kutnoSafeMatchingFetch/);
   assert.match(fixes, /loadCatalog\(true\)/);
   assert.match(fixes, /catch\s*\{\s*pathname = ""/);
   assert.match(throttle, /catch\s*\{\s*pathname = ""/);
+  assert.match(vite, /const kutnoFetchBeforeMatching = window\.fetch\.bind\(window\)/);
+  assert.ok(vite.indexOf("${matchingSource}") < vite.indexOf("${fetchResetSource}"));
   assert.match(vite, /ingredient-semantics-v3/);
 });
 
