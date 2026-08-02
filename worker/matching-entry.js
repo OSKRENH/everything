@@ -112,11 +112,12 @@ async function runBaseGenerate(body, request, env, ctx) {
   return { response, data, recipes };
 }
 
-function catalogResponse(recipes, body, hasMore = false, relaxation = null) {
+function resultResponse(recipes, body, { source = "semantic-catalog", hasMore = false, relaxation = null, extra = {} } = {}) {
   return json({
+    ...extra,
     recipes: recipes.slice(0, 3),
     hasMore,
-    source: "semantic-catalog",
+    source,
     ...(relaxation ? {
       relaxation,
       originalFilters: {
@@ -134,20 +135,17 @@ async function smartGenerate(request, env, ctx) {
 
   const catalog = await loadCatalogForMatching(request, env, ctx, body);
   const strictCatalog = rankRecipes(catalog, body).map((item) => item.recipe);
-  if (strictCatalog.length >= 3) return catalogResponse(strictCatalog, body, strictCatalog.length > 3);
-
-  const base = await runBaseGenerate(body, request, env, ctx);
-  if (!base.data && !base.response.ok) return base.response;
-
-  let recipes = mergeRecipes(strictCatalog, base.recipes);
+  let catalogRecipes = [...strictCatalog];
   let relaxation = null;
+  let catalogPoolSize = strictCatalog.length;
 
-  if (recipes.length < 3 && body.searchMode !== "plus-one") {
+  if (catalogRecipes.length < 3 && body.searchMode !== "plus-one") {
     const relaxedBody = { ...body, searchMode: "plus-one" };
     const relaxedCatalog = rankRecipes(catalog, relaxedBody).map((item) => item.recipe);
-    const before = recipes.length;
-    recipes = mergeRecipes(recipes, relaxedCatalog);
-    if (recipes.length > before) {
+    const before = catalogRecipes.length;
+    catalogRecipes = mergeRecipes(catalogRecipes, relaxedCatalog);
+    catalogPoolSize = Math.max(catalogPoolSize, relaxedCatalog.length);
+    if (catalogRecipes.length > before) {
       relaxation = {
         code: "allow-one-purchase",
         title: "Добавили варианты с одной покупкой",
@@ -156,12 +154,13 @@ async function smartGenerate(request, env, ctx) {
     }
   }
 
-  if (recipes.length < 3 && (Number(body.maxMinutes) || body.course !== "все")) {
+  if (catalogRecipes.length < 3 && (Number(body.maxMinutes) || body.course !== "все")) {
     const relaxedBody = { ...body, searchMode: "plus-one", maxMinutes: 0, course: "все" };
     const expandedCatalog = rankRecipes(catalog, relaxedBody).map((item) => item.recipe);
-    const before = recipes.length;
-    recipes = mergeRecipes(recipes, expandedCatalog);
-    if (recipes.length > before) {
+    const before = catalogRecipes.length;
+    catalogRecipes = mergeRecipes(catalogRecipes, expandedCatalog);
+    catalogPoolSize = Math.max(catalogPoolSize, expandedCatalog.length);
+    if (catalogRecipes.length > before) {
       relaxation = {
         code: "relax-filters",
         title: "Немного расширили поиск",
@@ -170,22 +169,21 @@ async function smartGenerate(request, env, ctx) {
     }
   }
 
-  recipes = recipes.slice(0, 3);
-  if (recipes.length) {
-    return json({
-      ...(base.data || {}),
-      recipes,
-      hasMore: strictCatalog.length + base.recipes.length > 3 || Boolean(base.data?.hasMore),
-      source: recipes.every((recipe) => recipe.source?.type === "kutno-catalog") ? "semantic-catalog" : "mixed",
-      ...(relaxation ? {
-        relaxation,
-        originalFilters: {
-          searchMode: body.searchMode,
-          maxMinutes: body.maxMinutes,
-          course: body.course,
-        },
-      } : {}),
-    }, 200);
+  if (catalogRecipes.length) {
+    return resultResponse(catalogRecipes, body, {
+      hasMore: catalogPoolSize > 3,
+      relaxation,
+    });
+  }
+
+  const base = await runBaseGenerate(body, request, env, ctx);
+  if (!base.data && !base.response.ok) return base.response;
+  if (base.recipes.length) {
+    return resultResponse(base.recipes, body, {
+      source: base.recipes.every((recipe) => recipe.source?.type === "kutno-catalog") ? "semantic-catalog" : "workers-ai",
+      hasMore: Boolean(base.data?.hasMore),
+      extra: base.data,
+    });
   }
 
   return json(base.data || { recipes: [], hasMore: false, error: "Добавьте ещё один основной продукт или разрешите одну покупку" }, base.response.status || 200);
