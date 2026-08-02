@@ -1396,7 +1396,7 @@ ${allExcludedTitles.length ? `Не повторяй недавние вариа�
     let retryFeedback = "";
     for (let attempt = 1; attempt <= MAX_RECIPE_GENERATION_ATTEMPTS; attempt += 1) {
       const retryInstruction = retryFeedback
-        ? `\n\nПредыдущий вариант не прошёл проверку качества:\n${retryFeedback}\nПолностью перепиши проблемные рецепты и устрани все указанные разрывы.`
+        ? `\n\nПредыдущий вариант не прошёл проверку качества:\n${retryFeedback}\nПолностью перепиши проблемные рецепты и устрани все указанные разрывы. Если причина в повторе, смени одновременно главный продукт, название и технику приготовления; не переименовывай прежнее блюдо.`
         : "";
       const result = await runStructuredAi(env, {
         messages: [
@@ -1406,7 +1406,7 @@ ${allExcludedTitles.length ? `Не повторяй недавние вариа�
         schema: generatedRecipeSchemaFor(ingredients),
         schemaName: "generated_recipes",
         maxTokens: 2800,
-        temperature: attempt === 1 ? 0.35 : 0.15,
+        temperature: attempt === 1 ? 0.35 : attempt === 2 ? 0.2 : 0.65,
       });
       const data = parseAiResult(result);
       if (!Array.isArray(data.recipes) || !data.recipes.length) {
