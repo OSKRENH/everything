@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import worker, { recipeQualityIssues, recipeTitlesAreDuplicate } from "../worker/index.js";
+import worker, { findRecoveryRecipes, recipeQualityIssues, recipeTitlesAreDuplicate } from "../worker/index.js";
 
 function recipe(steps) {
   return {
@@ -206,4 +206,40 @@ test("переключается на лёгкую модель, если осн
   assert.equal(response.status, 200);
   assert.deepEqual(models, ["@cf/openai/gpt-oss-120b", "@cf/openai/gpt-oss-20b"]);
   assert.equal(body.recipes[0].title, "Жареный сыр");
+});
+
+test("возвращает проверенные новые варианты при недоступности обеих моделей", async () => {
+  const ingredients = ["яйца", "рис", "лук", "соевый соус", "макароны", "помидоры", "сыр", "гречка", "брокколи", "мука", "лапша", "курица"];
+  const excludeTitles = ["Китайский жареный рис с яйцом", "Жареный рис с яйцом", "Шакшука", "Курица с рисом"];
+  const recipes = findRecoveryRecipes({
+    ingredients,
+    equipment: ["Сковорода", "Кастрюля"],
+    difficulty: "легко",
+    portions: 2,
+    excludeTitles,
+  });
+
+  assert.equal(recipes.length, 3);
+  assert.equal(recipes.some((item) => excludeTitles.some((title) => recipeTitlesAreDuplicate(title, item.title))), false);
+  for (const item of recipes) assert.deepEqual(recipeQualityIssues(item, ingredients), []);
+
+  const env = {
+    AI: { run: async () => { throw new Error("daily limit exceeded"); } },
+    ASSETS: { fetch: () => new Response("not found", { status: 404 }) },
+  };
+  const response = await worker.fetch(new Request("https://kutno.ru/api/generate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      ingredients,
+      equipment: ["Сковорода", "Кастрюля"],
+      difficulty: "легко",
+      portions: 2,
+      excludeTitles,
+    }),
+  }), env);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.recipes.length, 3);
 });
