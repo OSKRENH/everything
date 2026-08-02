@@ -69,10 +69,9 @@
   cursor: default;
 }
 
-.kf-shopping-fab {
+.kf-shopping-fab,
+.kf-cooking-resume {
   position: fixed;
-  right: 18px;
-  bottom: 24px;
   z-index: 65;
   min-height: 42px;
   border: 0;
@@ -88,7 +87,19 @@
   cursor: pointer;
 }
 
+.kf-shopping-fab {
+  right: 18px;
+  bottom: 24px;
+}
+
+.kf-cooking-resume {
+  left: 18px;
+  bottom: 24px;
+  background: var(--accent);
+}
+
 .kf-shopping-fab[hidden],
+.kf-cooking-resume[hidden],
 .kf-shopping-drawer[hidden] {
   display: none;
 }
@@ -196,9 +207,14 @@
 }
 
 .kf-shopping-item small {
+  max-width: 260px;
+  overflow: hidden;
   color: var(--soft);
   font-family: "Golos Text", Arial, sans-serif;
   font-size: 9px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .kf-shopping-item.checked strong,
@@ -311,9 +327,20 @@ html.kf-shopping-open {
     width: 100%;
   }
 
+  .kf-cooking-resume {
+    right: 14px;
+    left: 14px;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    width: calc(100% - 28px);
+  }
+
   .kf-shopping-fab {
     right: 14px;
     bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+
+  .kf-shopping-fab.with-cooking {
+    bottom: calc(138px + env(safe-area-inset-bottom));
   }
 
   .kf-shopping-drawer {
