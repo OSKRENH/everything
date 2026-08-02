@@ -1,18 +1,4 @@
-:root {
-  --section-title-size: clamp(62px, 6.5vw, 104px);
-  --section-title-line-height: .94;
-  --section-title-weight: 400;
-  --section-title-color: var(--ink);
-  --section-title-spacing: -.055em;
-  --section-kicker-size: 11px;
-  --section-kicker-line-height: 1.35;
-  --section-kicker-weight: 500;
-  --section-kicker-color: var(--ink);
-  --section-lead-size: 13px;
-  --section-lead-line-height: 1.65;
-  --section-lead-weight: 400;
-  --section-lead-color: var(--soft);
-}
+/* База рецептов остаётся эталоном. Здесь только переносим её ритм на остальные разделы. */
 
 .illustration-preload-cache {
   position: fixed;
@@ -34,19 +20,19 @@
   height: 1px;
 }
 
+/* Заголовки кухни, АМ и избранного повторяют заголовок базы. */
 .intro-copy h1,
-.archive-heading h1,
 .swipe-heading h1,
 .favorites-copy h1,
 .favorites-empty h1 {
   margin: 0;
   max-width: 100%;
-  color: var(--section-title-color);
+  color: var(--ink);
   font-family: "Prata", Georgia, serif;
-  font-size: var(--section-title-size);
-  font-weight: var(--section-title-weight);
-  line-height: var(--section-title-line-height);
-  letter-spacing: var(--section-title-spacing);
+  font-size: var(--display-title-size);
+  font-weight: 400;
+  line-height: .88;
+  letter-spacing: -.06em;
 }
 
 #main-title {
@@ -57,36 +43,24 @@
   content: "Что есть\Aна кухне?";
   display: block;
   white-space: pre-line;
-  color: var(--section-title-color);
+  color: var(--ink);
   font-family: "Prata", Georgia, serif;
-  font-size: var(--section-title-size);
-  font-weight: var(--section-title-weight);
-  line-height: var(--section-title-line-height);
-  letter-spacing: var(--section-title-spacing);
+  font-size: var(--display-title-size);
+  font-weight: 400;
+  line-height: .88;
+  letter-spacing: -.06em;
 }
 
-.intro-copy > .eyebrow,
-.archive-heading .eyebrow,
-.swipe-heading .eyebrow,
-.favorites-copy > .eyebrow,
-.favorites-empty .eyebrow {
-  color: var(--section-kicker-color);
-  font-family: "Golos Text", Arial, sans-serif;
-  font-size: var(--section-kicker-size);
-  font-weight: var(--section-kicker-weight);
-  line-height: var(--section-kicker-line-height);
-  letter-spacing: .13em;
-}
-
-.archive-visual > p,
+/* Описания повторяют текстовый блок базы. */
 .swipe-heading > p:last-of-type,
 .favorites-copy > p:last-of-type,
 .favorites-empty .favorites-copy > p:last-of-type {
-  color: var(--section-lead-color);
+  max-width: 390px;
+  color: var(--soft);
   font-family: "Golos Text", Arial, sans-serif;
-  font-size: var(--section-lead-size);
-  font-weight: var(--section-lead-weight);
-  line-height: var(--section-lead-line-height);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.65;
   letter-spacing: 0;
 }
 
@@ -95,6 +69,10 @@
   font-size: .52em;
   line-height: 1;
   vertical-align: .1em;
+}
+
+.favorites-empty .favorites-copy > button {
+  display: none;
 }
 
 .favorites-illustration,
@@ -112,160 +90,118 @@
   width: auto;
   max-width: 100%;
   margin-inline: auto;
-  object-position: center center;
-}
-
-.favorites-list-illustration {
-  margin-right: auto;
-  margin-left: auto;
-}
-
-.favorites-empty .favorites-copy > button {
-  display: none;
 }
 
 @media (max-width: 700px) {
-  :root {
-    --section-title-size: 46px;
-    --section-title-line-height: .97;
-    --section-kicker-size: 11px;
-    --section-kicker-line-height: 1.35;
-    --section-lead-size: 12px;
-    --section-lead-line-height: 1.55;
-    --mobile-hero-height: 480px;
-    --mobile-title-top: 56px;
-    --mobile-title-height: 98px;
-    --mobile-lead-top: 172px;
-    --mobile-lead-height: 56px;
-    --mobile-art-top: 238px;
-    --mobile-art-height: 220px;
-  }
-
+  /* Убираем все прежние абсолютные координаты: блоки снова идут естественным потоком. */
   .intro-grid {
-    padding-top: 32px;
+    width: 100%;
+    padding: 44px 0 68px;
     gap: 0;
   }
 
-  .archive-page,
-  .swipe-page {
-    padding-top: 32px;
-  }
-
-  .swipe-page {
-    row-gap: 0;
-  }
-
-  .favorites-empty {
-    margin: 32px 0 0;
-    padding: 0;
-  }
-
-  .intro-copy,
-  .archive-heading,
-  .swipe-heading,
-  .favorites-empty {
-    position: relative;
+  .intro-copy {
+    min-height: auto;
     display: block;
-    width: 100%;
-    height: var(--mobile-hero-height);
-    min-height: var(--mobile-hero-height);
-    padding: 0;
+    padding: 0 0 42px;
   }
 
-  .archive-heading {
+  .swipe-page {
+    min-height: calc(100dvh - 126px);
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 0;
+    padding: 44px 0 75px;
+    align-items: initial;
+  }
+
+  .swipe-heading {
+    display: block;
+    min-width: 0;
+    padding: 0 0 42px;
+    align-self: auto;
+  }
+
+  .favorites-empty {
+    min-height: calc(100dvh - 126px);
+    display: block;
     grid-template-columns: none;
     gap: 0;
-    padding-bottom: 0;
-  }
-
-  .archive-visual,
-  .favorites-copy {
-    display: block;
+    align-items: initial;
+    margin: 0;
+    padding: 44px 0 75px;
   }
 
   .favorites-copy {
     position: static;
+    display: block;
+    align-items: initial;
   }
 
+  /* Те же отступы, что у надзаголовка базы. */
   .intro-copy > .eyebrow,
-  .archive-heading .eyebrow,
-  .swipe-heading .eyebrow,
+  .swipe-heading > .eyebrow,
   .favorites-copy > .eyebrow,
   .favorites-empty .eyebrow {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    margin: 0;
+    position: static;
+    margin: 0 0 26px;
   }
 
+  /* Заголовки находятся в обычном потоке — наложений больше нет. */
   .intro-copy h1,
-  .archive-heading h1,
   .swipe-heading h1,
   .favorites-copy h1,
   .favorites-empty h1 {
-    position: absolute;
-    top: var(--mobile-title-top);
-    left: 0;
-    right: 0;
-    width: 100%;
-    height: var(--mobile-title-height);
+    position: static;
+    width: auto;
+    height: auto;
+    min-height: 0;
     margin: 0;
     padding: 0;
-    display: grid;
-    align-content: end;
+    display: block;
     overflow: visible;
-    word-break: normal;
-    overflow-wrap: normal;
-    z-index: 2;
   }
 
-  .archive-heading .archive-visual > p,
+  /* В базе после заголовка идёт зазор 30 px, затем описание. */
   .swipe-heading > p:last-of-type,
   .favorites-copy > p:last-of-type,
   .favorites-empty .favorites-copy > p:last-of-type {
-    position: absolute;
-    top: var(--mobile-lead-top);
-    left: 0;
-    right: 0;
+    position: static;
     width: 100%;
     max-width: none;
-    height: var(--mobile-lead-height);
-    min-height: var(--mobile-lead-height);
-    margin: 0;
-    overflow: hidden;
-    z-index: 1;
+    height: auto;
+    min-height: 0;
+    margin: 30px 0 0;
+    overflow: visible;
   }
 
-  .favorites-empty .favorites-copy > p:last-of-type {
-    top: var(--mobile-lead-top);
-  }
-
+  /* Иллюстрации занимают тот же вертикальный слот, что и картинка базы. */
   .intro-copy .kitchen-illustration,
-  .archive-heading .base-illustration,
   .swipe-heading .swipe-illustration,
   .favorites-empty .favorites-illustration {
-    position: absolute;
-    top: var(--mobile-art-top);
-    left: 0;
-    right: 0;
+    position: relative;
     width: 100%;
-    height: var(--mobile-art-height);
-    min-height: var(--mobile-art-height);
-    margin: 0;
+    height: 245px;
+    min-height: 245px;
+    margin: 24px 0 0;
     padding: 0;
     overflow: hidden;
     display: block;
   }
 
+  .intro-copy .kitchen-illustration {
+    margin-top: 30px;
+  }
+
   .intro-copy .kitchen-illustration img,
-  .archive-heading .base-illustration img,
   .swipe-heading .swipe-illustration img,
   .favorites-empty .favorites-illustration img {
     position: absolute;
     left: 50%;
     top: 50%;
     display: block;
+    width: auto;
     height: auto;
     max-width: none;
     max-height: none;
@@ -277,11 +213,6 @@
   .intro-copy .kitchen-illustration img {
     width: 95%;
     transform: translate(-50%, -50%) scale(1.08);
-  }
-
-  .archive-heading .base-illustration img {
-    width: 112%;
-    transform: translate(-50%, -49%) scale(1.05);
   }
 
   .swipe-heading .swipe-illustration img {
@@ -297,9 +228,9 @@
   .favorites-list-illustration {
     position: relative;
     width: 100%;
-    height: 210px;
-    min-height: 210px;
-    margin-top: 26px;
+    height: 245px;
+    min-height: 245px;
+    margin: 24px auto 0;
     overflow: hidden;
   }
 
@@ -307,7 +238,7 @@
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 290px;
+    width: 300px;
     max-width: none;
     height: auto;
     max-height: none;
