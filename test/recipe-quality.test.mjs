@@ -152,9 +152,11 @@ test("использует третью попытку, если первые д
     "Снимите готовый сыр лопаткой и подавайте горячим.",
   ]);
   let calls = 0;
+  const temperatures = [];
   const env = {
     AI: {
-      async run() {
+      async run(_model, options) {
+        temperatures.push(options.temperature);
         const draft = calls < 2 ? invalid : valid;
         calls += 1;
         return aiResponse({ recipes: [draft] });
@@ -172,5 +174,6 @@ test("использует третью попытку, если первые д
 
   assert.equal(response.status, 200);
   assert.equal(calls, 3);
+  assert.deepEqual(temperatures, [0.35, 0.2, 0.65]);
   assert.equal(body.recipes[0].title, "Жареный сыр");
 });
