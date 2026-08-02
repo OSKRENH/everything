@@ -1,0 +1,50 @@
+@media (max-width: 700px) {
+  .matching-results,
+  .matching-results .results-heading,
+  .matching-results .recipe-list,
+  .matching-group,
+  .matching-group > header,
+  .matching-group > header > div {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .matching-results .results-heading h2 {
+    max-width: 100%;
+    margin: 30px 0 24px;
+    font-size: clamp(44px, 13.5vw, 58px) !important;
+    line-height: .94;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+
+  .matching-results .results-heading h2 br {
+    display: block !important;
+  }
+
+  .matching-group > header > div {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .matching-group > header span {
+    flex: 0 0 28px;
+    padding-top: 7px;
+  }
+
+  .matching-group > header h3 {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: calc(100% - 38px);
+    font-size: clamp(27px, 8.5vw, 36px);
+    line-height: 1;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+
+  .matching-group > header p {
+    max-width: 100%;
+  }
+}
