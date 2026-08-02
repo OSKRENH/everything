@@ -9,6 +9,7 @@ const runtimeFiles = [
   "src/kutno-bridge.inject.js",
   "public/kutno-features.js",
   "public/dom-stability.js",
+  "public/feature-sync-throttle.js",
 ];
 
 test("runtime-файлы Кутно проходят синтаксическую проверку", () => {
