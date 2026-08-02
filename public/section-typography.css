@@ -14,7 +14,6 @@
   --section-lead-color: var(--soft);
 }
 
-/* Постоянно держим изображения загруженными и декодированными. */
 .illustration-preload-cache {
   position: fixed;
   left: -10px;
@@ -35,7 +34,6 @@
   height: 1px;
 }
 
-/* Единая типографика разделов. */
 .intro-copy h1,
 .archive-heading h1,
 .swipe-heading h1,
@@ -51,7 +49,6 @@
   letter-spacing: var(--section-title-spacing);
 }
 
-/* Визуально заменяем старый трёхстрочный заголовок кухни без вмешательства в приложение. */
 #main-title {
   font-size: 0;
 }
@@ -135,23 +132,23 @@
     --section-kicker-line-height: 1.35;
     --section-lead-size: 12px;
     --section-lead-line-height: 1.55;
-    --mobile-hero-height: 520px;
-    --mobile-title-bottom: 350px;
-    --mobile-lead-top: 190px;
+    --mobile-hero-height: 480px;
+    --mobile-title-top: 56px;
+    --mobile-title-height: 98px;
+    --mobile-lead-top: 172px;
     --mobile-lead-height: 56px;
-    --mobile-art-top: 258px;
-    --mobile-art-height: 230px;
+    --mobile-art-top: 238px;
+    --mobile-art-height: 220px;
   }
 
-  /* Все четыре верхних блока начинаются и заканчиваются на одной высоте. */
   .intro-grid {
-    padding-top: 36px;
+    padding-top: 32px;
     gap: 0;
   }
 
   .archive-page,
   .swipe-page {
-    padding-top: 36px;
+    padding-top: 32px;
   }
 
   .swipe-page {
@@ -159,7 +156,7 @@
   }
 
   .favorites-empty {
-    margin: 36px 0 0;
+    margin: 32px 0 0;
     padding: 0;
   }
 
@@ -186,6 +183,10 @@
     display: block;
   }
 
+  .favorites-copy {
+    position: static;
+  }
+
   .intro-copy > .eyebrow,
   .archive-heading .eyebrow,
   .swipe-heading .eyebrow,
@@ -204,14 +205,19 @@
   .favorites-copy h1,
   .favorites-empty h1 {
     position: absolute;
+    top: var(--mobile-title-top);
     left: 0;
     right: 0;
-    bottom: var(--mobile-title-bottom);
+    width: 100%;
+    height: var(--mobile-title-height);
     margin: 0;
     padding: 0;
+    display: grid;
+    align-content: end;
     overflow: visible;
     word-break: normal;
     overflow-wrap: normal;
+    z-index: 2;
   }
 
   .archive-heading .archive-visual > p,
@@ -228,6 +234,11 @@
     min-height: var(--mobile-lead-height);
     margin: 0;
     overflow: hidden;
+    z-index: 1;
+  }
+
+  .favorites-empty .favorites-copy > p:last-of-type {
+    top: var(--mobile-lead-top);
   }
 
   .intro-copy .kitchen-illustration,
