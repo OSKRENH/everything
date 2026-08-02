@@ -61,7 +61,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
   cursor: pointer;
 }
 .wordmark-symbol { display: block; width: 24px; height: 24px; }
-.wordmark-lettering { display: block; width: auto; height: 31px; }
+.wordmark-lettering { display: block; width: auto; height: 31px; transform: translateY(2px); }
 
 .header-note {
   font-size: 10px;
