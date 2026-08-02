@@ -552,6 +552,11 @@ async function restoreFavorites() {
   }
 }
 
+function updateFavoritesNav() {
+  const favoritesNav = document.querySelector('.header-nav [data-view="favorites"]');
+  if (favoritesNav) favoritesNav.textContent = `Избранное${favoriteRecipes.length ? ` · ${favoriteRecipes.length}` : ""}`;
+}
+
 async function toggleFavorite(recipe, trigger) {
   if (!recipe) return;
   const id = recipeId(recipe);
@@ -561,15 +566,18 @@ async function toggleFavorite(recipe, trigger) {
     ? favoriteRecipes.filter((item) => recipeId(item) !== id)
     : [{ ...recipe, id, portions: Number(recipe.portions) || state.portions }, ...favoriteRecipes];
   saveFavoritesLocally();
+  updateFavoritesNav();
   if (trigger && !activeRecipe && currentView !== "favorites") {
     const favorite = !wasFavorite;
     trigger.classList.toggle("active", favorite);
     trigger.textContent = favorite ? "♥" : "♡";
     trigger.setAttribute("aria-label", favorite ? "Убрать из избранного" : "Сохранить в избранное");
-    const favoritesNav = document.querySelector('.header-nav [data-view="favorites"]');
-    if (favoritesNav) favoritesNav.textContent = `Избранное${favoriteRecipes.length ? ` · ${favoriteRecipes.length}` : ""}`;
+  } else if (!activeRecipe && currentView === "swipe") {
+    // Карточка АМ продвигается отдельно, без замены всей страницы.
+  } else if (activeRecipe) {
+    renderOverlayLayer();
   } else {
-    render();
+    renderMainView();
   }
   if (activeRecipe) requestAnimationFrame(() => {
     const sheet = document.querySelector(".recipe-sheet");
@@ -660,7 +668,7 @@ async function handleGoogleCredential(response) {
   if (authBusy || !response?.credential) return;
   authBusy = true;
   authError = "";
-  render();
+  renderOverlayLayer();
   try {
     const authResponse = await fetch("/api/auth/google", {
       method: "POST",
@@ -892,14 +900,13 @@ function restorePageScroll(top) {
   const previousBehavior = root.style.scrollBehavior;
   root.style.scrollBehavior = "auto";
   window.scrollTo(0, top);
-  requestAnimationFrame(() => {
-    window.scrollTo(0, top);
-    root.style.scrollBehavior = previousBehavior;
-  });
+  requestAnimationFrame(() => { root.style.scrollBehavior = previousBehavior; });
 }
 
 function render({ preserveScroll = true } = {}) {
   const scrollTop = window.scrollY;
+  const previousHeight = preserveScroll ? app.getBoundingClientRect().height : 0;
+  if (previousHeight) app.style.minHeight = `${previousHeight}px`;
   ingredientSuggestions = [];
   activeSuggestionIndex = -1;
   app.innerHTML = `
@@ -934,10 +941,70 @@ function render({ preserveScroll = true } = {}) {
     ${clearProductsConfirmationOpen ? renderClearProductsConfirmation() : ""}
   `;
   if (preserveScroll) restorePageScroll(scrollTop);
+  if (previousHeight) requestAnimationFrame(() => requestAnimationFrame(() => app.style.removeProperty("min-height")));
   requestAnimationFrame(clampSelectedIngredients);
   if (clearProductsConfirmationOpen) requestAnimationFrame(() => document.querySelector("[data-action='cancel-clear-products']")?.focus());
   if (authModalOpen && !authUser && !authBusy) requestAnimationFrame(mountGoogleButton);
   if (currentView === "swipe" && swipeHintPending && document.querySelector(".swipe-card.front")) swipeHintPending = false;
+}
+
+function renderMainView({ preserveScroll = true } = {}) {
+  const main = app.querySelector("#top");
+  if (!main) {
+    render({ preserveScroll });
+    return;
+  }
+  const scrollTop = window.scrollY;
+  const previousHeight = preserveScroll ? main.getBoundingClientRect().height : 0;
+  if (previousHeight) main.style.minHeight = `${previousHeight}px`;
+  main.innerHTML = currentView === "kitchen"
+    ? renderKitchenView()
+    : currentView === "catalog"
+      ? renderCatalogView()
+      : currentView === "swipe"
+        ? renderSwipeView()
+        : renderFavoritesView();
+  if (preserveScroll) restorePageScroll(scrollTop);
+  if (previousHeight) requestAnimationFrame(() => requestAnimationFrame(() => main.style.removeProperty("min-height")));
+  requestAnimationFrame(clampSelectedIngredients);
+  if (currentView === "swipe" && swipeHintPending && main.querySelector(".swipe-card.front")) swipeHintPending = false;
+}
+
+function renderKitchenResults() {
+  if (currentView !== "kitchen") {
+    renderMainView();
+    return;
+  }
+  const main = app.querySelector("#top");
+  const current = main?.querySelector(".results-section, .generation-error, .manifesto-strip");
+  if (!current) {
+    renderMainView();
+    return;
+  }
+  const scrollTop = window.scrollY;
+  current.insertAdjacentHTML("afterend", renderResults());
+  current.remove();
+  restorePageScroll(scrollTop);
+}
+
+function renderOverlayLayer({ animateRecipe = false } = {}) {
+  const sheetScroll = document.querySelector(".recipe-sheet")?.scrollTop || 0;
+  app.querySelectorAll(":scope > .recipe-overlay, :scope > .auth-overlay").forEach((overlay) => overlay.remove());
+  let markup = "";
+  if (activeRecipe) {
+    const recipeMarkup = renderRecipeOverlay(activeRecipe);
+    markup += animateRecipe ? recipeMarkup : recipeMarkup.replace('class="recipe-overlay"', 'class="recipe-overlay no-enter"');
+  }
+  if (authModalOpen) markup += renderAuthOverlay();
+  if (clearProductsConfirmationOpen) markup += renderClearProductsConfirmation();
+  if (markup) app.insertAdjacentHTML("beforeend", markup);
+
+  requestAnimationFrame(() => {
+    const sheet = document.querySelector(".recipe-sheet");
+    if (sheet && !animateRecipe) sheet.scrollTop = sheetScroll;
+    if (clearProductsConfirmationOpen) document.querySelector("[data-action='cancel-clear-products']")?.focus();
+    if (authModalOpen && !authUser && !authBusy) mountGoogleButton();
+  });
 }
 
 function clampSelectedIngredients() {
@@ -1142,12 +1209,20 @@ function renderSwipeCard(recipe, position = "front") {
   </article>`;
 }
 
+function renderSwipeFinished() {
+  const hasSkippedRecipes = swipeHistory.some((item) => item?.action === "skip");
+  return `<div class="swipe-finished"><span>Колода закончилась</span><h2>Вы посмотрели все новые рецепты</h2><p>Сохранённые блюда уже лежат в избранном.${hasSkippedRecipes ? " Пропущенные можно вернуть." : " За полной коллекцией можно зайти в базу."}</p>${hasSkippedRecipes ? `<button data-action="restart-swipe">Вернуть пропущенные</button>` : `<button data-view="catalog">Открыть базу</button>`}</div>`;
+}
+
+function renderSwipeControls() {
+  return `<div class="swipe-controls"><button class="swipe-no" data-swipe="left" aria-label="Пропустить рецепт"><span>←</span> Пропустить</button><button class="swipe-yes" data-swipe="right" aria-label="Добавить рецепт в избранное">Сохранить <span>♥</span></button></div>`;
+}
+
 function renderSwipeView() {
   if (catalogLoading) return `<section class="swipe-page"><div class="swipe-heading"><p class="eyebrow">Выбирать можно быстрее</p><h1>АМ <span class="am-heart">❤️</span></h1>${renderPotLoader("pot-loader-large")}</div></section>`;
   if (catalogError) return `<section class="swipe-page"><div class="swipe-heading"><p class="eyebrow">Выбирать можно быстрее</p><h1>АМ <span class="am-heart">❤️</span></h1><button class="archive-retry" data-action="load-catalog">Попробовать ещё раз</button></div></section>`;
   const recipe = swipeRecipes[swipeIndex];
   const nextRecipe = swipeRecipes[swipeIndex + 1];
-  const hasSkippedRecipes = swipeHistory.some((item) => item?.action === "skip");
   return `<section class="swipe-page" aria-labelledby="swipe-title">
     <header class="swipe-heading">
       <p class="eyebrow">Влево — пропустить · вправо — сохранить</p>
@@ -1158,10 +1233,64 @@ function renderSwipeView() {
       </figure>
     </header>
     <div class="swipe-stage">
-      ${recipe ? `${nextRecipe ? renderSwipeCard(nextRecipe, "behind") : ""}${renderSwipeCard(recipe)}` : `<div class="swipe-finished"><span>Колода закончилась</span><h2>Вы посмотрели все новые рецепты</h2><p>Сохранённые блюда уже лежат в избранном.${hasSkippedRecipes ? " Пропущенные можно вернуть." : " За полной коллекцией можно зайти в базу."}</p>${hasSkippedRecipes ? `<button data-action="restart-swipe">Вернуть пропущенные</button>` : `<button data-view="catalog">Открыть базу</button>`}</div>`}
+      ${recipe ? `${nextRecipe ? renderSwipeCard(nextRecipe, "behind") : ""}${renderSwipeCard(recipe)}` : renderSwipeFinished()}
     </div>
-    ${recipe ? `<div class="swipe-controls"><button class="swipe-no" data-swipe="left" aria-label="Пропустить рецепт"><span>←</span> Пропустить</button><button class="swipe-yes" data-swipe="right" aria-label="Добавить рецепт в избранное">Сохранить <span>♥</span></button></div>` : ""}
+    ${recipe ? renderSwipeControls() : ""}
   </section>`;
+}
+
+function promoteSwipeDeck() {
+  const stage = document.querySelector(".swipe-stage");
+  const page = stage?.closest(".swipe-page");
+  if (!stage || !page) {
+    render();
+    return;
+  }
+
+  const recipe = swipeRecipes[swipeIndex];
+  const nextRecipe = swipeRecipes[swipeIndex + 1];
+  const outgoing = stage.querySelector(".swipe-card.front");
+  const promoted = stage.querySelector(".swipe-card.behind");
+  outgoing?.remove();
+
+  if (!recipe) {
+    stage.innerHTML = renderSwipeFinished();
+    page.querySelector(".swipe-controls")?.remove();
+    return;
+  }
+
+  if (promoted) {
+    promoted.classList.remove("behind", "promoting");
+    promoted.classList.add("front");
+    promoted.removeAttribute("aria-hidden");
+    promoted.setAttribute("tabindex", "0");
+    const counter = promoted.querySelector(".swipe-card-counter");
+    if (counter) counter.textContent = `${String(swipeIndex + 1).padStart(2, "0")} / ${swipeRecipes.length.toString().padStart(2, "0")}`;
+  } else {
+    stage.innerHTML = renderSwipeCard(recipe);
+  }
+
+  if (nextRecipe) {
+    stage.insertAdjacentHTML("afterbegin", renderSwipeCard(nextRecipe, "behind").replace("swipe-card behind", "swipe-card behind entering"));
+  }
+  if (!page.querySelector(".swipe-controls")) page.insertAdjacentHTML("beforeend", renderSwipeControls());
+}
+
+function refreshSwipeDeck() {
+  const stage = document.querySelector(".swipe-stage");
+  const page = stage?.closest(".swipe-page");
+  if (!stage || !page) {
+    renderMainView();
+    return;
+  }
+  const recipe = swipeRecipes[swipeIndex];
+  const nextRecipe = swipeRecipes[swipeIndex + 1];
+  stage.innerHTML = recipe
+    ? `${nextRecipe ? renderSwipeCard(nextRecipe, "behind") : ""}${renderSwipeCard(recipe)}`
+    : renderSwipeFinished();
+  page.querySelector(".swipe-controls")?.remove();
+  if (recipe) page.insertAdjacentHTML("beforeend", renderSwipeControls());
+  if (swipeHintPending && recipe) swipeHintPending = false;
 }
 
 function renderFavoritesView() {
@@ -1216,7 +1345,7 @@ async function loadCatalog(force = false) {
   if ((catalogRecipes.length && !force) || catalogLoading) return;
   catalogLoading = true;
   catalogError = "";
-  render();
+  renderMainView();
   try {
     const response = await fetch(`/api/catalog?portions=${state.portions}`);
     const data = await response.json();
@@ -1227,7 +1356,7 @@ async function loadCatalog(force = false) {
     catalogError = error instanceof Error ? error.message : "Не удалось открыть базу рецептов";
   } finally {
     catalogLoading = false;
-    render();
+    renderMainView();
   }
 }
 
@@ -1249,7 +1378,10 @@ function setView(view) {
     swipeHintPending = true;
   }
   history.replaceState(null, "", view === "kitchen" ? `${location.pathname}${location.search}` : `#${view}`);
-  render({ preserveScroll: false });
+  document.querySelectorAll(".header-nav [data-view]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.view === view);
+  });
+  renderMainView({ preserveScroll: false });
   restorePageScroll(0);
   if ((view === "catalog" || view === "swipe") && !catalogRecipes.length) loadCatalog();
 }
@@ -1260,7 +1392,7 @@ function finishSwipe(direction) {
   const card = document.querySelector(".swipe-card.front");
   const nextCard = document.querySelector(".swipe-card.behind");
   card?.classList.add(direction === "right" ? "fly-right" : "fly-left");
-  nextCard?.classList.add("promoting");
+  if (nextCard) requestAnimationFrame(() => nextCard.classList.add("promoting"));
   const recipe = swipeRecipes[swipeIndex];
   window.setTimeout(() => {
     swipeIndex += 1;
@@ -1268,8 +1400,8 @@ function finishSwipe(direction) {
     swipeHistory = [{ id: recipeId(recipe), action: direction === "right" ? "save" : "skip", at: Date.now() }, ...swipeHistory.filter((item) => item.id !== recipeId(recipe))];
     saveSwipeHistory();
     if (direction === "right" && !isFavorite(recipe)) toggleFavorite(recipe);
-    else render();
-  }, 340);
+    promoteSwipeDeck();
+  }, 380);
 }
 
 function renderRecipeCard(recipe, index, source = "recipes") {
@@ -1410,7 +1542,7 @@ async function setCookingMode(enabled) {
     await cookingWakeLock?.release?.().catch(() => {});
     cookingWakeLock = null;
   }
-  render();
+  renderOverlayLayer();
 }
 
 function finishCooking(recipe) {
@@ -1421,7 +1553,7 @@ function finishCooking(recipe) {
   stopCookingTimer();
   cookingWakeLock?.release?.().catch(() => {});
   cookingWakeLock = null;
-  render();
+  renderOverlayLayer();
 }
 
 function rateCookedRecipe(recipe, rating) {
@@ -1429,7 +1561,7 @@ function rateCookedRecipe(recipe, rating) {
   const previous = cookingRecord(recipe) || { id, title: recipe.title, cookedAt: Date.now() };
   cookingHistory = [{ ...previous, rating }, ...cookingHistory.filter((item) => item.id !== id)];
   saveCookingHistory();
-  render();
+  renderOverlayLayer();
 }
 
 function renderRecipeOverlay(recipe) {
@@ -1525,7 +1657,7 @@ function addIngredients(values) {
   recentSourceIds = [];
   recipes = [];
   saveState();
-  render();
+  renderMainView();
 }
 
 const fallbackNutrition = {
@@ -1639,7 +1771,7 @@ async function generateRecipes({ append = false } = {}) {
   }
   generationError = "";
   loadMoreMessage = "";
-  render();
+  renderKitchenResults();
 
   try {
     const response = await fetch("/api/generate", {
@@ -1691,7 +1823,7 @@ async function generateRecipes({ append = false } = {}) {
   } finally {
     isLoading = false;
     isLoadingMore = false;
-    render();
+    renderKitchenResults();
     if (!append) requestAnimationFrame(() => document.querySelector("#results")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 }
@@ -1837,7 +1969,7 @@ app.addEventListener("click", (event) => {
     saveState();
     recipes = [];
     generationError = "";
-    render();
+    renderMainView();
   }
   if (target.dataset.priorityIngredient) {
     const ingredient = target.dataset.priorityIngredient;
@@ -1922,7 +2054,7 @@ app.addEventListener("click", (event) => {
     saveSwipeHistory();
     resetSwipeDeck();
     swipeHintPending = true;
-    render();
+    refreshSwipeDeck();
   }
   if (target.dataset.action === "load-catalog") loadCatalog(true);
   if (target.dataset.action === "generate") generateRecipes();
@@ -1943,12 +2075,12 @@ app.addEventListener("click", (event) => {
   if (target.dataset.action === "request-clear-products") {
     clearProductsConfirmationOpen = true;
     document.body.classList.add("no-scroll");
-    render();
+    renderOverlayLayer();
   }
   if (target.dataset.action === "cancel-clear-products") {
     clearProductsConfirmationOpen = false;
     document.body.classList.remove("no-scroll");
-    render();
+    renderOverlayLayer();
   }
   if (target.dataset.action === "confirm-clear-products") {
     state.ingredients = [];
@@ -1961,17 +2093,18 @@ app.addEventListener("click", (event) => {
     generationError = "";
     saveState();
     document.body.classList.remove("no-scroll");
-    render();
+    renderOverlayLayer();
+    renderMainView();
   }
   if (target.dataset.action === "account") {
     authModalOpen = true;
     authError = "";
-    render();
+    renderOverlayLayer();
   }
   if (target.dataset.action === "close-auth") {
     authModalOpen = false;
     authError = "";
-    render();
+    renderOverlayLayer();
   }
   if (target.dataset.action === "logout") logout();
   if (target.dataset.toggleFavoriteSource) {
@@ -1984,12 +2117,12 @@ app.addEventListener("click", (event) => {
   if (target.dataset.action === "previous-cooking-step") {
     cookingStep = Math.max(0, cookingStep - 1);
     stopCookingTimer();
-    render();
+    renderOverlayLayer();
   }
   if (target.dataset.action === "next-cooking-step") {
     cookingStep = Math.min((activeRecipe?.steps?.length || 1) - 1, cookingStep + 1);
     stopCookingTimer();
-    render();
+    renderOverlayLayer();
   }
   if (target.dataset.action === "start-step-timer") startCookingTimer(Number(target.dataset.timerMinutes));
   if (target.dataset.action === "finish-cooking" && activeRecipe) finishCooking(activeRecipe);
@@ -2001,7 +2134,7 @@ app.addEventListener("click", (event) => {
     cookingMode = false;
     cookingStep = 0;
     stopCookingTimer();
-    render();
+    renderOverlayLayer({ animateRecipe: true });
     document.body.classList.add("no-scroll");
     document.querySelector(".recipe-sheet [data-action='close-recipe']")?.focus();
   }
@@ -2009,7 +2142,7 @@ app.addEventListener("click", (event) => {
     setCookingMode(false);
     activeRecipe = null;
     document.body.classList.remove("no-scroll");
-    render();
+    renderOverlayLayer();
   }
 });
 
@@ -2017,19 +2150,19 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && clearProductsConfirmationOpen) {
     clearProductsConfirmationOpen = false;
     document.body.classList.remove("no-scroll");
-    render();
+    renderOverlayLayer();
     return;
   }
   if (event.key === "Escape" && activeRecipe) {
     setCookingMode(false);
     activeRecipe = null;
     document.body.classList.remove("no-scroll");
-    render();
+    renderOverlayLayer();
   }
   if (event.key === "Escape" && authModalOpen) {
     authModalOpen = false;
     authError = "";
-    render();
+    renderOverlayLayer();
   }
 });
 
