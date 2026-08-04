@@ -8,7 +8,7 @@ on:
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,3 +23,9 @@ jobs:
         run: npm test
       - name: Build
         run: npx vite build
+      - name: Install browser QA
+        run: |
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium webkit
+      - name: Browser QA
+        run: npx playwright test
