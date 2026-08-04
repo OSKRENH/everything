@@ -87,7 +87,7 @@ test("настройки базы управляют покупками, пор�
   const addMissing = page.locator("[data-kf-action='add-missing']");
   await expect(addMissing).toHaveText("В покупки · 1");
   await addMissing.click();
-  await page.locator("[data-kf-action='open-shopping']").click();
+  await page.getByRole("button", { name: "Открыть покупки", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Список покупок" })).toBeVisible();
   await expect(page.locator(".kf-shopping-item strong")).toHaveText("масло");
   await page.locator(".kf-shopping-panel [data-kf-action='close-shopping']").click();
