@@ -13,7 +13,8 @@ const semanticImport = `import {
   ingredientMatch as semanticIngredientMatch,
   normalizeIngredient as semanticNormalizeIngredient,
   DEFAULT_BASE_INGREDIENTS as SEMANTIC_DEFAULT_BASE_INGREDIENTS,
-} from "./ingredient-semantics-v3.js";`;
+} from "./ingredient-semantics-v3.js";
+import { kutnoApi } from "./kutno-api.js";`;
 
 function consistentFeatureSource() {
   const oldStaples = '  const BASE_STAPLES = ["соль", "вода", "масло", "перец", "растительное масло", "оливковое масло"];';
