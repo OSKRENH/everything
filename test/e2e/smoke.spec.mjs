@@ -109,6 +109,7 @@ test("основной путь: кухня → рецепт → база → и
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Кухня", exact: true })).toHaveClass(/active/);
   await expect(page.getByRole("button", { name: "Предложить блюда" })).toBeDisabled();
+  await expect(page.locator("#ingredient-hint")).toContainText("сахар");
 
   await page.getByRole("button", { name: "+ яйца", exact: true }).click();
   await expect(page.locator('[data-remove-ingredient="яйца"]')).toBeVisible();
@@ -149,7 +150,7 @@ test("основной путь: кухня → рецепт → база → и
 
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Войти в Кутно" })).toBeVisible();
-  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await page.locator(".auth-close").click();
   await expect(page.getByRole("heading", { name: "Войти в Кутно" })).toHaveCount(0);
 
   expect(pageErrors).toEqual([]);
