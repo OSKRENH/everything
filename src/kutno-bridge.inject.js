@@ -97,9 +97,38 @@ async function kutnoBridgeRestoreSwipeSnapshot(snapshot) {
 }
 
 window.kutnoBridge = {
-  version: 2,
+  version: 3,
   getAuthUser() {
     return authUser ? kutnoBridgeClone(authUser) : null;
+  },
+  getKitchenState() {
+    return kutnoBridgeClone(state);
+  },
+  setPriorityIngredients(values, { render = true } = {}) {
+    const selected = new Set(state.ingredients.map(normalize));
+    state.priorityIngredients = (Array.isArray(values) ? values : [])
+      .map((value) => normalize(String(value || "")))
+      .filter((value, index, list) => value && selected.has(value) && list.indexOf(value) === index)
+      .slice(0, 3);
+    saveState();
+    if (render) renderMainView();
+    return kutnoBridgeClone(state.priorityIngredients);
+  },
+  getCatalogRecipes() {
+    return kutnoBridgeClone(catalogRecipes);
+  },
+  rerankCatalog() {
+    try {
+      catalogRecipes = orderCatalogRecipes(catalogRecipes);
+      resetSwipeDeck();
+      if (currentView === "catalog") updateCatalogResults();
+      if (currentView === "swipe") refreshSwipeDeck();
+    } catch {
+      if (currentView === "catalog") renderMainView();
+    }
+  },
+  async loadNextCatalogPage() {
+    return window.kutnoLoadNextCatalogPage?.() || false;
   },
   getCurrentRecipe() {
     return activeRecipe ? { id: recipeId(activeRecipe), recipe: kutnoBridgeClone(activeRecipe) } : null;
