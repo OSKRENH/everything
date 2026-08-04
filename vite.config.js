@@ -21,8 +21,12 @@ export default defineConfig({
       transform(code, id) {
         const cleanId = id.split("?", 1)[0];
         if (!cleanId.endsWith("/src/main.js")) return null;
+        const consistentMain = code.replace(
+          "Соль, воду и масло можно не указывать — мы считаем их базовыми.",
+          "Соль, воду, растительное масло и сахар можно не указывать — мы считаем их базовыми.",
+        );
         return {
-          code: `${semanticImport}\n${code}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}`,
+          code: `${semanticImport}\n${consistentMain}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}`,
           map: null,
         };
       },
