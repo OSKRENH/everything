@@ -9,10 +9,14 @@ const runtimeFiles = [
   "worker/matching-entry.js",
   "worker/oil-fix-entry.js",
   "worker/safe-entry.js",
+  "worker/next-entry.js",
   "worker/manual-recipes.js",
   "src/ingredient-semantics.js",
   "src/ingredient-semantics-v2.js",
   "src/ingredient-semantics-v3.js",
+  "src/kutno-api.js",
+  "src/kutno-store.js",
+  "src/kutno-next.js",
   "src/kutno-bridge.inject.js",
   "src/matching-engine.inject.js",
   "src/fetch-reset.inject.js",
@@ -32,17 +36,23 @@ test("runtime-файлы Кутно проходят синтаксическу�
   }
 });
 
-test("сборочный мост подключает прямую, устойчивую и ограниченную загрузку каталога", () => {
+test("клиент использует единый API, страницы каталога и отдельное хранилище", () => {
   const bridge = readFileSync("src/kutno-bridge.inject.js", "utf8");
   const matching = readFileSync("src/matching-engine.inject.js", "utf8");
   const reset = readFileSync("src/fetch-reset.inject.js", "utf8");
   const fixes = readFileSync("src/matching-fixes.inject.js", "utf8");
   const performance = readFileSync("src/catalog-performance.inject.js", "utf8");
+  const api = readFileSync("src/kutno-api.js", "utf8");
+  const store = readFileSync("src/kutno-store.js", "utf8");
+  const next = readFileSync("src/kutno-next.js", "utf8");
   const catalogCss = readFileSync("public/catalog-stability.css", "utf8");
   const throttle = readFileSync("public/feature-sync-throttle.js", "utf8");
   const vite = readFileSync("vite.config.js", "utf8");
   const index = readFileSync("index.html", "utf8");
   assert.match(bridge, /window\.kutnoBridge\s*=/);
+  assert.match(bridge, /getKitchenState/);
+  assert.match(bridge, /setPriorityIngredients/);
+  assert.match(bridge, /getCatalogRecipes/);
   assert.match(bridge, /restoreSwipeSnapshot/);
   assert.match(bridge, /restoreCookingSession/);
   assert.match(matching, /matchingGroupRecipes/);
@@ -52,9 +62,11 @@ test("сборочный мост подключает прямую, устой�
   assert.match(reset, /window\.fetch = async function kutnoSafeMatchingFetch/);
   assert.match(fixes, /loadCatalog\(true\)/);
   assert.match(fixes, /catch\s*\{\s*pathname = ""/);
-  assert.match(performance, /catalogDirectFetch/);
-  assert.match(performance, /kutnoFetchBeforeMatching/);
-  assert.match(performance, /requestCatalogDirectly/);
+  assert.match(performance, /CATALOG_PAGE_SIZE = 5/);
+  assert.match(performance, /kutnoApi\.catalogPage/);
+  assert.match(performance, /catalogNextCursor/);
+  assert.match(performance, /loadNextCatalogPage/);
+  assert.match(performance, /window\.kutnoLoadNextCatalogPage/);
   assert.match(performance, /localCatalogFallback/);
   assert.match(performance, /catalogUsingFallback/);
   assert.match(performance, /CATALOG_INITIAL_SIZE = 5/);
@@ -62,35 +74,45 @@ test("сборочный мост подключает прямую, устой�
   assert.match(performance, /CATALOG_RETRY_COUNT = 3/);
   assert.match(performance, /CATALOG_BACKGROUND_RECOVERY_LIMIT = 2/);
   assert.match(performance, /recoverFullCatalogSilently/);
-  assert.match(performance, /catalogBackgroundRecoveryAttempts/);
-  assert.match(performance, /if \(currentView !== "catalog" \|\| catalogRecipes\.length\) return/);
   assert.match(performance, /CATALOG_REVEAL_DURATION = 480/);
   assert.match(performance, /catalog-card-entering/);
-  assert.match(performance, /matching-group-header-entering/);
   assert.match(performance, /rootMargin: "60px 0px"/);
   assert.match(performance, /IntersectionObserver/);
   assert.match(performance, /performantCatalogResults/);
+  assert.match(api, /class KutnoApiError/);
+  assert.match(api, /queueTelemetry/);
+  assert.match(store, /quantityAssessment/);
+  assert.match(store, /urgentIngredients/);
+  assert.match(store, /preferencePenalty/);
+  assert.match(next, /Уточнить запасы/);
+  assert.match(next, /recipe_feedback/);
   assert.match(catalogCss, /@keyframes catalog-card-reveal/);
   assert.match(catalogCss, /prefers-reduced-motion/);
   assert.match(throttle, /catch\s*\{\s*pathname = ""/);
-  assert.match(vite, /const kutnoFetchBeforeMatching = window\.fetch\.bind\(window\)/);
+  assert.match(vite, /import \{ kutnoApi \} from "\.\/kutno-api\.js"/);
   assert.ok(vite.indexOf("${matchingSource}") < vite.indexOf("${fetchResetSource}"));
   assert.ok(vite.indexOf("${matchingFixesSource}") < vite.indexOf("${catalogPerformanceSource}"));
   assert.match(vite, /ingredient-semantics-v3/);
   assert.match(vite, /configuredFeatureBaseStaples/);
   assert.match(vite, /DEFAULT_FEATURE_BASE_STAPLES/);
   assert.match(vite, /Соль, воду, растительное масло и сахар/);
+  assert.match(index, /kutno-next\.css/);
+  assert.match(index, /src\/kutno-next\.js/);
   assert.doesNotMatch(index, /dom-stability\.js/);
 });
 
-test("расширенные Worker-слои делегируют основной API", () => {
+test("Worker объединяет состояние, режет каталог и сохраняет телеметрию", () => {
   const featureWorker = readFileSync("worker/entry.js", "utf8");
   const matchingWorker = readFileSync("worker/matching-entry.js", "utf8");
   const oilFixWorker = readFileSync("worker/oil-fix-entry.js", "utf8");
   const safeWorker = readFileSync("worker/safe-entry.js", "utf8");
+  const nextWorker = readFileSync("worker/next-entry.js", "utf8");
   const manualCatalog = readFileSync("worker/manual-recipes.js", "utf8");
   const wrangler = readFileSync("wrangler.jsonc", "utf8");
   assert.match(featureWorker, /return baseWorker\.fetch\(request, env, ctx\)/);
+  assert.match(featureWorker, /mergeFeatureState/);
+  assert.match(featureWorker, /sanitizePantry/);
+  assert.match(featureWorker, /sanitizeFeedback/);
   assert.match(featureWorker, /\/api\/feature-state/);
   assert.match(featureWorker, /shared_recipes/);
   assert.match(matchingWorker, /return featureWorker\.fetch\(request, env, ctx\)/);
@@ -99,6 +121,10 @@ test("расширенные Worker-слои делегируют основно
   assert.match(oilFixWorker, /ingredient-semantics-v3/);
   assert.match(safeWorker, /oilFixWorker\.fetch/);
   assert.match(safeWorker, /catalogFallback/);
-  assert.match(wrangler, /worker\/safe-entry\.js/);
+  assert.match(nextWorker, /encodeCatalogCursor/);
+  assert.match(nextWorker, /decodeCatalogCursor/);
+  assert.match(nextWorker, /telemetry_events/);
+  assert.match(nextWorker, /paginatedCatalog/);
+  assert.match(wrangler, /worker\/next-entry\.js/);
   assert.match(manualCatalog, /kutno-manual-catalog/);
 });

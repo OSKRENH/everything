@@ -133,26 +133,80 @@ function sanitizeCooking(value) {
   };
 }
 
+function sanitizePantry(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).slice(0, 120).flatMap(([key, item]) => {
+    const name = cleanString(item?.name || key, 120);
+    const id = cleanString(key, 120).toLowerCase();
+    if (!name || !id) return [];
+    const quantity = item?.quantity === null || item?.quantity === "" ? null : cleanNumber(item?.quantity, 0, 1_000_000);
+    const unit = ["", "г", "кг", "мл", "л", "шт.", "уп.", "банка"].includes(item?.unit) ? item.unit : "";
+    const useBy = /^\d{4}-\d{2}-\d{2}$/.test(String(item?.useBy || "")) ? String(item.useBy) : "";
+    return [[id, {
+      name,
+      quantity,
+      unit,
+      useBy,
+      opened: Boolean(item?.opened),
+      updatedAt: Math.round(cleanNumber(item?.updatedAt, 0)),
+    }]];
+  }));
+}
+
+function sanitizeFeedback(value) {
+  return (Array.isArray(value) ? value : []).slice(0, 300).flatMap((item) => {
+    const recipeId = cleanString(item?.recipeId, 100);
+    const reason = ["dislike-ingredient", "too-long", "too-hard", "not-today", "more-like-this"].includes(item?.reason) ? item.reason : "";
+    if (!recipeId || !reason) return [];
+    return [{
+      recipeId,
+      title: cleanString(item?.title, 180),
+      reason,
+      ingredient: cleanString(item?.ingredient, 120),
+      minutes: Math.round(cleanNumber(item?.minutes, 0, 1440)),
+      difficulty: cleanString(item?.difficulty, 40),
+      at: Math.round(cleanNumber(item?.at, 0)),
+      updatedAt: Math.round(cleanNumber(item?.updatedAt, 0)),
+    }];
+  });
+}
+
 function sanitizeFeatureState(value) {
   return {
     shopping: sanitizeShopping(value?.shopping),
     portions: sanitizePortions(value?.portions),
     cooking: sanitizeCooking(value?.cooking),
+    pantry: sanitizePantry(value?.pantry),
+    feedback: sanitizeFeedback(value?.feedback),
     updatedAt: Math.round(cleanNumber(value?.updatedAt, 0)),
+  };
+}
+
+function mergeFeatureState(currentValue, incomingValue) {
+  const current = sanitizeFeatureState(currentValue || {});
+  const incoming = incomingValue && typeof incomingValue === "object" ? incomingValue : {};
+  const has = (key) => Object.prototype.hasOwnProperty.call(incoming, key);
+  return {
+    shopping: has("shopping") ? sanitizeShopping(incoming.shopping) : current.shopping,
+    portions: has("portions") ? sanitizePortions(incoming.portions) : current.portions,
+    cooking: has("cooking") ? sanitizeCooking(incoming.cooking) : current.cooking,
+    pantry: has("pantry") ? sanitizePantry(incoming.pantry) : current.pantry,
+    feedback: has("feedback") ? sanitizeFeedback(incoming.feedback) : current.feedback,
+    updatedAt: Date.now(),
   };
 }
 
 async function ensureTables(env) {
   await env.DB.batch([
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS user_feature_state (
-      user_id INTEGER PRIMARY KEY,
+      user_id TEXT PRIMARY KEY,
       state_json TEXT NOT NULL,
       updated_at INTEGER NOT NULL
     )`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS shared_recipes (
       id TEXT PRIMARY KEY,
       recipe_json TEXT NOT NULL,
-      created_by INTEGER,
+      created_by TEXT,
       created_at INTEGER NOT NULL
     )`),
   ]);
@@ -176,18 +230,19 @@ async function featureState(request, env, ctx) {
   const user = await authenticatedUser(request, env, ctx);
   if (!user) return json({ error: "Войдите в аккаунт" }, 401);
   await ensureTables(env);
-  if (request.method === "GET") {
-    const row = await env.DB.prepare("SELECT state_json FROM user_feature_state WHERE user_id = ?").bind(user.id).first();
-    if (!row?.state_json) return json({ state: sanitizeFeatureState({}) });
+  const row = await env.DB.prepare("SELECT state_json FROM user_feature_state WHERE user_id = ?").bind(user.id).first();
+  let existing = {};
+  if (row?.state_json) {
     try {
-      return json({ state: sanitizeFeatureState(JSON.parse(row.state_json)) });
+      existing = JSON.parse(row.state_json);
     } catch {
-      return json({ state: sanitizeFeatureState({}) });
+      existing = {};
     }
   }
+  if (request.method === "GET") return json({ state: sanitizeFeatureState(existing) });
+
   const body = await request.json().catch(() => ({}));
-  const state = sanitizeFeatureState(body);
-  state.updatedAt = Date.now();
+  const state = mergeFeatureState(existing, body);
   await env.DB.prepare(`INSERT INTO user_feature_state (user_id, state_json, updated_at)
     VALUES (?, ?, ?)
     ON CONFLICT(user_id) DO UPDATE SET state_json = excluded.state_json, updated_at = excluded.updated_at`)
