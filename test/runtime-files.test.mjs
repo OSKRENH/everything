@@ -19,7 +19,6 @@ const runtimeFiles = [
   "src/matching-fixes.inject.js",
   "src/catalog-performance.inject.js",
   "public/kutno-features.js",
-  "public/dom-stability.js",
   "public/feature-sync-throttle.js",
 ];
 
@@ -42,6 +41,7 @@ test("сборочный мост подключает прямую, устой�
   const catalogCss = readFileSync("public/catalog-stability.css", "utf8");
   const throttle = readFileSync("public/feature-sync-throttle.js", "utf8");
   const vite = readFileSync("vite.config.js", "utf8");
+  const index = readFileSync("index.html", "utf8");
   assert.match(bridge, /window\.kutnoBridge\s*=/);
   assert.match(bridge, /restoreSwipeSnapshot/);
   assert.match(bridge, /restoreCookingSession/);
@@ -77,6 +77,10 @@ test("сборочный мост подключает прямую, устой�
   assert.ok(vite.indexOf("${matchingSource}") < vite.indexOf("${fetchResetSource}"));
   assert.ok(vite.indexOf("${matchingFixesSource}") < vite.indexOf("${catalogPerformanceSource}"));
   assert.match(vite, /ingredient-semantics-v3/);
+  assert.match(vite, /configuredFeatureBaseStaples/);
+  assert.match(vite, /DEFAULT_FEATURE_BASE_STAPLES/);
+  assert.match(vite, /Соль, воду, растительное масло и сахар/);
+  assert.doesNotMatch(index, /dom-stability\.js/);
 });
 
 test("расширенные Worker-слои делегируют основной API", () => {
