@@ -1,5 +1,6 @@
 import matchingWorker from "./matching-entry.js";
 import { analyzeRecipe, enrichRecipeSemantics } from "../src/ingredient-semantics-v3.js";
+import { applyMatchingUserContext, matchingPayloadFromContext } from "../src/matching-user-context.js";
 
 function json(data, status = 200) {
   return Response.json(data, {
@@ -12,11 +13,14 @@ function json(data, status = 200) {
 }
 
 function contextFromGenerate(body = {}) {
+  const user = matchingPayloadFromContext(body);
   return {
     ingredients: Array.isArray(body.ingredients) ? body.ingredients : [],
     priorityIngredients: Array.isArray(body.priorityIngredients) ? body.priorityIngredients : [],
     equipment: Array.isArray(body.equipment) ? body.equipment : [],
     baseIngredients: Array.isArray(body.baseIngredients) ? body.baseIngredients : undefined,
+    pantry: user.pantry,
+    feedback: user.feedback,
   };
 }
 
@@ -28,20 +32,38 @@ function contextFromCatalog(url) {
   };
 }
 
+function adjustedAnalysis(recipe, context) {
+  return applyMatchingUserContext(recipe, analyzeRecipe(recipe, context), context);
+}
+
 function correctedData(data, context) {
   if (!data || !Array.isArray(data.recipes)) return data;
   const recipes = data.recipes
-    .map((recipe) => enrichRecipeSemantics(recipe, context))
-    .sort((first, second) => analyzeRecipe(second, context).score - analyzeRecipe(first, context).score);
-  const groups = recipes.map((recipe) => analyzeRecipe(recipe, context).group);
-  const relaxation = data.relaxation?.code === "allow-one-purchase"
-    && groups.every((group) => ["ready", "substitute"].includes(group))
-      ? null
-      : data.relaxation;
+    .map((recipe) => {
+      const enriched = enrichRecipeSemantics(recipe, context);
+      const analysis = adjustedAnalysis(enriched, context);
+      return {
+        ...enriched,
+        matching: {
+          ...(enriched.matching || {}),
+          group: analysis.group,
+          score: analysis.score,
+          reasons: analysis.reasons,
+          missingRequired: analysis.requiredMissing.map((item) => item.name),
+          quantityShortages: analysis.quantityShortages.map((item) => ({
+            name: item.name,
+            have: `${item.have.quantity} ${item.have.unit}`.trim(),
+            need: item.need,
+          })),
+          preferencePenalty: analysis.preferencePenalty,
+        },
+      };
+    })
+    .sort((first, second) => adjustedAnalysis(second, context).score - adjustedAnalysis(first, context).score);
   return {
     ...data,
     recipes,
-    ...(relaxation ? { relaxation } : { relaxation: null }),
+    relaxation: null,
   };
 }
 
