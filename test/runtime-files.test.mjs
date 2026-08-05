@@ -24,6 +24,7 @@ const runtimeFiles = [
   "src/fetch-reset.inject.js",
   "src/matching-fixes.inject.js",
   "src/catalog-performance.inject.js",
+  "src/catalog-facets.inject.js",
   "public/kutno-features.js",
   "public/feature-sync-throttle.js",
 ];
@@ -38,12 +39,13 @@ test("runtime-файлы Кутно проходят синтаксическу�
   }
 });
 
-test("клиент устойчиво догружает страницы каталога", () => {
+test("клиент устойчиво догружает страницы и знает всю базу", () => {
   const bridge = readFileSync("src/kutno-bridge.inject.js", "utf8");
   const matching = readFileSync("src/matching-engine.inject.js", "utf8");
   const reset = readFileSync("src/fetch-reset.inject.js", "utf8");
   const fixes = readFileSync("src/matching-fixes.inject.js", "utf8");
   const performance = readFileSync("src/catalog-performance.inject.js", "utf8");
+  const facets = readFileSync("src/catalog-facets.inject.js", "utf8");
   const api = readFileSync("src/kutno-api.js", "utf8");
   const store = readFileSync("src/kutno-store.js", "utf8");
   const next = readFileSync("src/kutno-next.js", "utf8");
@@ -65,7 +67,6 @@ test("клиент устойчиво догружает страницы кат
   assert.match(fixes, /loadCatalog\(true\)/);
   assert.match(fixes, /catch\s*\{\s*pathname = ""/);
   assert.match(performance, /CATALOG_PAGE_SIZE = 5/);
-  assert.match(performance, /CATALOG_EMPTY_PAGE_LIMIT = 5/);
   assert.match(performance, /kutnoApi\.catalogPage/);
   assert.match(performance, /catalogSeenCursors/);
   assert.match(performance, /catalog_cursor_loop/);
@@ -84,6 +85,12 @@ test("клиент устойчиво догружает страницы кат
   assert.match(performance, /rootMargin: "60px 0px"/);
   assert.match(performance, /IntersectionObserver/);
   assert.match(performance, /performantCatalogResults/);
+  assert.match(facets, /catalogIndex/);
+  assert.match(facets, /catalogFacets/);
+  assert.match(facets, /completeCatalogCuisines/);
+  assert.match(facets, /В базе/);
+  assert.match(facets, /catalogStaticTotal/);
+  assert.match(facets, /maximumAttempts/);
   assert.match(api, /class KutnoApiError/);
   assert.match(api, /queueTelemetry/);
   assert.match(store, /quantityAssessment/);
@@ -97,17 +104,18 @@ test("клиент устойчиво догружает страницы кат
   assert.match(vite, /import \{ kutnoApi \} from "\.\/kutno-api\.js"/);
   assert.ok(vite.indexOf("${matchingSource}") < vite.indexOf("${fetchResetSource}"));
   assert.ok(vite.indexOf("${matchingFixesSource}") < vite.indexOf("${catalogPerformanceSource}"));
+  assert.ok(vite.indexOf("${catalogPerformanceSource}") < vite.indexOf("${catalogFacetsSource}"));
   assert.match(vite, /ingredient-semantics-v3/);
   assert.match(vite, /configuredFeatureBaseStaples/);
   assert.match(vite, /DEFAULT_FEATURE_BASE_STAPLES/);
   assert.match(vite, /Соль, воду, растительное масло и сахар/);
-  assert.match(index, /main\.js\?v=18/);
+  assert.match(index, /main\.js\?v=19/);
   assert.match(index, /kutno-next\.css/);
   assert.match(index, /src\/kutno-next\.js/);
   assert.doesNotMatch(index, /dom-stability\.js/);
 });
 
-test("Worker формирует только нужную страницу каталога", () => {
+test("Worker формирует страницу и лёгкий индекс всей базы", () => {
   const featureWorker = readFileSync("worker/entry.js", "utf8");
   const matchingWorker = readFileSync("worker/matching-entry.js", "utf8");
   const oilFixWorker = readFileSync("worker/oil-fix-entry.js", "utf8");
@@ -136,6 +144,10 @@ test("Worker формирует только нужную страницу ка�
   assert.match(cursor, /decodeCatalogCursor/);
   assert.match(catalogPage, /WORLD_RECIPE_CATALOG/);
   assert.match(catalogPage, /pageSources = sources\.slice/);
+  assert.match(catalogPage, /catalogMetadata/);
+  assert.match(catalogPage, /facets/);
+  assert.match(catalogPage, /index/);
+  assert.match(catalogPage, /offset === 0/);
   assert.match(catalogPage, /manualRecipesForPortions/);
   assert.match(nextWorker, /telemetry_events/);
   assert.match(wrangler, /worker\/next-entry\.js/);
