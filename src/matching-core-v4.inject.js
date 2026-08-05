@@ -12,7 +12,7 @@ function knownMatchingRecipesV4() {
 }
 
 function matchingUserContextV4() {
-  const context = matchingBrowserUserContext();
+  const context = browserMatchingUserContext();
   const known = knownMatchingRecipesV4();
   const feedback = context.feedback.map((item) => {
     const recipe = known.find((candidate) => (item.recipeId && recipeId(candidate) === item.recipeId)
