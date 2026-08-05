@@ -28,11 +28,11 @@ function normalizeUnit(value = "") {
 
 function numericText(value = "") {
   return String(value)
-    .replace(/½/g, ".5")
-    .replace(/¼/g, ".25")
-    .replace(/¾/g, ".75")
-    .replace(/⅓/g, ".333")
-    .replace(/⅔/g, ".667")
+    .replace(/½/g, "0.5")
+    .replace(/¼/g, "0.25")
+    .replace(/¾/g, "0.75")
+    .replace(/⅓/g, "0.333")
+    .replace(/⅔/g, "0.667")
     .replace(/,/g, ".")
     .trim();
 }
@@ -44,11 +44,19 @@ export function parseMatchingAmount(value = "") {
   const fraction = text.match(/(?<!\d)(\d+)\s*\/\s*(\d+)/);
   const decimal = text.match(/\d+(?:\.\d+)?/);
   let amount = null;
-  if (mixed) amount = Number(mixed[1]) + Number(mixed[2]) / Math.max(1, Number(mixed[3]));
-  else if (fraction) amount = Number(fraction[1]) / Math.max(1, Number(fraction[2]));
-  else if (decimal) amount = Number(decimal[0]);
+  let amountText = "";
+  if (mixed) {
+    amount = Number(mixed[1]) + Number(mixed[2]) / Math.max(1, Number(mixed[3]));
+    amountText = mixed[0];
+  } else if (fraction) {
+    amount = Number(fraction[1]) / Math.max(1, Number(fraction[2]));
+    amountText = fraction[0];
+  } else if (decimal) {
+    amount = Number(decimal[0]);
+    amountText = decimal[0];
+  }
   if (!Number.isFinite(amount)) return null;
-  const unit = normalizeUnit(text.replace(decimal?.[0] || "", ""));
+  const unit = normalizeUnit(text.replace(amountText, "").trim());
   if (!unit) return null;
   return { value: amount * unit.factor, family: unit.family, unit: unit.unit };
 }
