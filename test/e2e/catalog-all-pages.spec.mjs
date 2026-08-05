@@ -1,12 +1,29 @@
 import { expect, test } from "@playwright/test";
 
+const cuisineSequence = [
+  ["Испания", "🇪🇸"],
+  ["Италия", "🇮🇹"],
+  ["Испания", "🇪🇸"],
+  ["Италия", "🇮🇹"],
+  ["Испания", "🇪🇸"],
+  ["Россия", "🇷🇺"],
+  ["Япония", "🇯🇵"],
+  ["Индия", "🇮🇳"],
+  ["Мексика", "🇲🇽"],
+  ["Франция", "🇫🇷"],
+  ["Китай", "🇨🇳"],
+  ["Таиланд", "🇹🇭"],
+  ["Перу", "🇵🇪"],
+];
+
 function recipe(index) {
+  const [cuisine, flag] = cuisineSequence[index];
   return {
     id: `all-${index + 1}`,
     title: `Полный каталог ${index + 1}`,
     subtitle: "Проверка всех страниц",
-    cuisine: "Домашняя кухня",
-    flag: "🥗",
+    cuisine,
+    flag,
     course: "салат",
     protein: "без мяса",
     minutes: 10,
@@ -21,6 +38,20 @@ function recipe(index) {
 }
 
 const catalog = Array.from({ length: 13 }, (_, index) => recipe(index));
+const catalogIndex = catalog.map((item) => ({
+  id: item.id,
+  title: item.title,
+  subtitle: item.subtitle,
+  cuisine: item.cuisine,
+  flag: item.flag,
+  course: item.course,
+  protein: item.protein,
+  minutes: item.minutes,
+  difficulty: item.difficulty,
+  ingredients: item.ingredients.map((ingredient) => ingredient.name),
+  searchable: `${item.title} ${item.subtitle} ${item.cuisine} помидоры`.toLocaleLowerCase("ru-RU"),
+}));
+const cuisineFacets = [...new Map(catalog.map((item) => [item.cuisine, { value: item.cuisine, flag: item.flag }])).values()];
 
 async function installApi(page) {
   let catalogRequests = 0;
@@ -53,7 +84,21 @@ async function installApi(page) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ recipes, total: catalog.length, nextCursor, limit: 5 }),
+        body: JSON.stringify({
+          recipes,
+          total: catalog.length,
+          nextCursor,
+          limit: 5,
+          ...(offset === 0 ? {
+            index: catalogIndex,
+            facets: {
+              cuisines: cuisineFacets,
+              difficulties: ["легко"],
+              courses: ["салат"],
+              proteins: ["без мяса"],
+            },
+          } : {}),
+        }),
       });
       return;
     }
@@ -61,6 +106,24 @@ async function installApi(page) {
   });
   return { requests: () => catalogRequests };
 }
+
+test("до догрузки показывает размер всей базы и все страны", async ({ page }) => {
+  const api = await installApi(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "База", exact: true }).click();
+
+  await expect(page.locator(".catalog-card")).toHaveCount(5);
+  await expect(page.locator(".catalog-count")).toContainText("В базе — 13");
+  await expect(page.getByRole("button", { name: "🇷🇺 Россия", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "🇯🇵 Япония", exact: true })).toBeVisible();
+  expect(api.requests()).toBe(1);
+
+  await page.getByRole("button", { name: "🇷🇺 Россия", exact: true }).click();
+  await expect(page.locator(".catalog-count")).toContainText("Найдено — 01");
+  await expect.poll(() => page.locator(".catalog-card h3").allTextContents(), { timeout: 10_000 })
+    .toContain("Полный каталог 6");
+  expect(api.requests()).toBeGreaterThanOrEqual(2);
+});
 
 test("прокрутка доходит до последнего рецепта без повторов", async ({ page }) => {
   const api = await installApi(page);
