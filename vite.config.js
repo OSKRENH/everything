@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { defineConfig } from "vite";
+import { serveLitePage } from "./worker/lite-page.js";
 
 const bridgeSource = fs.readFileSync(new URL("./src/kutno-bridge.inject.js", import.meta.url), "utf8");
 const matchingSource = fs.readFileSync(new URL("./src/matching-engine.inject.js", import.meta.url), "utf8");
@@ -49,6 +50,13 @@ function consistentFeatureSource() {
   return transformed;
 }
 
+async function sendWebResponse(webResponse, nodeResponse) {
+  nodeResponse.statusCode = webResponse.status;
+  for (const [name, value] of webResponse.headers) nodeResponse.setHeader(name, value);
+  const body = Buffer.from(await webResponse.arrayBuffer());
+  nodeResponse.end(body);
+}
+
 const featureSource = consistentFeatureSource();
 let resolvedConfig;
 
@@ -76,8 +84,14 @@ export default defineConfig({
         resolvedConfig = config;
       },
       configureServer(server) {
-        server.middlewares.use((request, response, next) => {
+        server.middlewares.use(async (request, response, next) => {
           const pathname = String(request.url || "").split("?", 1)[0];
+          if (pathname === "/lite" || pathname === "/lite/recipe") {
+            const origin = `http://${request.headers.host || "127.0.0.1"}`;
+            const webRequest = new Request(new URL(request.url || pathname, origin), { method: "GET" });
+            await sendWebResponse(serveLitePage(webRequest), response);
+            return;
+          }
           if (pathname !== "/kutno-features.js") return next();
           response.statusCode = 200;
           response.setHeader("content-type", "text/javascript; charset=utf-8");
