@@ -77,7 +77,7 @@ async function installApi(page) {
 }
 
 async function expectFullSwipeDeck(page, api) {
-  await expect(page.locator(".swipe-card-counter")).toContainText("/ 13", { timeout: 15_000 });
+  await expect(page.locator(".swipe-card.front .swipe-card-counter")).toContainText("/ 13", { timeout: 15_000 });
   await expect.poll(() => api.catalogUrls.length, { timeout: 10_000 }).toBe(3);
   const loaded = await page.evaluate(() => window.kutnoBridge?.getCatalogRecipes?.().length || 0);
   expect(loaded).toBe(catalog.length);
