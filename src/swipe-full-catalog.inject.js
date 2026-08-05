@@ -4,8 +4,8 @@ let swipeFullCatalogPromise = null;
 function swipeCatalogIsComplete() {
   if (!catalogRecipes.length) return false;
   if (catalogUsingFallback) return true;
-  if (catalogNextCursor) return false;
-  return !catalogTotal || catalogRecipes.length >= catalogTotal;
+  if (!catalogTotal || catalogNextCursor) return false;
+  return catalogRecipes.length >= catalogTotal;
 }
 
 function renderSwipeFullCatalogLoader() {
@@ -37,7 +37,8 @@ async function hydrateFullSwipeCatalog() {
   swipeFullCatalogPromise = (async () => {
     await waitForCurrentCatalogRequest();
 
-    if (!catalogRecipes.length && !catalogLoading) await loadCatalog();
+    const metadataMissing = catalogRecipes.length > 0 && !catalogTotal && !catalogUsingFallback;
+    if ((!catalogRecipes.length || metadataMissing) && !catalogLoading) await loadCatalog(metadataMissing);
     await waitForCurrentCatalogRequest();
 
     const maximumPages = Math.max(1, Math.ceil(Math.max(catalogTotal, catalogRecipes.length, CATALOG_PAGE_SIZE) / CATALOG_PAGE_SIZE) + 2);
