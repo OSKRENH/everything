@@ -88,6 +88,7 @@ export default defineConfig({
       closeBundle() {
         if (!resolvedConfig) return;
         const output = path.resolve(resolvedConfig.root, resolvedConfig.build.outDir, "kutno-features.js");
+        fs.mkdirSync(path.dirname(output), { recursive: true });
         fs.writeFileSync(output, featureSource, "utf8");
       },
     },
