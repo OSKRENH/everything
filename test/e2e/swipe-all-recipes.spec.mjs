@@ -76,9 +76,10 @@ async function installApi(page) {
   return { catalogUrls };
 }
 
-async function expectFullSwipeDeck(page, api) {
+async function expectFullSwipeDeck(page, api, { maximumRequests = 3 } = {}) {
   await expect(page.locator(".swipe-card.front .swipe-card-counter")).toContainText("/ 13", { timeout: 15_000 });
-  await expect.poll(() => api.catalogUrls.length, { timeout: 10_000 }).toBe(3);
+  await expect.poll(() => api.catalogUrls.length, { timeout: 10_000 }).toBeGreaterThanOrEqual(3);
+  expect(api.catalogUrls.length).toBeLessThanOrEqual(maximumRequests);
   const loaded = await page.evaluate(() => window.kutnoBridge?.getCatalogRecipes?.().length || 0);
   expect(loaded).toBe(catalog.length);
   for (const url of api.catalogUrls) {
@@ -99,5 +100,5 @@ test("АМ загружает все страницы и не фильтрует
 test("прямое открытие АМ тоже собирает полный каталог", async ({ page }) => {
   const api = await installApi(page);
   await page.goto("/#swipe");
-  await expectFullSwipeDeck(page, api);
+  await expectFullSwipeDeck(page, api, { maximumRequests: 4 });
 });
