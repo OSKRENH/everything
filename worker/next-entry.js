@@ -1,5 +1,6 @@
 import safeWorker from "./safe-entry.js";
 import { serveCatalogPage } from "./catalog-page.js";
+import { serveLitePage } from "./lite-page.js";
 export { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
 
 const MAX_TELEMETRY_EVENTS = 20;
@@ -104,6 +105,13 @@ export default {
     const requestId = crypto.randomUUID();
     const url = new URL(request.url);
     try {
+      if ((url.pathname === "/lite" || url.pathname === "/lite/recipe") && request.method === "GET") {
+        const response = serveLitePage(request);
+        const headers = new Headers(response.headers);
+        headers.set("x-request-id", requestId);
+        headers.set("server-timing", `lite;dur=${Date.now() - startedAt}`);
+        return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+      }
       if (url.pathname === "/api/telemetry" && request.method === "POST") {
         return saveTelemetry(request, env, requestId);
       }
