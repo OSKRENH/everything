@@ -22,6 +22,14 @@ test("index содержит самостоятельный первый экр�
   assert.ok(Buffer.byteLength(html, "utf8") < 13_000, "первый HTML должен оставаться компактным");
 });
 
+test("Service Worker включается только на защищённом production-домене", () => {
+  const bootstrap = readFileSync("src/bootstrap.js", "utf8");
+  assert.match(bootstrap, /location\.protocol === "https:"/);
+  assert.match(bootstrap, /"localhost", "127\.0\.0\.1"/);
+  assert.match(bootstrap, /shouldRegisterServiceWorker/);
+  assert.match(bootstrap, /navigator\.serviceWorker\.register/);
+});
+
 test("лёгкая страница работает без JavaScript и остаётся компактной", () => {
   const response = serveLitePage(new Request("https://kutno.test/lite?products=яйца,рис"));
   assert.equal(response.status, 200);
