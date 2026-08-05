@@ -68,14 +68,16 @@ test("прокрутка доходит до последнего рецепта
   await page.getByRole("button", { name: "База", exact: true }).click();
   await expect(page.locator(".catalog-card")).toHaveCount(5);
 
-  for (let expected = 6; expected <= catalog.length; expected += 1) {
-    await page.locator("[data-catalog-scroll-sentinel]").scrollIntoViewIfNeeded();
-    await expect.poll(() => page.locator(".catalog-card").count(), { timeout: 8_000 }).toBe(expected);
-    await page.waitForTimeout(560);
-  }
+  await expect.poll(async () => {
+    const sentinel = page.locator("[data-catalog-scroll-sentinel]");
+    if (await sentinel.count()) await sentinel.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(600);
+    return page.locator(".catalog-card").count();
+  }, { timeout: 20_000, intervals: [300, 600, 600, 600] }).toBe(catalog.length);
 
   expect(api.requests()).toBe(3);
   const titles = await page.locator(".catalog-card h3").allTextContents();
+  expect(titles).toHaveLength(catalog.length);
   expect(new Set(titles).size).toBe(catalog.length);
   await expect(page.locator("[data-catalog-scroll-sentinel]")).toHaveCount(0);
 });
