@@ -122,11 +122,12 @@ function catalogSources(portions) {
 }
 
 function contextFromUrl(url) {
+  const baseIngredients = url.searchParams.getAll("base");
   return {
     ingredients: url.searchParams.getAll("ingredient"),
     priorityIngredients: url.searchParams.getAll("priority"),
     equipment: url.searchParams.getAll("equipment"),
-    baseIngredients: url.searchParams.getAll("base"),
+    ...(baseIngredients.length ? { baseIngredients } : {}),
   };
 }
 
