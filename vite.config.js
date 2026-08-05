@@ -10,6 +10,7 @@ const matchingFixesSource = fs.readFileSync(new URL("./src/matching-fixes.inject
 const catalogPerformanceSource = fs.readFileSync(new URL("./src/catalog-performance.inject.js", import.meta.url), "utf8");
 const catalogFacetsSource = fs.readFileSync(new URL("./src/catalog-facets.inject.js", import.meta.url), "utf8");
 const swipeFullCatalogSource = fs.readFileSync(new URL("./src/swipe-full-catalog.inject.js", import.meta.url), "utf8");
+const matchingCoreV4Source = fs.readFileSync(new URL("./src/matching-core-v4.inject.js", import.meta.url), "utf8");
 const rawFeatureSource = fs.readFileSync(new URL("./public/kutno-features.js", import.meta.url), "utf8");
 const semanticImport = `import {
   analyzeRecipe as semanticAnalyzeRecipe,
@@ -17,6 +18,10 @@ const semanticImport = `import {
   normalizeIngredient as semanticNormalizeIngredient,
   DEFAULT_BASE_INGREDIENTS as SEMANTIC_DEFAULT_BASE_INGREDIENTS,
 } from "./ingredient-semantics-v3.js";
+import {
+  applyMatchingUserContext as matchingApplyUserContext,
+  browserMatchingUserContext,
+} from "./matching-user-context.js";
 import { kutnoApi } from "./kutno-api.js";`;
 
 function consistentFeatureSource() {
@@ -74,7 +79,7 @@ export default defineConfig({
           "Соль, воду, растительное масло и сахар можно не указывать — мы считаем их базовыми.",
         );
         return {
-          code: `${semanticImport}\n${consistentMain}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}\n\n${catalogFacetsSource}\n\n${swipeFullCatalogSource}`,
+          code: `${semanticImport}\n${consistentMain}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}\n\n${catalogFacetsSource}\n\n${swipeFullCatalogSource}\n\n${matchingCoreV4Source}`,
           map: null,
         };
       },
