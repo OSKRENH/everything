@@ -7,47 +7,81 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <link rel="stylesheet" href="/auth-fix.css?v=4" />
-    <link rel="stylesheet" href="/section-typography.css?v=11" />
-    <link rel="stylesheet" href="/kutno-features.css?v=2" />
-    <link rel="stylesheet" href="/matching-engine.css?v=1" />
-    <link rel="stylesheet" href="/matching-mobile-fix.css?v=1" />
-    <link rel="stylesheet" href="/catalog-stability.css?v=3" />
-    <link rel="stylesheet" href="/manual-mode.css?v=1" />
-    <link rel="stylesheet" href="/kutno-next.css?v=1" />
-    <link rel="preload" as="image" href="/illustrations/kitchen-hero.webp" fetchpriority="high" />
-    <link rel="preload" as="image" href="/illustrations/base-hero.webp" />
-    <link rel="preload" as="image" href="/illustrations/am-heart-hero.webp" />
-    <link rel="preload" as="image" href="/illustrations/favorites-hero.webp" />
-    <meta
-      name="description"
-      content="Кутно — рецепты из продуктов и кухонного инвентаря, которые уже есть дома."
-    />
+    <meta name="description" content="Кутно — рецепты из продуктов и кухонного инвентаря, которые уже есть дома." />
     <link rel="canonical" href="https://kutno.ru/" />
     <meta property="og:locale" content="ru_RU" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Кутно" />
     <meta property="og:title" content="Кутно — что приготовить из того, что есть" />
-    <meta
-      property="og:description"
-      content="Рецепты из продуктов и кухонного инвентаря, которые уже есть дома."
-    />
+    <meta property="og:description" content="Рецепты из продуктов и кухонного инвентаря, которые уже есть дома." />
     <meta property="og:url" content="https://kutno.ru/" />
     <meta name="twitter:card" content="summary" />
     <title>Кутно — что приготовить из того, что есть</title>
+    <style>
+      :root{color-scheme:light;--bg:#fafaf7;--ink:#11110f;--muted:#777771;--line:#d6d4cc}
+      *{box-sizing:border-box}
+      html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif}
+      body{min-height:100svh}
+      .boot{width:min(100%,920px);min-height:100svh;margin:auto;padding:28px 34px 44px;display:flex;flex-direction:column}
+      .boot-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:24px;border-bottom:1px solid var(--ink)}
+      .boot-logo{display:flex;align-items:center;gap:12px;font:42px/1 Georgia,serif;letter-spacing:-.04em}
+      .boot-mark{width:34px;height:34px;border:2px solid var(--ink);border-radius:50%;position:relative;display:inline-block}
+      .boot-mark:after{content:"";position:absolute;right:-2px;top:-4px;width:10px;height:10px;border-left:2px solid var(--ink);border-bottom:2px solid var(--ink);border-radius:0 0 0 8px;transform:rotate(-22deg);background:var(--bg)}
+      .boot-mode{border:1px solid var(--ink);border-radius:999px;padding:10px 16px;font-size:13px;letter-spacing:.12em;text-transform:uppercase}
+      .boot-main{flex:1;display:flex;flex-direction:column;justify-content:center;padding:64px 0 72px}
+      .boot-kicker{margin:0 0 28px;font-size:13px;letter-spacing:.18em;text-transform:uppercase}
+      .boot h1{max-width:680px;margin:0;font:clamp(54px,10vw,108px)/.88 Georgia,serif;letter-spacing:-.065em;font-weight:400}
+      .boot-copy{max-width:560px;margin:34px 0 0;color:var(--muted);font-size:18px;line-height:1.5}
+      .boot-progress{width:100%;height:1px;margin:44px 0 18px;background:var(--line);overflow:hidden}
+      .boot-progress:after{content:"";display:block;width:38%;height:100%;background:var(--ink);animation:boot 1.5s ease-in-out infinite alternate}
+      @keyframes boot{from{transform:translateX(-100%)}to{transform:translateX(265%)}}
+      .boot-status{margin:0;font-size:13px;letter-spacing:.12em;text-transform:uppercase}
+      .boot-help{display:none;margin-top:26px;padding-top:26px;border-top:1px solid var(--line)}
+      .boot.is-delayed .boot-help{display:block}
+      .boot-help p{max-width:560px;margin:0 0 18px;color:var(--muted);line-height:1.5}
+      .boot-actions{display:flex;flex-wrap:wrap;gap:10px}
+      .boot-actions a,.boot-actions button{appearance:none;border:1px solid var(--ink);border-radius:999px;background:transparent;color:var(--ink);padding:13px 18px;font:inherit;text-decoration:none;cursor:pointer}
+      .boot-actions a{background:var(--ink);color:var(--bg)}
+      .boot-foot{padding-top:18px;border-top:1px solid var(--ink);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+      @media(max-width:600px){.boot{padding:22px 20px 34px}.boot-logo{font-size:34px}.boot-main{padding:52px 0}.boot-copy{font-size:16px}.boot-mode{padding:9px 13px}}
+      @media(prefers-reduced-motion:reduce){.boot-progress:after{animation:none;width:70%}}
+    </style>
+    <script>
+      window.__kutnoBootTimer=setTimeout(function(){
+        if(document.documentElement.dataset.kutnoReady==="true")return;
+        var shell=document.querySelector("[data-kutno-shell]");
+        var status=document.querySelector("[data-kutno-shell-status]");
+        if(shell)shell.classList.add("is-delayed");
+        if(status)status.textContent="Соединение медленное";
+      },2500);
+      window.addEventListener("kutno:ready",function(){clearTimeout(window.__kutnoBootTimer)},{once:true});
+    </script>
   </head>
   <body>
-    <div class="illustration-preload-cache" aria-hidden="true">
-      <img src="/illustrations/kitchen-hero.webp" alt="" width="1" height="1" loading="eager" decoding="sync" />
-      <img src="/illustrations/base-hero.webp" alt="" width="1" height="1" loading="eager" decoding="sync" />
-      <img src="/illustrations/am-heart-hero.webp" alt="" width="1" height="1" loading="eager" decoding="sync" />
-      <img src="/illustrations/favorites-hero.webp" alt="" width="1" height="1" loading="eager" decoding="sync" />
+    <div id="app">
+      <main class="boot" data-kutno-shell>
+        <header class="boot-head">
+          <div class="boot-logo"><span class="boot-mark" aria-hidden="true"></span><span>Кутно</span></div>
+          <span class="boot-mode">загрузка</span>
+        </header>
+        <section class="boot-main">
+          <p class="boot-kicker">Рецепты из того, что есть</p>
+          <h1>Что приготовить сегодня</h1>
+          <p class="boot-copy">Подготавливаем кухню и базу рецептов. Первый экран уже работает без загрузки приложения.</p>
+          <div class="boot-progress" aria-hidden="true"></div>
+          <p class="boot-status" data-kutno-shell-status aria-live="polite">Запускаем Кутно…</p>
+          <div class="boot-help">
+            <p>Основная версия загружается нестабильно. Можно повторить попытку или сразу открыть лёгкую версию без изображений и тяжёлых скриптов.</p>
+            <div class="boot-actions">
+              <a href="/lite">Открыть лёгкую версию</a>
+              <button type="button" onclick="location.reload()">Повторить</button>
+            </div>
+          </div>
+        </section>
+        <footer class="boot-foot">kutno.ru · работает даже при медленном соединении</footer>
+      </main>
     </div>
-    <div id="app"></div>
-    <script src="/feature-sync-throttle.js?v=2"></script>
-    <script type="module" src="/src/main.js?v=19"></script>
-    <script type="module" src="/kutno-features.js?v=5"></script>
-    <script type="module" src="/src/kutno-next.js?v=1"></script>
-    <script type="module" src="/src/kutno-ranking.js?v=1"></script>
+    <noscript><p style="padding:24px;font-family:Arial,sans-serif">Для полной версии нужен JavaScript. <a href="/lite">Открыть лёгкую версию</a>.</p></noscript>
+    <script type="module" src="/src/bootstrap.js?v=1"></script>
   </body>
 </html>

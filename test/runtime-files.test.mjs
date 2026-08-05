@@ -12,7 +12,9 @@ const runtimeFiles = [
   "worker/next-entry.js",
   "worker/catalog-cursor.js",
   "worker/catalog-page.js",
+  "worker/lite-page.js",
   "worker/manual-recipes.js",
+  "src/bootstrap.js",
   "src/ingredient-semantics.js",
   "src/ingredient-semantics-v2.js",
   "src/ingredient-semantics-v3.js",
@@ -27,6 +29,7 @@ const runtimeFiles = [
   "src/catalog-facets.inject.js",
   "public/kutno-features.js",
   "public/feature-sync-throttle.js",
+  "public/sw.js",
 ];
 
 test("runtime-файлы Кутно проходят синтаксическую проверку", () => {
@@ -39,18 +42,20 @@ test("runtime-файлы Кутно проходят синтаксическу�
   }
 });
 
-test("клиент устойчиво догружает страницы и знает всю базу", () => {
+test("клиент устойчиво стартует, догружает страницы и знает всю базу", () => {
   const bridge = readFileSync("src/kutno-bridge.inject.js", "utf8");
   const matching = readFileSync("src/matching-engine.inject.js", "utf8");
   const reset = readFileSync("src/fetch-reset.inject.js", "utf8");
   const fixes = readFileSync("src/matching-fixes.inject.js", "utf8");
   const performance = readFileSync("src/catalog-performance.inject.js", "utf8");
   const facets = readFileSync("src/catalog-facets.inject.js", "utf8");
+  const bootstrap = readFileSync("src/bootstrap.js", "utf8");
   const api = readFileSync("src/kutno-api.js", "utf8");
   const store = readFileSync("src/kutno-store.js", "utf8");
   const next = readFileSync("src/kutno-next.js", "utf8");
   const catalogCss = readFileSync("public/catalog-stability.css", "utf8");
   const throttle = readFileSync("public/feature-sync-throttle.js", "utf8");
+  const serviceWorker = readFileSync("public/sw.js", "utf8");
   const vite = readFileSync("vite.config.js", "utf8");
   const index = readFileSync("index.html", "utf8");
   assert.match(bridge, /window\.kutnoBridge\s*=/);
@@ -101,6 +106,13 @@ test("клиент устойчиво догружает страницы и з�
   assert.match(catalogCss, /@keyframes catalog-card-reveal/);
   assert.match(catalogCss, /prefers-reduced-motion/);
   assert.match(throttle, /catch\s*\{\s*pathname = ""/);
+  assert.match(bootstrap, /await import\("\.\/main\.js"\)/);
+  assert.match(bootstrap, /requestIdleCallback/);
+  assert.match(bootstrap, /navigator\.serviceWorker\.register/);
+  assert.match(bootstrap, /Откройте лёгкую версию/);
+  assert.match(serviceWorker, /kutno-resilient-v1/);
+  assert.match(serviceWorker, /networkFirst/);
+  assert.match(serviceWorker, /cacheFirst/);
   assert.match(vite, /import \{ kutnoApi \} from "\.\/kutno-api\.js"/);
   assert.ok(vite.indexOf("${matchingSource}") < vite.indexOf("${fetchResetSource}"));
   assert.ok(vite.indexOf("${matchingFixesSource}") < vite.indexOf("${catalogPerformanceSource}"));
@@ -109,13 +121,14 @@ test("клиент устойчиво догружает страницы и з�
   assert.match(vite, /configuredFeatureBaseStaples/);
   assert.match(vite, /DEFAULT_FEATURE_BASE_STAPLES/);
   assert.match(vite, /Соль, воду, растительное масло и сахар/);
-  assert.match(index, /main\.js\?v=19/);
-  assert.match(index, /kutno-next\.css/);
-  assert.match(index, /src\/kutno-next\.js/);
+  assert.match(index, /bootstrap\.js\?v=1/);
+  assert.match(index, /data-kutno-shell/);
+  assert.match(index, /href="\/lite"/);
+  assert.doesNotMatch(index, /rel="preload" as="image"/);
   assert.doesNotMatch(index, /dom-stability\.js/);
 });
 
-test("Worker формирует страницу и лёгкий индекс всей базы", () => {
+test("Worker формирует страницу, индекс базы и облегчённую версию", () => {
   const featureWorker = readFileSync("worker/entry.js", "utf8");
   const matchingWorker = readFileSync("worker/matching-entry.js", "utf8");
   const oilFixWorker = readFileSync("worker/oil-fix-entry.js", "utf8");
@@ -123,6 +136,7 @@ test("Worker формирует страницу и лёгкий индекс в
   const nextWorker = readFileSync("worker/next-entry.js", "utf8");
   const cursor = readFileSync("worker/catalog-cursor.js", "utf8");
   const catalogPage = readFileSync("worker/catalog-page.js", "utf8");
+  const litePage = readFileSync("worker/lite-page.js", "utf8");
   const manualCatalog = readFileSync("worker/manual-recipes.js", "utf8");
   const wrangler = readFileSync("wrangler.jsonc", "utf8");
   assert.match(featureWorker, /return baseWorker\.fetch\(request, env, ctx\)/);
@@ -138,6 +152,7 @@ test("Worker формирует страницу и лёгкий индекс в
   assert.match(safeWorker, /oilFixWorker\.fetch/);
   assert.match(safeWorker, /catalogFallback/);
   assert.match(nextWorker, /serveCatalogPage/);
+  assert.match(nextWorker, /serveLitePage/);
   assert.doesNotMatch(nextWorker, /data\.recipes\.slice/);
   assert.match(cursor, /CATALOG_VERSION/);
   assert.match(cursor, /encodeCatalogCursor/);
@@ -149,6 +164,9 @@ test("Worker формирует страницу и лёгкий индекс в
   assert.match(catalogPage, /index/);
   assert.match(catalogPage, /offset === 0/);
   assert.match(catalogPage, /manualRecipesForPortions/);
+  assert.match(litePage, /Рецепты без тяжёлой загрузки/);
+  assert.match(litePage, /serveLitePage/);
+  assert.doesNotMatch(litePage, /<script/);
   assert.match(nextWorker, /telemetry_events/);
   assert.match(wrangler, /worker\/next-entry\.js/);
   assert.match(manualCatalog, /kutno-manual-catalog/);
