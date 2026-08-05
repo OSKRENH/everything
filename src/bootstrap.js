@@ -118,7 +118,11 @@ async function startApplication() {
   }
 }
 
-if ("serviceWorker" in navigator) {
+const shouldRegisterServiceWorker = "serviceWorker" in navigator
+  && location.protocol === "https:"
+  && !["localhost", "127.0.0.1"].includes(location.hostname);
+
+if (shouldRegisterServiceWorker) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
   }, { once: true });
