@@ -66,13 +66,18 @@ async function addKitchenProducts(page) {
   await expect(page.locator('[data-remove-ingredient="молоко"]')).toBeVisible();
 }
 
-test("основной подбор ставит серверный рецепт выше резерва и учитывает количество", async ({ page }) => {
-  const requests = [];
-  await page.addInitScript(() => {
+async function setKitchenQuantities(page) {
+  await page.evaluate(() => {
     localStorage.setItem("kutno-pantry-details-v1", JSON.stringify({
       яйца: { name: "яйца", quantity: 1, unit: "шт.", updatedAt: Date.now() },
       молоко: { name: "молоко", quantity: 250, unit: "мл", updatedAt: Date.now() },
     }));
+  });
+}
+
+test("основной подбор ставит серверный рецепт выше резерва и учитывает количество", async ({ page }) => {
+  const requests = [];
+  await page.addInitScript(() => {
     localStorage.setItem("kutno-recipe-feedback-v1", JSON.stringify([{
       recipeId: "old-milk-recipe",
       title: "Старое молочное блюдо",
@@ -93,6 +98,7 @@ test("основной подбор ставит серверный рецепт
 
   await page.goto("/");
   await addKitchenProducts(page);
+  await setKitchenQuantities(page);
   await page.getByRole("button", { name: "Предложить блюда" }).click();
 
   await expect(page.getByRole("button", { name: "Серверный омлет", exact: true }).first()).toBeVisible();
