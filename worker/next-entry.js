@@ -1,7 +1,7 @@
 import safeWorker from "./safe-entry.js";
+import { serveCatalogPage } from "./catalog-page.js";
+export { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
 
-const MAX_CATALOG_LIMIT = 12;
-const DEFAULT_CATALOG_LIMIT = 5;
 const MAX_TELEMETRY_EVENTS = 20;
 
 function json(data, status = 200, headers = {}) {
@@ -13,23 +13,6 @@ function json(data, status = 200, headers = {}) {
       ...headers,
     },
   });
-}
-
-export function encodeCatalogCursor(offset) {
-  const value = `v1:${Math.max(0, Math.floor(Number(offset) || 0))}`;
-  return btoa(value).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-}
-
-export function decodeCatalogCursor(cursor = "") {
-  if (!cursor) return 0;
-  try {
-    const padded = String(cursor).replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(cursor.length / 4) * 4, "=");
-    const value = atob(padded);
-    const match = value.match(/^v1:(\d+)$/);
-    return match ? Math.max(0, Number(match[1]) || 0) : 0;
-  } catch {
-    return 0;
-  }
 }
 
 function cleanText(value, maxLength = 500) {
@@ -96,38 +79,6 @@ async function saveTelemetry(request, env, requestId) {
   return json({ ok: true, accepted: events.length }, 202, { "x-request-id": requestId });
 }
 
-async function paginatedCatalog(request, env, ctx, requestId) {
-  const url = new URL(request.url);
-  const limit = Math.min(MAX_CATALOG_LIMIT, Math.max(1, Number(url.searchParams.get("limit")) || DEFAULT_CATALOG_LIMIT));
-  const offset = decodeCatalogCursor(url.searchParams.get("cursor") || "");
-  url.searchParams.delete("limit");
-  url.searchParams.delete("cursor");
-
-  const upstream = await safeWorker.fetch(new Request(url.toString(), request), env, ctx);
-  const data = await upstream.clone().json().catch(() => ({}));
-  if (!upstream.ok || !Array.isArray(data.recipes)) {
-    const headers = new Headers(upstream.headers);
-    headers.set("x-request-id", requestId);
-    return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers });
-  }
-
-  const total = data.recipes.length;
-  const recipes = data.recipes.slice(offset, offset + limit);
-  const nextOffset = offset + recipes.length;
-  const nextCursor = nextOffset < total ? encodeCatalogCursor(nextOffset) : "";
-  return json({
-    recipes,
-    total,
-    nextCursor,
-    page: Math.floor(offset / limit) + 1,
-    limit,
-    catalogVersion: data.catalogVersion || "",
-  }, 200, {
-    "x-request-id": requestId,
-    "x-kutno-catalog-page": String(Math.floor(offset / limit) + 1),
-  });
-}
-
 async function recordServerFailure(env, ctx, requestId, request, status, durationMs, message = "") {
   if (!env.DB || !ctx?.waitUntil) return;
   const synthetic = new Request("https://kutno.local/api/telemetry", {
@@ -157,7 +108,14 @@ export default {
         return saveTelemetry(request, env, requestId);
       }
       if (url.pathname === "/api/catalog" && request.method === "GET") {
-        return paginatedCatalog(request, env, ctx, requestId);
+        const response = await serveCatalogPage(request, requestId);
+        const headers = new Headers(response.headers);
+        headers.set("server-timing", `catalog;dur=${Date.now() - startedAt}`);
+        return new Response(response.body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+        });
       }
 
       const response = await safeWorker.fetch(request, env, ctx);
