@@ -11,13 +11,24 @@ async function page(cursor = "", limit = 5) {
   return response.json();
 }
 
-test("первая страница содержит ровно пять рецептов и рабочий курсор", async () => {
+test("первая страница содержит пять карточек и метаданные всей базы", async () => {
   const first = await page();
   assert.equal(first.recipes.length, 5);
   assert.ok(first.total > first.recipes.length);
+  assert.equal(first.index.length, first.total);
   assert.ok(first.nextCursor);
   assert.equal(decodeCatalogCursor(first.nextCursor), 5);
   assert.equal(first.page, 1);
+
+  const cuisines = first.facets.cuisines.map((item) => item.value);
+  assert.ok(cuisines.includes("Россия"));
+  assert.ok(cuisines.includes("Италия"));
+  assert.ok(cuisines.includes("Испания"));
+  assert.ok(cuisines.length > new Set(first.recipes.map((recipe) => recipe.cuisine)).size);
+
+  const second = await page(first.nextCursor);
+  assert.equal("index" in second, false, "полный индекс не нужно повторять на каждой странице");
+  assert.equal("facets" in second, false, "фильтры не нужно повторять на каждой странице");
 });
 
 test("все страницы проходят каталог без повторов и пропусков", async () => {
