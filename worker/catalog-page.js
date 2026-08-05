@@ -121,6 +121,60 @@ function catalogSources(portions) {
   return sources;
 }
 
+function sourceIdentity(kind, recipe) {
+  if (kind === "world") return `catalog:${recipe.id}`;
+  return String(recipe.id || recipe.source?.id || `manual:${normalized(recipe.title)}`);
+}
+
+function catalogIndexEntry({ kind, recipe }) {
+  const cuisine = String(recipe.cuisine || "Другая кухня");
+  const ingredients = (Array.isArray(recipe.ingredients) ? recipe.ingredients : [])
+    .map((item) => String(item?.name || "").trim())
+    .filter(Boolean);
+  return {
+    id: sourceIdentity(kind, recipe),
+    title: String(recipe.title || ""),
+    subtitle: String(recipe.subtitle || ""),
+    cuisine,
+    flag: String(recipe.flag || "🌍"),
+    course: String(recipe.course || "основное"),
+    protein: String(recipe.protein || "без мяса"),
+    difficulty: String(recipe.difficulty || "легко"),
+    minutes: Number(recipe.minutes) || 30,
+    ingredients,
+    searchable: normalized([recipe.title, recipe.subtitle, cuisine, ...ingredients].join(" ")),
+  };
+}
+
+function orderedUnique(values, preferred = []) {
+  const unique = [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+  return unique.sort((first, second) => {
+    const firstPreferred = preferred.indexOf(first);
+    const secondPreferred = preferred.indexOf(second);
+    if (firstPreferred !== -1 || secondPreferred !== -1) {
+      if (firstPreferred === -1) return 1;
+      if (secondPreferred === -1) return -1;
+      return firstPreferred - secondPreferred;
+    }
+    return first.localeCompare(second, "ru");
+  });
+}
+
+function catalogMetadata(sources) {
+  const index = sources.map(catalogIndexEntry);
+  const cuisineFlags = Object.fromEntries(index.map((recipe) => [recipe.cuisine, recipe.flag]));
+  return {
+    index,
+    facets: {
+      cuisines: orderedUnique(index.map((recipe) => recipe.cuisine), ["Россия"])
+        .map((value) => ({ value, flag: cuisineFlags[value] || "🌍" })),
+      difficulties: orderedUnique(index.map((recipe) => recipe.difficulty), ["легко", "обычно", "сложно"]),
+      courses: orderedUnique(index.map((recipe) => recipe.course), ["суп", "основное", "салат", "закуска", "завтрак", "выпечка", "соус"]),
+      proteins: orderedUnique(index.map((recipe) => recipe.protein), ["мясо", "рыба и морепродукты", "без мяса"]),
+    },
+  };
+}
+
 function contextFromUrl(url) {
   const baseIngredients = url.searchParams.getAll("base");
   return {
@@ -147,6 +201,7 @@ export async function serveCatalogPage(request, requestId = "") {
   });
   const nextOffset = offset + pageSources.length;
   const nextCursor = nextOffset < sources.length ? encodeCatalogCursor(nextOffset) : "";
+  const metadata = offset === 0 ? catalogMetadata(sources) : null;
   return json({
     recipes,
     total: sources.length,
@@ -154,6 +209,7 @@ export async function serveCatalogPage(request, requestId = "") {
     page: Math.floor(offset / limit) + 1,
     limit,
     catalogVersion: CATALOG_VERSION,
+    ...(metadata || {}),
   }, 200, {
     ...(requestId ? { "x-request-id": requestId } : {}),
     "x-kutno-catalog-page": String(Math.floor(offset / limit) + 1),
