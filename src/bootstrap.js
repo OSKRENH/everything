@@ -27,6 +27,17 @@ function startStyles() {
   }
 }
 
+function loadPublicModule(src) {
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.type = "module";
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = resolve;
+    document.head.append(script);
+  });
+}
+
 function installFeatureSyncThrottle() {
   const originalFetch = window.fetch.bind(window);
   const interval = 4000;
@@ -94,7 +105,7 @@ async function startApplication() {
     window.dispatchEvent(new CustomEvent("kutno:ready"));
 
     const loadExtras = () => Promise.allSettled([
-      import("/kutno-features.js?v=5"),
+      loadPublicModule("/kutno-features.js?v=5"),
       import("./kutno-next.js"),
       import("./kutno-ranking.js"),
     ]);
