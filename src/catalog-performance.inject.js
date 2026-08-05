@@ -4,6 +4,7 @@ const CATALOG_INCREMENT = 1;
 const CATALOG_RETRY_COUNT = 3;
 const CATALOG_BACKGROUND_RECOVERY_LIMIT = 2;
 const CATALOG_REVEAL_DURATION = 480;
+const CATALOG_EMPTY_PAGE_LIMIT = 5;
 let catalogVisibleLimit = CATALOG_INITIAL_SIZE;
 let catalogResultKey = "";
 let catalogFilterKey = "";
@@ -18,7 +19,8 @@ let catalogUsingFallback = false;
 let catalogNextCursor = "";
 let catalogTotal = 0;
 let catalogPageLoading = false;
-let catalogLastFilteredCount = 0;
+let catalogPageError = "";
+let catalogSeenCursors = new Set();
 
 function catalogDelay(milliseconds) {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
@@ -43,32 +45,55 @@ function safeCatalogRecipes(recipesToUse) {
   }
 }
 
+function recipeIdentity(recipe) {
+  try {
+    return recipeId(recipe);
+  } catch {
+    return String(recipe?.id || recipe?.source?.id || recipe?.title || "");
+  }
+}
+
 function mergeCatalogRecipes(existing, incoming) {
-  const seen = new Set();
-  return safeCatalogRecipes([...existing, ...incoming].filter((recipe) => {
-    const id = recipeId(recipe);
-    if (!id || seen.has(id)) return false;
-    seen.add(id);
-    return true;
-  }));
+  const known = new Set(existing.map(recipeIdentity).filter(Boolean));
+  const uniqueIncoming = [];
+  for (const recipe of incoming) {
+    const id = recipeIdentity(recipe);
+    if (!id || known.has(id)) continue;
+    known.add(id);
+    uniqueIncoming.push(recipe);
+  }
+  return {
+    recipes: safeCatalogRecipes([...existing, ...uniqueIncoming]),
+    added: uniqueIncoming.length,
+  };
 }
 
 function applyCatalogPage(page, { replace = false, fallback = false } = {}) {
   const incoming = Array.isArray(page?.recipes) ? page.recipes : [];
-  catalogRecipes = replace ? safeCatalogRecipes(incoming) : mergeCatalogRecipes(catalogRecipes, incoming);
+  let added = incoming.length;
+  if (replace) {
+    catalogRecipes = safeCatalogRecipes(incoming);
+    catalogSeenCursors = new Set();
+  } else {
+    const merged = mergeCatalogRecipes(catalogRecipes, incoming);
+    catalogRecipes = merged.recipes;
+    added = merged.added;
+  }
   catalogNextCursor = typeof page?.nextCursor === "string" ? page.nextCursor : "";
   catalogTotal = Math.max(catalogRecipes.length, Number(page?.total) || catalogRecipes.length);
   catalogUsingFallback = fallback;
+  catalogPageError = "";
   try {
     if (replace) resetSwipeDeck();
     else {
-      const known = new Set(swipeRecipes.map((recipe) => recipeId(recipe)));
-      swipeRecipes.push(...incoming.filter((recipe) => !known.has(recipeId(recipe))));
+      const known = new Set(swipeRecipes.map(recipeIdentity));
+      swipeRecipes.push(...incoming.filter((recipe) => !known.has(recipeIdentity(recipe))));
     }
   } catch {
     swipeRecipes = [...catalogRecipes];
     swipeIndex = 0;
   }
+  return added;
 }
 
 function localCatalogFallback() {
@@ -94,24 +119,46 @@ function stopCatalogRecovery() {
 }
 
 async function loadNextCatalogPage() {
-  if (!catalogNextCursor || catalogPageLoading || catalogUsingFallback) return false;
+  const cursor = catalogNextCursor;
+  if (!cursor || catalogPageLoading || catalogUsingFallback) return { loaded: false, added: 0 };
+  if (catalogSeenCursors.has(cursor)) {
+    catalogNextCursor = "";
+    catalogPageError = "Каталог остановил повторяющуюся страницу";
+    kutnoApi.telemetry("catalog_cursor_loop", { cursor: cursor.slice(0, 40), loaded: catalogRecipes.length }, "error");
+    return { loaded: false, added: 0 };
+  }
+
+  catalogSeenCursors.add(cursor);
   catalogPageLoading = true;
   try {
-    const page = await requestCatalogPage(catalogNextCursor);
-    applyCatalogPage(page);
+    const page = await requestCatalogPage(cursor);
+    if (page.nextCursor === cursor) {
+      page.nextCursor = "";
+      kutnoApi.telemetry("catalog_cursor_not_advanced", { cursor: cursor.slice(0, 40) }, "error");
+    }
+    const added = applyCatalogPage(page);
     catalogError = "";
-    return true;
-  } catch {
-    return false;
+    kutnoApi.telemetry("catalog_page_loaded", {
+      added,
+      loaded: catalogRecipes.length,
+      total: catalogTotal,
+      hasMore: Boolean(catalogNextCursor),
+    }, "debug");
+    return { loaded: true, added };
+  } catch (error) {
+    catalogSeenCursors.delete(cursor);
+    catalogPageError = error instanceof Error ? error.message : "Не удалось загрузить следующую страницу";
+    kutnoApi.telemetry("catalog_page_failed", { message: catalogPageError, loaded: catalogRecipes.length }, "error");
+    return { loaded: false, added: 0 };
   } finally {
     catalogPageLoading = false;
   }
 }
 
 window.kutnoLoadNextCatalogPage = async function kutnoLoadNextCatalogPage() {
-  const loaded = await loadNextCatalogPage();
-  if (loaded && currentView === "catalog") updateCatalogResults();
-  return loaded;
+  const result = await loadNextCatalogPage();
+  if (result.loaded && currentView === "catalog") updateCatalogResults();
+  return result.loaded;
 };
 
 async function recoverFullCatalogSilently() {
@@ -146,19 +193,16 @@ function scheduleFullCatalogRecovery(delay = 4000) {
   catalogBackgroundRecoveryTimer = window.setTimeout(recoverFullCatalogSilently, delay);
 }
 
-/*
- * При первом открытии трижды пробуем получить первую серверную страницу.
- * Если сеть не отвечает, показываем встроенную базу. Фоновое восстановление
- * не включает загрузчик и ограничено двумя попытками.
- */
 loadCatalog = async function resilientCatalogLoad(force = false) {
   if ((catalogRecipes.length && !force) || catalogLoading) return;
   catalogLoading = true;
   catalogError = "";
+  catalogPageError = "";
   if (force) {
     catalogNextCursor = "";
     catalogTotal = 0;
     catalogVisibleLimit = CATALOG_INITIAL_SIZE;
+    catalogSeenCursors = new Set();
   }
   renderMainView();
 
@@ -218,19 +262,28 @@ function currentCatalogFilterKey() {
   ].join("::");
 }
 
+function currentFilteredCatalog() {
+  try {
+    return safeCatalogRecipes(filteredCatalogRecipes());
+  } catch {
+    return safeCatalogRecipes(catalogRecipes);
+  }
+}
+
 function catalogQuickKey() {
   return [
-    catalogRecipes.map((recipe) => recipeId(recipe)).join("|"),
-    favoriteRecipes.map((recipe) => recipeId(recipe)).join("|"),
+    catalogRecipes.map(recipeIdentity).join("|"),
+    favoriteRecipes.map(recipeIdentity).join("|"),
     currentCatalogFilterKey(),
     catalogVisibleLimit,
     catalogNextCursor,
     catalogPageLoading,
+    catalogPageError,
   ].join("::");
 }
 
 function catalogScrollSentinel(left) {
-  const text = left > 0 ? `Ещё ${left}` : "Ещё рецепты";
+  const text = catalogPageError ? "Повторить загрузку" : left > 0 ? `Ещё ${left}` : "Ещё рецепты";
   return `<div class="catalog-scroll-sentinel" data-catalog-scroll-sentinel aria-hidden="true"><span>${text}</span></div>`;
 }
 
@@ -253,14 +306,16 @@ function renderCatalogGroupsLimited(items, limit) {
     </section>`;
   }).join("");
   const hasMore = items.length > limit || Boolean(catalogNextCursor);
-  return hasMore ? `${markup}${catalogScrollSentinel(Math.max(0, catalogTotal - Math.min(catalogTotal, limit)))}` : markup;
+  const left = Math.max(0, catalogTotal - Math.min(catalogTotal, limit));
+  return hasMore ? `${markup}${catalogScrollSentinel(left)}` : markup;
 }
 
 function renderPlainCatalogLimited(items, limit) {
   const visible = items.slice(0, limit);
   const cards = visible.map((recipe) => renderCatalogCard(recipe, catalogRecipes.indexOf(recipe))).join("");
   const hasMore = items.length > limit || Boolean(catalogNextCursor);
-  return hasMore ? `${cards}${catalogScrollSentinel(Math.max(0, catalogTotal - Math.min(catalogTotal, limit)))}` : cards;
+  const left = Math.max(0, catalogTotal - Math.min(catalogTotal, limit));
+  return hasMore ? `${cards}${catalogScrollSentinel(left)}` : cards;
 }
 
 function finishCatalogReveal(card, header) {
@@ -288,22 +343,40 @@ function animateNewCatalogCard(grid) {
   return true;
 }
 
+async function loadUntilNextFilteredRecipe(previousFilteredCount) {
+  let attempts = 0;
+  let filteredCount = previousFilteredCount;
+  while (catalogNextCursor && attempts < CATALOG_EMPTY_PAGE_LIMIT && filteredCount <= previousFilteredCount) {
+    const result = await loadNextCatalogPage();
+    if (!result.loaded) break;
+    attempts += 1;
+    filteredCount = currentFilteredCatalog().length;
+  }
+  return filteredCount;
+}
+
 async function revealNextCatalogItem() {
   if (catalogLoadPending) return;
   catalogLoadPending = true;
   catalogLoadObserver?.disconnect();
   catalogLoadObserver = null;
 
-  if (catalogVisibleLimit >= catalogLastFilteredCount && catalogNextCursor) {
-    await loadNextCatalogPage();
+  let filtered = currentFilteredCatalog();
+  if (catalogVisibleLimit >= filtered.length && catalogNextCursor) {
+    await loadUntilNextFilteredRecipe(filtered.length);
+    filtered = currentFilteredCatalog();
   }
 
-  if (catalogVisibleLimit < catalogRecipes.length || catalogNextCursor) {
+  if (catalogVisibleLimit < filtered.length) {
     catalogAnimateNext = true;
     catalogVisibleLimit += CATALOG_INCREMENT;
   }
-  catalogLoadPending = false;
+
   updateCatalogResults();
+  if (!catalogAnimateNext) {
+    catalogLoadPending = false;
+    requestAnimationFrame(armCatalogAutoLoad);
+  }
 }
 
 function armCatalogAutoLoad() {
@@ -332,14 +405,7 @@ updateCatalogResults = function performantCatalogResults() {
   const grid = document.querySelector(".catalog-grid");
   if (!count || !grid) return;
 
-  let filtered = [];
-  try {
-    filtered = safeCatalogRecipes(filteredCatalogRecipes());
-  } catch {
-    filtered = safeCatalogRecipes(catalogRecipes);
-  }
-  catalogLastFilteredCount = filtered.length;
-
+  const filtered = currentFilteredCatalog();
   const nextFilterKey = currentCatalogFilterKey();
   if (catalogFilterKey !== nextFilterKey) {
     catalogFilterKey = nextFilterKey;
@@ -356,14 +422,14 @@ updateCatalogResults = function performantCatalogResults() {
     quickKey = String(Date.now());
   }
 
-  catalogResultKey = filtered.map((recipe) => recipeId(recipe)).join("|");
+  catalogResultKey = filtered.map(recipeIdentity).join("|");
   grid.dataset.catalogPerformanceKey = quickKey;
-  const totalLabel = catalogTotal > filtered.length ? ` из ${catalogTotal}` : "";
-  count.innerHTML = `Загружено — ${filtered.length.toString().padStart(2, "0")}${totalLabel}${state.ingredients.length ? matchingSummary(filtered) : ""}`;
+  const loadedLabel = catalogTotal > catalogRecipes.length ? ` из ${catalogTotal}` : "";
+  count.innerHTML = `Загружено — ${catalogRecipes.length.toString().padStart(2, "0")}${loadedLabel}${state.ingredients.length ? matchingSummary(filtered) : ""}`;
 
   if (!filtered.length) {
     grid.innerHTML = catalogNextCursor
-      ? `${catalogScrollSentinel(catalogTotal)}<p class="catalog-empty">Ищем подходящие рецепты дальше…</p>`
+      ? `${catalogScrollSentinel(Math.max(0, catalogTotal - catalogRecipes.length))}<p class="catalog-empty">Ищем подходящие рецепты дальше…</p>`
       : `<p class="catalog-empty">Ничего не нашлось. Попробуйте убрать один из фильтров.</p>`;
     requestAnimationFrame(armCatalogAutoLoad);
     return;
