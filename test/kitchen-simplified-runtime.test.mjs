@@ -33,6 +33,8 @@ test("результаты содержат сортировки и постеп
   assert.match(source, /data-kitchen-reveal-more/);
   assert.match(source, /applyKitchenResultVisibilityV5/);
   assert.match(source, /entry\.hidden = index >= kitchenVisibleResultsV5/);
+  assert.match(source, /const nextText = `Осталось \$\{remaining\}`/);
+  assert.match(source, /remainder\.textContent !== nextText/);
   assert.match(source, /function mountKitchenSortV5/);
   assert.match(source, /function flattenSortedKitchenResultsV5/);
   assert.match(source, /recipeOrder = new Map/);
