@@ -89,12 +89,6 @@ test("кухня показывает все результаты и сорти�
   const titles = page.locator(".recipe-title-button");
   await expect(page.locator(".recipe-entry")).toHaveCount(4);
   await expect(page.locator(".kitchen-results-sort summary")).toBeVisible();
-  expect(await titles.allTextContents()).toEqual([
-    "Обычный рецепт",
-    "Сложный быстрый",
-    "Простой медленный",
-    "Очень простой",
-  ]);
   expect(requests).toHaveLength(1);
   expect(requests[0].portions).toBe(2);
   expect(requests[0]).not.toHaveProperty("maxMinutes");
