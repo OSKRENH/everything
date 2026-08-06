@@ -146,7 +146,8 @@ function applyKitchenResultVisibilityV5(recipeList) {
     return;
   }
   const remainder = existingButton.querySelector("small");
-  if (remainder) remainder.textContent = `Осталось ${remaining}`;
+  const nextText = `Осталось ${remaining}`;
+  if (remainder && remainder.textContent !== nextText) remainder.textContent = nextText;
 }
 
 function mountKitchenSortV5() {
