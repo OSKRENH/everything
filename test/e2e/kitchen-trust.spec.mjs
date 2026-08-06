@@ -66,6 +66,13 @@ async function addKitchenProducts(page) {
   await expect(page.locator('[data-remove-ingredient="молоко"]')).toBeVisible();
 }
 
+async function addKitchenProductThroughInput(page, product) {
+  await page.locator("#ingredient-input").fill(product);
+  await page.getByRole("button", { name: "Добавить продукты" }).click();
+  await expect(page.locator(`[data-remove-ingredient="${product}"]`)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Предложить блюда" })).toBeEnabled();
+}
+
 async function setKitchenQuantities(page) {
   await page.evaluate(() => {
     localStorage.setItem("kutno-pantry-details-v1", JSON.stringify({
@@ -136,7 +143,7 @@ test("строгий режим расширяется только после �
   });
 
   await page.goto("/");
-  await page.getByRole("button", { name: "+ яйца", exact: true }).click();
+  await addKitchenProductThroughInput(page, "яйца");
   await page.getByRole("button", { name: "Предложить блюда" }).click();
 
   const expand = page.getByRole("button", { name: "Показать с одной покупкой · 4" });
