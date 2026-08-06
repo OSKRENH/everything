@@ -6,9 +6,25 @@ function normalizeKitchenPlanningStateV5() {
 }
 
 function stripKitchenPlanningControlsV5(markup) {
-  return String(markup)
-    .replace(/<fieldset>\s*<legend>Время<\/legend>[\s\S]*?<\/fieldset>/u, "")
-    .replace(/\s*<section class="form-section preferences-section">[\s\S]*?<\/section>\s*(?=<button class="primary-action")/u, "\n\n        ");
+  let output = String(markup);
+
+  const timeLegend = output.indexOf("<legend>Время</legend>");
+  const courseLegend = output.indexOf("<legend>Что приготовить</legend>", Math.max(0, timeLegend));
+  if (timeLegend >= 0 && courseLegend > timeLegend) {
+    const timeFieldset = output.lastIndexOf("<fieldset>", timeLegend);
+    const courseFieldset = output.lastIndexOf("<fieldset>", courseLegend);
+    if (timeFieldset >= 0 && courseFieldset > timeFieldset) {
+      output = `${output.slice(0, timeFieldset)}${output.slice(courseFieldset)}`;
+    }
+  }
+
+  const preferencesStart = output.indexOf('<section class="form-section preferences-section">');
+  const actionStart = output.indexOf('<button class="primary-action"', Math.max(0, preferencesStart));
+  if (preferencesStart >= 0 && actionStart > preferencesStart) {
+    output = `${output.slice(0, preferencesStart)}${output.slice(actionStart)}`;
+  }
+
+  return output;
 }
 
 function kitchenDifficultyRankV5(value = "") {
