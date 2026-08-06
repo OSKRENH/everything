@@ -6,8 +6,10 @@ test("форма кухни удаляет время, сложность и п�
   const source = readFileSync("src/kitchen-simplified.inject.js", "utf8");
   const vite = readFileSync("vite.config.js", "utf8");
 
-  assert.match(source, /<legend>Время<\\\/legend>/);
-  assert.match(source, /preferences-section/);
+  assert.match(source, /indexOf\("<legend>Время<\/legend>"\)/);
+  assert.match(source, /indexOf\("<legend>Что приготовить<\/legend>"/);
+  assert.match(source, /preferencesStart/);
+  assert.match(source, /actionStart/);
   assert.match(source, /state\.maxMinutes = 0/);
   assert.match(source, /state\.portions = 2/);
   assert.match(vite, /kitchen-simplified\.inject\.js/);
