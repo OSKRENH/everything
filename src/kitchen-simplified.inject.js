@@ -64,6 +64,7 @@ renderResults = function simplifiedKitchenResultsV5() {
   if (!recipes.length || isLoading || !markup.includes('<div class="recipe-list">')) return markup;
   return markup
     .replace("Варианты расположены от самого подходящего. Базовые специи и масло не считаются.", "Показаны все подходящие варианты. Базовые специи и масло не считаются.")
+    .replace("Сбросить время и тип блюда", "Показать все типы блюд")
     .replace('<div class="recipe-list">', `<div class="recipe-list">${renderKitchenSortV5()}`);
 };
 
