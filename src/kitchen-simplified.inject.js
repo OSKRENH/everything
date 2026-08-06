@@ -27,6 +27,13 @@ function stripKitchenPlanningControlsV5(markup) {
   return output;
 }
 
+function pruneKitchenPlanningControlsDomV5(root = app) {
+  root?.querySelectorAll?.(".preferences-section").forEach((section) => section.remove());
+  root?.querySelectorAll?.("fieldset > legend").forEach((legend) => {
+    if (legend.textContent?.trim() === "Время") legend.closest("fieldset")?.remove();
+  });
+}
+
 function kitchenDifficultyRankV5(value = "") {
   const text = String(value).toLocaleLowerCase("ru-RU");
   if (/очень\s*прост|легк/.test(text)) return 0;
@@ -165,6 +172,9 @@ app.addEventListener("click", (event) => {
   button.closest("details")?.removeAttribute("open");
   renderKitchenResults();
 });
+
+normalizeKitchenPlanningStateV5();
+pruneKitchenPlanningControlsDomV5();
 
 if (!document.querySelector('link[href="/kitchen-results-sorting.css?v=1"]')) {
   const stylesheet = document.createElement("link");
