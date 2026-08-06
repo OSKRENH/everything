@@ -68,6 +68,7 @@
   color: #f8f7f2;
 }
 
+.recipe-entry[hidden],
 .recipe-entry.kitchen-result-hidden {
   display: none !important;
 }
