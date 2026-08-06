@@ -83,6 +83,10 @@ export default defineConfig({
           .replace(
             "с учётом доступной техники, сложности и числа порций.",
             "с учётом доступной техники и выбранного типа блюда.",
+          )
+          .replace(
+            "Техника, сложность, порции и избранное останутся без изменений.",
+            "Техника и избранное останутся без изменений.",
           );
         return {
           code: `${semanticImport}\n${consistentMain}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}\n\n${catalogFacetsSource}\n\n${swipeFullCatalogSource}\n\n${matchingCoreV4Source}\n\n${kitchenSimplifiedSource}`,
