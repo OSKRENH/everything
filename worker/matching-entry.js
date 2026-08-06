@@ -48,13 +48,6 @@ function normalizedTitle(value = "") {
   return String(value).toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/[^а-яa-z0-9]+/giu, " ").trim();
 }
 
-function difficultyRank(value = "") {
-  const text = String(value).toLowerCase();
-  if (/слож|труд/.test(text)) return 2;
-  if (/обыч|сред/.test(text)) return 1;
-  return 0;
-}
-
 function recipeKey(recipe) {
   return String(recipe?.id || recipe?.source?.id || normalizedTitle(recipe?.title));
 }
@@ -74,7 +67,6 @@ function mergeRecipes(...groups) {
 }
 
 function recipePassesFilters(recipe, body) {
-  if (Number(body.maxMinutes) && Number(recipe.minutes) > Number(body.maxMinutes)) return false;
   if (body.course && body.course !== "все" && recipe.course !== body.course && !(body.course === "перекус" && ["закуска", "салат"].includes(recipe.course))) return false;
   const excluded = Array.isArray(body.excludeTitles) ? body.excludeTitles.map(normalizedTitle) : [];
   return !excluded.includes(normalizedTitle(recipe.title));
@@ -115,7 +107,6 @@ function enrichedWithContext(recipe, context, analysis = analyzeWithContext(reci
 
 function rankRecipes(recipes, body) {
   const context = matchingContext(body);
-  const targetDifficulty = difficultyRank(body.difficulty);
   return recipes
     .map((recipe) => {
       const analysis = analyzeWithContext(recipe, context);
@@ -131,7 +122,7 @@ function rankRecipes(recipes, body) {
       return {
         recipe: enriched,
         analysis,
-        rank: analysis.score + verifiedBonus - Math.abs(difficultyRank(enriched.difficulty) - targetDifficulty) * 12,
+        rank: analysis.score + verifiedBonus,
       };
     })
     .filter(({ recipe, analysis }) => recipePassesFilters(recipe, body) && groupAllowed(analysis.group, body.searchMode))
@@ -139,7 +130,7 @@ function rankRecipes(recipes, body) {
 }
 
 async function loadCatalogForMatching(request, env, ctx, body) {
-  const portions = Math.min(8, Math.max(1, Number(body.portions) || 2));
+  const portions = 2;
   const url = new URL(request.url);
   url.pathname = "/api/catalog";
   url.search = `?portions=${portions}`;
@@ -153,8 +144,15 @@ async function loadCatalogForMatching(request, env, ctx, body) {
 }
 
 async function runBaseGenerate(body, request, env, ctx) {
+  const {
+    difficulty: ignoredDifficulty,
+    maxMinutes: ignoredMaxMinutes,
+    portions: ignoredPortions,
+    ...unfilteredBody
+  } = body;
   const generationBody = {
-    ...body,
+    ...unfilteredBody,
+    portions: 2,
     equipment: [...new Set([...(Array.isArray(body.equipment) ? body.equipment : []), ...MANUAL_EQUIPMENT])],
   };
   const response = await featureWorker.fetch(requestWithJson(request, generationBody), env, ctx);
@@ -164,17 +162,16 @@ async function runBaseGenerate(body, request, env, ctx) {
   return { response, data, recipes };
 }
 
-function resultResponse(recipes, body, { source = "semantic-catalog", hasMore = false, suggestedExpansion = null, extra = {} } = {}) {
+function resultResponse(recipes, body, { source = "semantic-catalog", suggestedExpansion = null, extra = {} } = {}) {
   return json({
     ...extra,
-    recipes: recipes.slice(0, 3),
-    hasMore,
+    recipes,
+    hasMore: false,
     source,
     relaxation: null,
     ...(suggestedExpansion ? { suggestedExpansion } : {}),
     originalFilters: {
       searchMode: body.searchMode,
-      maxMinutes: body.maxMinutes,
       course: body.course,
     },
   });
@@ -192,14 +189,14 @@ function expansionSuggestion(body, catalog) {
       };
     }
   }
-  if (Number(body.maxMinutes) || (body.course && body.course !== "все")) {
-    const withoutFilters = rankRecipes(catalog, { ...body, maxMinutes: 0, course: "все" });
-    if (withoutFilters.length) {
+  if (body.course && body.course !== "все") {
+    const withoutCourse = rankRecipes(catalog, { ...body, course: "все" });
+    if (withoutCourse.length) {
       return {
         code: "relax-filters",
-        title: "Мешают дополнительные фильтры",
-        details: "Продукты и техника останутся прежними; изменятся только время и тип блюда.",
-        count: withoutFilters.length,
+        title: "Подходящие блюда есть в других разделах",
+        details: "Продукты и техника останутся прежними; изменится только тип блюда.",
+        count: withoutCourse.length,
       };
     }
   }
@@ -209,6 +206,10 @@ function expansionSuggestion(body, catalog) {
 async function smartGenerate(request, env, ctx) {
   const body = await request.clone().json().catch(() => ({}));
   if (!Array.isArray(body.ingredients) || !body.ingredients.length) return featureWorker.fetch(request, env, ctx);
+
+  body.maxMinutes = 0;
+  body.portions = 2;
+  delete body.difficulty;
 
   const catalog = await loadCatalogForMatching(request, env, ctx, body);
   const catalogRanked = rankRecipes(catalog, body).map((item) => item.recipe);
@@ -220,7 +221,6 @@ async function smartGenerate(request, env, ctx) {
     const manualOnly = combined.every((recipe) => recipe.source?.type === "kutno-manual-catalog");
     return resultResponse(combined, body, {
       source: manualOnly ? "manual-catalog" : catalogRanked.length ? "semantic-catalog" : "workers-ai",
-      hasMore: catalogRanked.length > 3 || Boolean(generated.data?.hasMore),
       extra: generated.data || {},
     });
   }

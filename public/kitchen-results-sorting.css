@@ -1,0 +1,88 @@
+.kitchen-results-sort {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid currentColor;
+}
+
+.kitchen-results-sort details {
+  position: relative;
+}
+
+.kitchen-results-sort summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-width: 220px;
+  padding: 10px 0;
+  cursor: pointer;
+  list-style: none;
+  font: inherit;
+}
+
+.kitchen-results-sort summary::-webkit-details-marker {
+  display: none;
+}
+
+.kitchen-results-sort summary span {
+  transition: transform 180ms ease;
+}
+
+.kitchen-results-sort details[open] summary span {
+  transform: rotate(180deg);
+}
+
+.kitchen-results-sort-menu {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  min-width: 280px;
+  background: #f8f7f2;
+  border: 1px solid #171715;
+  box-shadow: 0 18px 42px rgba(23, 23, 21, 0.12);
+}
+
+.kitchen-results-sort-menu button {
+  padding: 16px 18px;
+  border: 0;
+  border-bottom: 1px solid rgba(23, 23, 21, 0.2);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.kitchen-results-sort-menu button:last-child {
+  border-bottom: 0;
+}
+
+.kitchen-results-sort-menu button:hover,
+.kitchen-results-sort-menu button:focus-visible,
+.kitchen-results-sort-menu button.active {
+  background: #171715;
+  color: #f8f7f2;
+}
+
+@media (max-width: 720px) {
+  .kitchen-results-sort {
+    justify-content: stretch;
+    margin-bottom: 22px;
+  }
+
+  .kitchen-results-sort details,
+  .kitchen-results-sort summary {
+    width: 100%;
+  }
+
+  .kitchen-results-sort-menu {
+    right: auto;
+    left: 0;
+    width: 100%;
+    min-width: 0;
+  }
+}
