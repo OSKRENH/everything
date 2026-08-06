@@ -10,13 +10,14 @@ test("форма кухни удаляет время, сложность и п�
   assert.match(source, /indexOf\("<legend>Что приготовить<\/legend>"/);
   assert.match(source, /preferencesStart/);
   assert.match(source, /actionStart/);
+  assert.match(source, /pruneKitchenPlanningControlsDomV5/);
   assert.match(source, /state\.maxMinutes = 0/);
   assert.match(source, /state\.portions = 2/);
   assert.match(vite, /kitchen-simplified\.inject\.js/);
   assert.match(vite, /Техника и избранное останутся без изменений/);
 });
 
-test("результаты содержат обе пользовательские сортировки", () => {
+test("результаты содержат и восстанавливают обе пользовательские сортировки", () => {
   const source = readFileSync("src/kitchen-simplified.inject.js", "utf8");
 
   assert.match(source, /Приготовить быстрее/);
@@ -24,6 +25,9 @@ test("результаты содержат обе пользовательск�
   assert.match(source, /Number\(first\?\.minutes/);
   assert.match(source, /kitchenDifficultyRankV5/);
   assert.match(source, /data-kitchen-results-sort/);
+  assert.match(source, /function mountKitchenSortV5/);
+  assert.match(source, /insertAdjacentHTML\("afterbegin", renderKitchenSortV5\(\)\)/);
+  assert.match(source, /new MutationObserver\(scheduleKitchenSortMountV5\)/);
 });
 
 test("Worker и клиент не обрезают подходящие рецепты до трёх", () => {
