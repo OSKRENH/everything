@@ -17,7 +17,7 @@ test("форма кухни удаляет время, сложность и п�
   assert.match(vite, /Техника и избранное останутся без изменений/);
 });
 
-test("результаты содержат и восстанавливают обе пользовательские сортировки", () => {
+test("результаты содержат и закрепляют обе пользовательские сортировки", () => {
   const source = readFileSync("src/kitchen-simplified.inject.js", "utf8");
 
   assert.match(source, /Приготовить быстрее/);
@@ -26,7 +26,9 @@ test("результаты содержат и восстанавливают о
   assert.match(source, /kitchenDifficultyRankV5/);
   assert.match(source, /data-kitchen-results-sort/);
   assert.match(source, /function mountKitchenSortV5/);
-  assert.match(source, /insertAdjacentHTML\("afterbegin", renderKitchenSortV5\(\)\)/);
+  assert.match(source, /function flattenSortedKitchenResultsV5/);
+  assert.match(source, /recipeOrder = new Map/);
+  assert.match(source, /recipeList\.replaceChildren\(fragment\)/);
   assert.match(source, /new MutationObserver\(scheduleKitchenSortMountV5\)/);
 });
 
