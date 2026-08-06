@@ -68,6 +68,10 @@
   color: #f8f7f2;
 }
 
+.recipe-entry.kitchen-result-hidden {
+  display: none !important;
+}
+
 .kitchen-reveal-more {
   width: 100%;
   margin-top: 22px;
