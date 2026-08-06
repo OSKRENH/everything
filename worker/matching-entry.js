@@ -9,6 +9,7 @@ import {
   matchingPayloadFromContext,
 } from "../src/matching-user-context.js";
 import { manualRecipesForPortions } from "./manual-recipes.js";
+import { simpleRecipesForPortions } from "./simple-recipes.js";
 
 function json(data, status = 200, headers = {}) {
   return Response.json(data, {
@@ -112,13 +113,15 @@ function rankRecipes(recipes, body) {
       const analysis = analyzeWithContext(recipe, context);
       const enriched = enrichedWithContext(recipe, context, analysis);
       const sourceType = enriched.source?.type;
-      const verifiedBonus = sourceType === "kutno-manual-catalog"
-        ? 48
-        : sourceType === "kutno-catalog"
-          ? 40
-          : sourceType === "generated"
-            ? -30
-            : 0;
+      const verifiedBonus = sourceType === "kutno-simple-catalog"
+        ? 52
+        : sourceType === "kutno-manual-catalog"
+          ? 48
+          : sourceType === "kutno-catalog"
+            ? 40
+            : sourceType === "generated"
+              ? -30
+              : 0;
       return {
         recipe: enriched,
         analysis,
@@ -140,7 +143,7 @@ async function loadCatalogForMatching(request, env, ctx, body) {
   const response = await featureWorker.fetch(new Request(url, { method: "GET", headers }), env, ctx);
   const data = response.ok ? await response.json().catch(() => ({})) : {};
   const baseRecipes = Array.isArray(data.recipes) ? data.recipes : [];
-  return mergeRecipes(baseRecipes, manualRecipesForPortions(portions));
+  return mergeRecipes(baseRecipes, simpleRecipesForPortions(portions), manualRecipesForPortions(portions));
 }
 
 async function runBaseGenerate(body, request, env, ctx) {
@@ -209,6 +212,7 @@ async function smartGenerate(request, env, ctx) {
 
   body.maxMinutes = 0;
   body.portions = 2;
+  body.priorityIngredients = [];
   delete body.difficulty;
 
   const catalog = await loadCatalogForMatching(request, env, ctx, body);
@@ -218,9 +222,10 @@ async function smartGenerate(request, env, ctx) {
   if (catalogRanked.length < 3) generated = await runBaseGenerate(body, request, env, ctx);
   const combined = mergeRecipes(catalogRanked, generated.recipes);
   if (combined.length) {
+    const simpleOnly = combined.every((recipe) => recipe.source?.type === "kutno-simple-catalog");
     const manualOnly = combined.every((recipe) => recipe.source?.type === "kutno-manual-catalog");
     return resultResponse(combined, body, {
-      source: manualOnly ? "manual-catalog" : catalogRanked.length ? "semantic-catalog" : "workers-ai",
+      source: simpleOnly ? "simple-catalog" : manualOnly ? "manual-catalog" : catalogRanked.length ? "semantic-catalog" : "workers-ai",
       extra: generated.data || {},
     });
   }
@@ -251,10 +256,14 @@ async function enrichedCatalog(request, env, ctx) {
   const portions = Math.min(8, Math.max(1, Number(url.searchParams.get("portions")) || 2));
   const context = {
     ingredients: url.searchParams.getAll("ingredient"),
-    priorityIngredients: url.searchParams.getAll("priority"),
+    priorityIngredients: [],
     equipment: url.searchParams.getAll("equipment"),
   };
-  const recipes = mergeRecipes(data.recipes || [], manualRecipesForPortions(portions));
+  const recipes = mergeRecipes(
+    data.recipes || [],
+    simpleRecipesForPortions(portions),
+    manualRecipesForPortions(portions),
+  );
   return json({
     ...data,
     recipes: rankRecipes(recipes, context).map((item) => item.recipe),

@@ -1,13 +1,23 @@
+const KITCHEN_INITIAL_RESULTS_V5 = 5;
+const KITCHEN_RESULTS_INCREMENT_V5 = 5;
 let kitchenResultSortModeV5 = "";
 let kitchenSortMountQueuedV5 = false;
+let kitchenVisibleResultsV5 = KITCHEN_INITIAL_RESULTS_V5;
 
 function normalizeKitchenPlanningStateV5() {
   state.maxMinutes = 0;
   state.portions = 2;
+  state.priorityIngredients = [];
 }
 
 function stripKitchenPlanningControlsV5(markup) {
   let output = String(markup);
+
+  const priorityStart = output.indexOf('<div class="priority-products');
+  const quickRowStart = output.indexOf('<div class="quick-row', Math.max(0, priorityStart));
+  if (priorityStart >= 0 && quickRowStart > priorityStart) {
+    output = `${output.slice(0, priorityStart)}${output.slice(quickRowStart)}`;
+  }
 
   const timeLegend = output.indexOf("<legend>Время</legend>");
   const courseLegend = output.indexOf("<legend>Что приготовить</legend>", Math.max(0, timeLegend));
@@ -29,7 +39,7 @@ function stripKitchenPlanningControlsV5(markup) {
 }
 
 function pruneKitchenPlanningControlsDomV5(root = app) {
-  root?.querySelectorAll?.(".preferences-section").forEach((section) => section.remove());
+  root?.querySelectorAll?.(".priority-products, .preferences-section").forEach((section) => section.remove());
   root?.querySelectorAll?.("fieldset > legend").forEach((legend) => {
     if (legend.textContent?.trim() === "Время") legend.closest("fieldset")?.remove();
   });
@@ -75,6 +85,14 @@ function renderKitchenSortV5() {
   </div>`;
 }
 
+function renderKitchenRevealMoreV5(remaining) {
+  return `<button type="button" class="load-more-recipes kitchen-reveal-more" data-kitchen-reveal-more>
+    <span>Загрузить ещё варианты</span>
+    <small>Осталось ${remaining}</small>
+    <span aria-hidden="true">↓</span>
+  </button>`;
+}
+
 function kitchenRecipeEntryTitleV5(entry) {
   return entry.querySelector(".recipe-title-button")?.textContent?.trim() || "";
 }
@@ -94,14 +112,42 @@ function flattenSortedKitchenResultsV5(recipeList) {
   const orderIsCorrect = directEntries.length === sortedEntries.length
     && directEntries.every((entry, index) => entry === sortedEntries[index]);
   const containsOnlySortedContent = [...recipeList.children].every((node) => node.classList?.contains("kitchen-results-sort")
-    || node.classList?.contains("recipe-entry"));
+    || node.classList?.contains("recipe-entry")
+    || node.hasAttribute?.("data-kitchen-reveal-more"));
   if (orderIsCorrect && containsOnlySortedContent) return;
 
   const sortControl = recipeList.querySelector(".kitchen-results-sort");
+  const revealControl = recipeList.querySelector("[data-kitchen-reveal-more]");
   const fragment = document.createDocumentFragment();
   if (sortControl) fragment.append(sortControl);
   sortedEntries.forEach((entry) => fragment.append(entry));
+  if (revealControl) fragment.append(revealControl);
   recipeList.replaceChildren(fragment);
+}
+
+function applyKitchenResultVisibilityV5(recipeList) {
+  const entries = [...recipeList.querySelectorAll(".recipe-entry")];
+  entries.forEach((entry, index) => {
+    entry.hidden = index >= kitchenVisibleResultsV5;
+  });
+
+  recipeList.querySelectorAll(".matching-group").forEach((group) => {
+    group.hidden = !group.querySelector(".recipe-entry:not([hidden])");
+  });
+
+  const remaining = Math.max(0, entries.length - kitchenVisibleResultsV5);
+  const existingButton = recipeList.querySelector("[data-kitchen-reveal-more]");
+  if (!remaining) {
+    existingButton?.remove();
+    return;
+  }
+  if (!existingButton) {
+    recipeList.insertAdjacentHTML("beforeend", renderKitchenRevealMoreV5(remaining));
+    return;
+  }
+  const remainder = existingButton.querySelector("small");
+  const nextText = `Осталось ${remaining}`;
+  if (remainder && remainder.textContent !== nextText) remainder.textContent = nextText;
 }
 
 function mountKitchenSortV5() {
@@ -112,6 +158,7 @@ function mountKitchenSortV5() {
     recipeList.insertAdjacentHTML("afterbegin", renderKitchenSortV5());
   }
   flattenSortedKitchenResultsV5(recipeList);
+  applyKitchenResultVisibilityV5(recipeList);
 }
 
 function scheduleKitchenSortMountV5() {
@@ -148,6 +195,7 @@ generateRecipes = async function generateAllKitchenRecipesV5({ append = false } 
   matchingRelaxation = null;
   matchingExpansionSuggestionV4 = null;
   kitchenResultSortModeV5 = "";
+  kitchenVisibleResultsV5 = KITCHEN_INITIAL_RESULTS_V5;
   renderKitchenResults();
 
   try {
@@ -160,7 +208,6 @@ generateRecipes = async function generateAllKitchenRecipesV5({ append = false } 
         portions: 2,
         searchMode: state.searchMode,
         course: state.course,
-        priorityIngredients: state.priorityIngredients,
         baseIngredients: matchingBaseIngredients(),
         pantry: userContext.pantry,
         feedback: userContext.feedback,
@@ -208,12 +255,20 @@ generateRecipes = async function generateAllKitchenRecipesV5({ append = false } 
 };
 
 app.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-kitchen-results-sort]");
-  if (!button) return;
+  const revealButton = event.target.closest("[data-kitchen-reveal-more]");
+  if (revealButton) {
+    event.preventDefault();
+    kitchenVisibleResultsV5 += KITCHEN_RESULTS_INCREMENT_V5;
+    applyKitchenResultVisibilityV5(revealButton.closest(".recipe-list"));
+    return;
+  }
+
+  const sortButton = event.target.closest("[data-kitchen-results-sort]");
+  if (!sortButton) return;
   event.preventDefault();
-  kitchenResultSortModeV5 = button.dataset.kitchenResultsSort;
+  kitchenResultSortModeV5 = sortButton.dataset.kitchenResultsSort;
   recipes = sortedKitchenRecipesV5(recipes);
-  button.closest("details")?.removeAttribute("open");
+  sortButton.closest("details")?.removeAttribute("open");
   renderKitchenResults();
   mountKitchenSortV5();
 });
@@ -223,9 +278,9 @@ pruneKitchenPlanningControlsDomV5();
 new MutationObserver(scheduleKitchenSortMountV5).observe(app, { childList: true, subtree: true });
 scheduleKitchenSortMountV5();
 
-if (!document.querySelector('link[href="/kitchen-results-sorting.css?v=1"]')) {
+if (!document.querySelector('link[href="/kitchen-results-sorting.css?v=2"]')) {
   const stylesheet = document.createElement("link");
   stylesheet.rel = "stylesheet";
-  stylesheet.href = "/kitchen-results-sorting.css?v=1";
+  stylesheet.href = "/kitchen-results-sorting.css?v=2";
   document.head.append(stylesheet);
 }

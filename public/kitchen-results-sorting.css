@@ -68,6 +68,24 @@
   color: #f8f7f2;
 }
 
+.recipe-entry[hidden],
+.recipe-entry.kitchen-result-hidden {
+  display: none !important;
+}
+
+.kitchen-reveal-more {
+  width: 100%;
+  margin-top: 22px;
+}
+
+.kitchen-reveal-more small {
+  margin-left: auto;
+  margin-right: 18px;
+  opacity: 0.62;
+  font: inherit;
+  font-size: 0.78em;
+}
+
 @media (max-width: 720px) {
   .kitchen-results-sort {
     justify-content: stretch;
@@ -84,5 +102,9 @@
     left: 0;
     width: 100%;
     min-width: 0;
+  }
+
+  .kitchen-reveal-more small {
+    margin-right: 10px;
   }
 }

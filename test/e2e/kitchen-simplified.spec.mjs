@@ -25,7 +25,14 @@ function recipe(title, minutes, difficulty) {
   };
 }
 
-async function installApi(page, requests) {
+const sortedRecipes = [
+  recipe("Обычный рецепт", 20, "обычно"),
+  recipe("Сложный быстрый", 8, "сложно"),
+  recipe("Простой медленный", 40, "легко"),
+  recipe("Очень простой", 15, "очень просто"),
+];
+
+async function installApi(page, requests, responseRecipes = sortedRecipes) {
   await page.route("https://accounts.google.com/**", (route) => route.fulfill({
     status: 200,
     contentType: "application/javascript",
@@ -52,12 +59,7 @@ async function installApi(page, requests) {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          recipes: [
-            recipe("Обычный рецепт", 20, "обычно"),
-            recipe("Сложный быстрый", 8, "сложно"),
-            recipe("Простой медленный", 40, "легко"),
-            recipe("Очень простой", 15, "очень просто"),
-          ],
+          recipes: responseRecipes,
           hasMore: false,
           source: "semantic-catalog",
           relaxation: null,
@@ -93,6 +95,7 @@ test("кухня показывает все результаты и сорти�
   expect(requests[0].portions).toBe(2);
   expect(requests[0]).not.toHaveProperty("maxMinutes");
   expect(requests[0]).not.toHaveProperty("difficulty");
+  expect(requests[0]).not.toHaveProperty("priorityIngredients");
 
   await page.locator(".kitchen-results-sort summary").click();
   await page.getByRole("button", { name: "Приготовить быстрее" }).click();
@@ -111,4 +114,40 @@ test("кухня показывает все результаты и сорти�
     "Обычный рецепт",
     "Сложный быстрый",
   ]);
+});
+
+test("длинная выдача раскрывается кнопкой, а приоритет продуктов не появляется", async ({ page }) => {
+  const requests = [];
+  const manyRecipes = [
+    recipe("Омлет", 10, "легко"),
+    recipe("Яичница-глазунья", 7, "легко"),
+    recipe("Яичница с луком", 12, "легко"),
+    recipe("Яйца вкрутую", 12, "легко"),
+    recipe("Жареная картошка с луком", 35, "легко"),
+    recipe("Отварной картофель", 30, "легко"),
+    recipe("Картофельное пюре", 35, "легко"),
+    recipe("Драники", 35, "обычно"),
+  ];
+  await installApi(page, requests, manyRecipes);
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "+ яйца", exact: true }).click();
+  await page.getByRole("button", { name: "+ картофель", exact: true }).click();
+  await page.getByRole("button", { name: "+ лук", exact: true }).click();
+
+  await expect(page.locator(".priority-products")).toHaveCount(0);
+  await expect(page.getByText("Использовать сначала", { exact: true })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Предложить блюда" }).click();
+
+  await expect(page.locator(".recipe-entry")).toHaveCount(8);
+  await expect(page.locator(".recipe-entry:visible")).toHaveCount(5);
+  const reveal = page.getByRole("button", { name: /Загрузить ещё варианты/ });
+  await expect(reveal).toBeVisible();
+  await expect(reveal).toContainText("Осталось 3");
+
+  await reveal.click();
+  await expect(page.locator(".recipe-entry:visible")).toHaveCount(8);
+  await expect(page.locator("[data-kitchen-reveal-more]")).toHaveCount(0);
+  expect(requests[0]).not.toHaveProperty("priorityIngredients");
 });
