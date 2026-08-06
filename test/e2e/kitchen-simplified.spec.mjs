@@ -88,7 +88,7 @@ test("кухня показывает все результаты и сорти�
 
   const titles = page.locator(".recipe-title-button");
   await expect(page.locator(".recipe-entry")).toHaveCount(4);
-  await expect(page.getByText("Показаны все подходящие варианты. Базовые специи и масло не считаются.", { exact: true })).toBeVisible();
+  await expect(page.locator(".kitchen-results-sort summary")).toBeVisible();
   expect(await titles.allTextContents()).toEqual([
     "Обычный рецепт",
     "Сложный быстрый",
