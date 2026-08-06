@@ -11,6 +11,7 @@ const catalogPerformanceSource = fs.readFileSync(new URL("./src/catalog-performa
 const catalogFacetsSource = fs.readFileSync(new URL("./src/catalog-facets.inject.js", import.meta.url), "utf8");
 const swipeFullCatalogSource = fs.readFileSync(new URL("./src/swipe-full-catalog.inject.js", import.meta.url), "utf8");
 const matchingCoreV4Source = fs.readFileSync(new URL("./src/matching-core-v4.inject.js", import.meta.url), "utf8");
+const kitchenSimplifiedSource = fs.readFileSync(new URL("./src/kitchen-simplified.inject.js", import.meta.url), "utf8");
 const rawFeatureSource = fs.readFileSync(new URL("./public/kutno-features.js", import.meta.url), "utf8");
 const semanticImport = `import {
   analyzeRecipe as semanticAnalyzeRecipe,
@@ -74,12 +75,17 @@ export default defineConfig({
       transform(code, id) {
         const cleanId = id.split("?", 1)[0];
         if (!cleanId.endsWith("/src/main.js")) return null;
-        const consistentMain = code.replace(
-          "Соль, воду и масло можно не указывать — мы считаем их базовыми.",
-          "Соль, воду, растительное масло и сахар можно не указывать — мы считаем их базовыми.",
-        );
+        const consistentMain = code
+          .replace(
+            "Соль, воду и масло можно не указывать — мы считаем их базовыми.",
+            "Соль, воду, растительное масло и сахар можно не указывать — мы считаем их базовыми.",
+          )
+          .replace(
+            "с учётом доступной техники, сложности и числа порций.",
+            "с учётом доступной техники и выбранного типа блюда.",
+          );
         return {
-          code: `${semanticImport}\n${consistentMain}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}\n\n${catalogFacetsSource}\n\n${swipeFullCatalogSource}\n\n${matchingCoreV4Source}`,
+          code: `${semanticImport}\n${consistentMain}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}\n\n${catalogFacetsSource}\n\n${swipeFullCatalogSource}\n\n${matchingCoreV4Source}\n\n${kitchenSimplifiedSource}`,
           map: null,
         };
       },
