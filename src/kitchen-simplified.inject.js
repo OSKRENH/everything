@@ -1,4 +1,5 @@
 let kitchenResultSortModeV5 = "";
+let kitchenSortMountQueuedV5 = false;
 
 function normalizeKitchenPlanningStateV5() {
   state.maxMinutes = 0;
@@ -74,6 +75,20 @@ function renderKitchenSortV5() {
   </div>`;
 }
 
+function mountKitchenSortV5() {
+  kitchenSortMountQueuedV5 = false;
+  const recipeList = app?.querySelector?.(".recipe-list");
+  if (!recipeList || !recipes.length || isLoading) return;
+  if (recipeList.querySelector(".kitchen-results-sort")) return;
+  recipeList.insertAdjacentHTML("afterbegin", renderKitchenSortV5());
+}
+
+function scheduleKitchenSortMountV5() {
+  if (kitchenSortMountQueuedV5) return;
+  kitchenSortMountQueuedV5 = true;
+  queueMicrotask(mountKitchenSortV5);
+}
+
 const kitchenViewBeforeSimplifiedV5 = renderKitchenView;
 renderKitchenView = function simplifiedKitchenViewV5() {
   normalizeKitchenPlanningStateV5();
@@ -83,12 +98,9 @@ renderKitchenView = function simplifiedKitchenViewV5() {
 const resultsBeforeSimplifiedV5 = renderResults;
 renderResults = function simplifiedKitchenResultsV5() {
   if (recipes.length) recipes = sortedKitchenRecipesV5(recipes);
-  const markup = resultsBeforeSimplifiedV5();
-  if (!recipes.length || isLoading || !markup.includes('<div class="recipe-list">')) return markup;
-  return markup
+  return resultsBeforeSimplifiedV5()
     .replace("Варианты расположены от самого подходящего. Базовые специи и масло не считаются.", "Показаны все подходящие варианты. Базовые специи и масло не считаются.")
-    .replace("Сбросить время и тип блюда", "Показать все типы блюд")
-    .replace('<div class="recipe-list">', `<div class="recipe-list">${renderKitchenSortV5()}`);
+    .replace("Сбросить время и тип блюда", "Показать все типы блюд");
 };
 
 generateRecipes = async function generateAllKitchenRecipesV5({ append = false } = {}) {
@@ -159,6 +171,7 @@ generateRecipes = async function generateAllKitchenRecipesV5({ append = false } 
     isLoading = false;
     isLoadingMore = false;
     renderKitchenResults();
+    mountKitchenSortV5();
     requestAnimationFrame(() => document.querySelector("#results")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 };
@@ -171,10 +184,13 @@ app.addEventListener("click", (event) => {
   recipes = sortedKitchenRecipesV5(recipes);
   button.closest("details")?.removeAttribute("open");
   renderKitchenResults();
+  mountKitchenSortV5();
 });
 
 normalizeKitchenPlanningStateV5();
 pruneKitchenPlanningControlsDomV5();
+new MutationObserver(scheduleKitchenSortMountV5).observe(app, { childList: true, subtree: true });
+scheduleKitchenSortMountV5();
 
 if (!document.querySelector('link[href="/kitchen-results-sorting.css?v=1"]')) {
   const stylesheet = document.createElement("link");
