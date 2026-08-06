@@ -21,6 +21,7 @@ test("форма кухни удаляет время, сложность, по�
 
 test("результаты содержат сортировки и постепенное раскрытие", () => {
   const source = readFileSync("src/kitchen-simplified.inject.js", "utf8");
+  const styles = readFileSync("public/kitchen-results-sorting.css", "utf8");
 
   assert.match(source, /Приготовить быстрее/);
   assert.match(source, /Сначала простые рецепты/);
@@ -35,6 +36,8 @@ test("результаты содержат сортировки и постеп
   assert.match(source, /entry\.hidden = index >= kitchenVisibleResultsV5/);
   assert.match(source, /const nextText = `Осталось \$\{remaining\}`/);
   assert.match(source, /remainder\.textContent !== nextText/);
+  assert.match(styles, /\.recipe-entry\[hidden\]/);
+  assert.match(styles, /display: none !important/);
   assert.match(source, /function mountKitchenSortV5/);
   assert.match(source, /function flattenSortedKitchenResultsV5/);
   assert.match(source, /recipeOrder = new Map/);
