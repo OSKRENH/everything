@@ -37,8 +37,8 @@ function pruneKitchenPlanningControlsDomV5(root = app) {
 
 function kitchenDifficultyRankV5(value = "") {
   const text = String(value).toLocaleLowerCase("ru-RU");
-  if (/очень\s*прост|легк/.test(text)) return 0;
-  if (/прост/.test(text)) return 1;
+  if (/очень\s*прост/.test(text)) return 0;
+  if (/легк|прост/.test(text)) return 1;
   if (/обыч|сред/.test(text)) return 2;
   if (/слож|труд/.test(text)) return 3;
   return 2;
@@ -75,12 +75,43 @@ function renderKitchenSortV5() {
   </div>`;
 }
 
+function kitchenRecipeEntryTitleV5(entry) {
+  return entry.querySelector(".recipe-title-button")?.textContent?.trim() || "";
+}
+
+function flattenSortedKitchenResultsV5(recipeList) {
+  if (!kitchenResultSortModeV5) return;
+  const entries = [...recipeList.querySelectorAll(".recipe-entry")];
+  if (!entries.length) return;
+
+  const recipeOrder = new Map(recipes.map((recipe, index) => [normalize(recipe.title), index]));
+  const sortedEntries = [...entries].sort((first, second) => {
+    const firstOrder = recipeOrder.get(normalize(kitchenRecipeEntryTitleV5(first))) ?? Number.MAX_SAFE_INTEGER;
+    const secondOrder = recipeOrder.get(normalize(kitchenRecipeEntryTitleV5(second))) ?? Number.MAX_SAFE_INTEGER;
+    return firstOrder - secondOrder;
+  });
+  const directEntries = [...recipeList.children].filter((node) => node.classList?.contains("recipe-entry"));
+  const orderIsCorrect = directEntries.length === sortedEntries.length
+    && directEntries.every((entry, index) => entry === sortedEntries[index]);
+  const containsOnlySortedContent = [...recipeList.children].every((node) => node.classList?.contains("kitchen-results-sort")
+    || node.classList?.contains("recipe-entry"));
+  if (orderIsCorrect && containsOnlySortedContent) return;
+
+  const sortControl = recipeList.querySelector(".kitchen-results-sort");
+  const fragment = document.createDocumentFragment();
+  if (sortControl) fragment.append(sortControl);
+  sortedEntries.forEach((entry) => fragment.append(entry));
+  recipeList.replaceChildren(fragment);
+}
+
 function mountKitchenSortV5() {
   kitchenSortMountQueuedV5 = false;
   const recipeList = app?.querySelector?.(".recipe-list");
   if (!recipeList || !recipes.length || isLoading) return;
-  if (recipeList.querySelector(".kitchen-results-sort")) return;
-  recipeList.insertAdjacentHTML("afterbegin", renderKitchenSortV5());
+  if (!recipeList.querySelector(".kitchen-results-sort")) {
+    recipeList.insertAdjacentHTML("afterbegin", renderKitchenSortV5());
+  }
+  flattenSortedKitchenResultsV5(recipeList);
 }
 
 function scheduleKitchenSortMountV5() {
