@@ -128,6 +128,35 @@ function rankRecipes(recipes, body) {
     .sort((first, second) => second.rank - first.rank || Number(first.recipe.minutes) - Number(second.recipe.minutes));
 }
 
+function compactMatchedRecipe(recipe) {
+  return {
+    id: recipe.id,
+    compact: true,
+    title: recipe.title,
+    subtitle: recipe.subtitle,
+    cuisine: recipe.cuisine,
+    flag: recipe.flag,
+    course: recipe.course,
+    protein: recipe.protein,
+    minutes: recipe.minutes,
+    difficulty: recipe.difficulty,
+    portions: 2,
+    equipment: Array.isArray(recipe.equipment) ? recipe.equipment : [],
+    ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item) => ({
+      name: item.name,
+      aliases: Array.isArray(item.aliases) ? item.aliases : [],
+      pantry: item.pantry === true,
+      ...(item.role ? { role: item.role } : {}),
+    })),
+    nutrition: { calories: Number(recipe.nutrition?.calories) || 0 },
+    source: recipe.source,
+    matching: recipe.matching,
+    missing: Array.isArray(recipe.missing) ? recipe.missing : recipe.matching?.missingRequired || [],
+    uses: Array.isArray(recipe.uses) ? recipe.uses : [],
+    why: recipe.why,
+  };
+}
+
 function ingredientUnlockSuggestions(catalog, body, limit = 6) {
   const context = matchingContext({ ...body, searchMode: "strict" });
   const owned = new Set(context.ingredients.map(normalizedTitle));
@@ -232,7 +261,8 @@ async function smartGenerate(request, env, ctx) {
   const body = normalizedBody(incoming);
   const catalog = catalogFullRecipes(2);
   const suggestions = ingredientUnlockSuggestions(catalog, body);
-  const catalogRanked = rankRecipes(catalog, body).map((item) => item.recipe);
+  const rankedFull = rankRecipes(catalog, body).map((item) => item.recipe);
+  const catalogRanked = rankedFull.map(compactMatchedRecipe);
 
   if (catalogRanked.length) {
     if (!incoming.aiIdeas) {
