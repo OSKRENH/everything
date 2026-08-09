@@ -77,6 +77,23 @@ loadCatalog = async function loadCatalogWithMetadataRefreshV6(...args) {
   return result;
 };
 
+armCatalogAutoLoad = function armCatalogAutoLoadAfterFirstScrollV6() {
+  catalogLoadObserver?.disconnect();
+  catalogLoadObserver = null;
+  const sentinel = document.querySelector("[data-catalog-scroll-sentinel]");
+  if (!sentinel || catalogLoadPending) return;
+  if (typeof IntersectionObserver === "undefined") return;
+  catalogLoadObserver = new IntersectionObserver((entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    // До первого реального скролла сохраняем быстрый первый экран из пяти карточек.
+    // После него продолжаем раскрывать карточки, пока sentinel остаётся у края экрана:
+    // Chromium не обязан генерировать новый scroll event для уже видимого элемента.
+    if (catalogScrollVersion === 0) return;
+    revealNextCatalogItem();
+  }, { rootMargin: "60px 0px" });
+  catalogLoadObserver.observe(sentinel);
+};
+
 new MutationObserver(scheduleCatalogCountRefreshV6).observe(app, { childList: true, subtree: true });
 window.addEventListener("hashchange", scheduleCatalogCountRefreshV6);
 scheduleCatalogCountRefreshV6();
