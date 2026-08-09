@@ -2,6 +2,7 @@ const renderCatalogViewBeforeMetadataV6 = renderCatalogView;
 const updateCatalogResultsBeforeMetadataV6 = updateCatalogResults;
 const loadCatalogBeforeMetadataV6 = loadCatalog;
 let catalogCountRefreshQueuedV6 = false;
+let catalogMetadataRecoveryAttemptedV6 = false;
 
 function catalogCountHtmlV6() {
   const filtered = currentFilteredCatalog();
@@ -14,9 +15,21 @@ function catalogCountHtmlV6() {
   return `${label} — ${exactTotal.toString().padStart(2, "0")}${state.ingredients.length ? matchingSummary(filtered) : ""}`;
 }
 
+function recoverCatalogMetadataV6() {
+  if (catalogMetadataRecoveryAttemptedV6 || !catalogNextCursor) return;
+  if (knownCatalogTotal() > catalogRecipes.length) return;
+  catalogMetadataRecoveryAttemptedV6 = true;
+  Promise.resolve(loadCatalogIndexInBackground()).finally(() => {
+    if (currentView !== "catalog") return;
+    refreshCatalogCountV6();
+    requestAnimationFrame(refreshCatalogCountV6);
+  });
+}
+
 function refreshCatalogCountV6() {
   catalogCountRefreshQueuedV6 = false;
   if (currentView !== "catalog" || catalogLoading || catalogError) return;
+  recoverCatalogMetadataV6();
   const count = document.querySelector(".catalog-count");
   if (!count) return;
   const next = catalogCountHtmlV6();
@@ -44,6 +57,7 @@ updateCatalogResults = function updateCatalogResultsWithMetadataV6() {
 };
 
 loadCatalog = async function loadCatalogWithMetadataRefreshV6(...args) {
+  catalogMetadataRecoveryAttemptedV6 = false;
   const result = await loadCatalogBeforeMetadataV6(...args);
   if (currentView === "catalog") {
     refreshCatalogCountV6();
