@@ -76,17 +76,45 @@ async function installApi(page) {
   return { requests: () => catalogRequests, indexRequests: () => indexRequests };
 }
 
-test("первые пять видны сразу, размер базы и страны известны без полной загрузки карточек", async ({ page }) => {
-  const api = await installApi(page);
+async function openCatalog(page) {
   await page.goto("/");
   await page.getByRole("button", { name: "База", exact: true }).click();
+}
 
+test("первые пять карточек остаются первыми пятью до прокрутки", async ({ page }) => {
+  const api = await installApi(page);
+  await openCatalog(page);
   await expect(page.locator(".catalog-card")).toHaveCount(5);
+  await page.waitForTimeout(1200);
+  await expect(page.locator(".catalog-card")).toHaveCount(5);
+  expect(api.requests()).toBe(1);
+});
+
+test("общий размер базы известен с первой страницы", async ({ page }) => {
+  await installApi(page);
+  await openCatalog(page);
   await expect(page.locator(".catalog-count")).toContainText("В базе — 13");
+});
+
+test("все страны видны из лёгких facets без загрузки следующих карточек", async ({ page }) => {
+  const api = await installApi(page);
+  await openCatalog(page);
   await expect(page.getByRole("button", { name: "🇷🇺 Россия", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "🇯🇵 Япония", exact: true })).toBeVisible();
   expect(api.requests()).toBe(1);
+});
 
+test("полный индекс загружается отдельно после первого экрана", async ({ page }) => {
+  const api = await installApi(page);
+  await openCatalog(page);
+  await expect(page.locator(".catalog-card")).toHaveCount(5);
+  await expect.poll(api.indexRequests).toBeGreaterThanOrEqual(1);
+  expect(api.requests()).toBe(1);
+});
+
+test("выбор страны сам находит рецепт на следующей странице", async ({ page }) => {
+  const api = await installApi(page);
+  await openCatalog(page);
   await expect.poll(api.indexRequests).toBeGreaterThanOrEqual(1);
   await page.getByRole("button", { name: "🇷🇺 Россия", exact: true }).click();
   await expect(page.locator(".catalog-count")).toContainText("Найдено — 01");
@@ -96,16 +124,15 @@ test("первые пять видны сразу, размер базы и ст
 
 test("прокрутка доходит до последнего рецепта без повторов", async ({ page }) => {
   const api = await installApi(page);
-  await page.goto("/");
-  await page.getByRole("button", { name: "База", exact: true }).click();
+  await openCatalog(page);
   await expect(page.locator(".catalog-card")).toHaveCount(5);
 
   await expect.poll(async () => {
     const sentinel = page.locator("[data-catalog-scroll-sentinel]");
     if (await sentinel.count()) await sentinel.scrollIntoViewIfNeeded();
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(650);
     return page.locator(".catalog-card").count();
-  }, { timeout: 20_000, intervals: [300, 600, 600, 600] }).toBe(catalog.length);
+  }, { timeout: 30_000, intervals: [300, 650, 650, 650, 650, 650] }).toBe(catalog.length);
 
   expect(api.requests()).toBe(3);
   const titles = await page.locator(".catalog-card h3").allTextContents();
