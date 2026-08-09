@@ -9,9 +9,13 @@ const fetchResetSource = fs.readFileSync(new URL("./src/fetch-reset.inject.js", 
 const matchingFixesSource = fs.readFileSync(new URL("./src/matching-fixes.inject.js", import.meta.url), "utf8");
 const catalogPerformanceSource = fs.readFileSync(new URL("./src/catalog-performance.inject.js", import.meta.url), "utf8");
 const catalogFacetsSource = fs.readFileSync(new URL("./src/catalog-facets.inject.js", import.meta.url), "utf8");
+const catalogRenderMetaSource = fs.readFileSync(new URL("./src/catalog-render-meta.inject.js", import.meta.url), "utf8");
+const catalogScrollFillSource = fs.readFileSync(new URL("./src/catalog-scroll-fill.inject.js", import.meta.url), "utf8");
 const swipeFullCatalogSource = fs.readFileSync(new URL("./src/swipe-full-catalog.inject.js", import.meta.url), "utf8");
 const matchingCoreV4Source = fs.readFileSync(new URL("./src/matching-core-v4.inject.js", import.meta.url), "utf8");
 const kitchenSimplifiedSource = fs.readFileSync(new URL("./src/kitchen-simplified.inject.js", import.meta.url), "utf8");
+const kitchenSmartSuggestionsSource = fs.readFileSync(new URL("./src/kitchen-smart-suggestions.inject.js", import.meta.url), "utf8");
+const catalogDetailSource = fs.readFileSync(new URL("./src/catalog-detail.inject.js", import.meta.url), "utf8");
 const rawFeatureSource = fs.readFileSync(new URL("./public/kutno-features.js", import.meta.url), "utf8");
 const semanticImport = `import {
   analyzeRecipe as semanticAnalyzeRecipe,
@@ -89,7 +93,7 @@ export default defineConfig({
             "Техника и избранное останутся без изменений.",
           );
         return {
-          code: `${semanticImport}\n${consistentMain}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}\n\n${catalogFacetsSource}\n\n${swipeFullCatalogSource}\n\n${matchingCoreV4Source}\n\n${kitchenSimplifiedSource}`,
+          code: `${semanticImport}\n${consistentMain}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}\n\n${catalogFacetsSource}\n\n${catalogRenderMetaSource}\n\n${catalogScrollFillSource}\n\n${swipeFullCatalogSource}\n\n${matchingCoreV4Source}\n\n${kitchenSimplifiedSource}\n\n${kitchenSmartSuggestionsSource}\n\n${catalogDetailSource}`,
           map: null,
         };
       },

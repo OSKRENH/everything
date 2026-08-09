@@ -145,6 +145,20 @@ export const kutnoApi = {
     if (cursor) params.set("cursor", cursor);
     return request(`/api/catalog?${params}`);
   },
+  catalogIndex() {
+    return request("/api/catalog-index", { timeout: 8_000 });
+  },
+  recipeDetail(id, { portions = 2 } = {}) {
+    const params = new URLSearchParams({ portions: String(Math.max(1, Number(portions) || 2)) });
+    return request(`/api/recipe/${encodeURIComponent(String(id || ""))}?${params}`, { timeout: 8_000 });
+  },
+  matchingSuggestions({ ingredients = [], equipment = [], baseIngredients = [] } = {}) {
+    const params = new URLSearchParams();
+    ingredients.forEach((value) => params.append("ingredient", String(value)));
+    equipment.forEach((value) => params.append("equipment", String(value)));
+    baseIngredients.forEach((value) => params.append("base", String(value)));
+    return request(`/api/matching-suggestions?${params}`, { timeout: 6_000 });
+  },
   getFeatureState() {
     return request("/api/feature-state");
   },

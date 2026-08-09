@@ -51,8 +51,9 @@ test("Worker и клиент не обрезают подходящие реце
 
   assert.match(client, /Math\.max\(3, data\.recipes\.length\)/);
   assert.match(client, /hasMoreRecipes = false/);
-  assert.match(worker, /recipes,\n    hasMore: false/);
-  assert.match(worker, /simpleRecipesForPortions/);
+  assert.match(worker, /hasMore: false/);
+  assert.match(worker, /catalogSources/);
+  assert.match(worker, /matchingCatalog/);
   assert.doesNotMatch(worker, /recipes\.slice\(0, 3\)/);
   assert.doesNotMatch(worker, /Number\(body\.maxMinutes\).*recipe\.minutes/);
   assert.doesNotMatch(worker, /difficultyRank/);
