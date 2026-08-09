@@ -45,6 +45,8 @@ async function hydrateCatalogRecipeV6(recipe) {
   return catalogDetailCacheV6.get(id);
 }
 
+window.kutnoHydrateRecipe = hydrateCatalogRecipeV6;
+
 const toggleFavoriteBeforeCatalogHydrationV6 = toggleFavorite;
 toggleFavorite = async function toggleFavoriteWithCatalogHydrationV6(recipe, trigger) {
   if (!recipe?.compact) return toggleFavoriteBeforeCatalogHydrationV6(recipe, trigger);
@@ -59,6 +61,18 @@ toggleFavorite = async function toggleFavoriteWithCatalogHydrationV6(recipe, tri
     }, "error");
   }
 };
+
+if (window.kutnoBridge) {
+  window.kutnoBridge.openRecipe = async function openHydratedRecipeV6(options = {}) {
+    const candidate = options.recipe || kutnoBridgeFindRecipe(options.id, options.title);
+    try {
+      const full = candidate?.compact ? await hydrateCatalogRecipeV6(candidate) : candidate;
+      return kutnoBridgeOpenRecipe({ ...options, recipe: full || options.recipe || null });
+    } catch {
+      return false;
+    }
+  };
+}
 
 app.addEventListener("click", (event) => {
   const target = event.target.closest("[data-open-recipe]");
