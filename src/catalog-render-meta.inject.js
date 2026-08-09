@@ -1,6 +1,7 @@
 const renderCatalogViewBeforeMetadataV6 = renderCatalogView;
 const updateCatalogResultsBeforeMetadataV6 = updateCatalogResults;
 const loadCatalogBeforeMetadataV6 = loadCatalog;
+const requestCatalogPageBeforeMetadataV6 = requestCatalogPage;
 let catalogCountRefreshQueuedV6 = false;
 let catalogMetadataRecoveryAttemptedV6 = false;
 
@@ -14,6 +15,16 @@ function catalogCountHtmlV6() {
   const label = catalogHasStaticFilters() ? "Найдено" : "В базе";
   return `${label} — ${exactTotal.toString().padStart(2, "0")}${state.ingredients.length ? matchingSummary(filtered) : ""}`;
 }
+
+requestCatalogPage = async function requestCatalogPageWithMetadataV6(...args) {
+  const page = await requestCatalogPageBeforeMetadataV6(...args);
+  const total = Number(page?.total) || 0;
+  if (total > 0) {
+    catalogTotal = Math.max(catalogTotal, total);
+    catalogMetadataTotal = Math.max(catalogMetadataTotal, total);
+  }
+  return page;
+};
 
 function recoverCatalogMetadataV6() {
   if (catalogMetadataRecoveryAttemptedV6 || !catalogNextCursor) return;
