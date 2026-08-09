@@ -1,5 +1,6 @@
 const renderCatalogViewBeforeMetadataV6 = renderCatalogView;
 const updateCatalogResultsBeforeMetadataV6 = updateCatalogResults;
+const loadCatalogBeforeMetadataV6 = loadCatalog;
 let catalogCountRefreshQueuedV6 = false;
 
 function catalogCountHtmlV6() {
@@ -40,6 +41,15 @@ renderCatalogView = function renderCatalogViewWithMetadataV6() {
 updateCatalogResults = function updateCatalogResultsWithMetadataV6() {
   updateCatalogResultsBeforeMetadataV6();
   refreshCatalogCountV6();
+};
+
+loadCatalog = async function loadCatalogWithMetadataRefreshV6(...args) {
+  const result = await loadCatalogBeforeMetadataV6(...args);
+  if (currentView === "catalog") {
+    refreshCatalogCountV6();
+    requestAnimationFrame(refreshCatalogCountV6);
+  }
+  return result;
 };
 
 new MutationObserver(scheduleCatalogCountRefreshV6).observe(app, { childList: true, subtree: true });
