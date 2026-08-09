@@ -73,13 +73,21 @@ function loadCatalogIndexInBackground() {
   return catalogIndexLoadPromise;
 }
 
+function scheduleCatalogIndexLoad() {
+  const callback = () => loadCatalogIndexInBackground();
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(callback, { timeout: 250 });
+    return;
+  }
+  window.setTimeout(callback, 120);
+}
+
 const catalogApplyPageBeforeFacets = applyCatalogPage;
 applyCatalogPage = function applyCatalogPageWithFacets(page, options = {}) {
   captureCatalogMetadata(page, options);
   const added = catalogApplyPageBeforeFacets(page, options);
   if (options.replace && !options.fallback && !Array.isArray(page?.index)) {
-    const schedule = window.requestIdleCallback || ((callback) => window.setTimeout(callback, 120));
-    schedule(() => loadCatalogIndexInBackground());
+    scheduleCatalogIndexLoad();
   }
   return added;
 };
