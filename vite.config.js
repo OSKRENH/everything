@@ -10,6 +10,7 @@ const matchingFixesSource = fs.readFileSync(new URL("./src/matching-fixes.inject
 const catalogPerformanceSource = fs.readFileSync(new URL("./src/catalog-performance.inject.js", import.meta.url), "utf8");
 const catalogFacetsSource = fs.readFileSync(new URL("./src/catalog-facets.inject.js", import.meta.url), "utf8");
 const catalogRenderMetaSource = fs.readFileSync(new URL("./src/catalog-render-meta.inject.js", import.meta.url), "utf8");
+const catalogScrollFillSource = fs.readFileSync(new URL("./src/catalog-scroll-fill.inject.js", import.meta.url), "utf8");
 const swipeFullCatalogSource = fs.readFileSync(new URL("./src/swipe-full-catalog.inject.js", import.meta.url), "utf8");
 const matchingCoreV4Source = fs.readFileSync(new URL("./src/matching-core-v4.inject.js", import.meta.url), "utf8");
 const kitchenSimplifiedSource = fs.readFileSync(new URL("./src/kitchen-simplified.inject.js", import.meta.url), "utf8");
@@ -92,7 +93,7 @@ export default defineConfig({
             "Техника и избранное останутся без изменений.",
           );
         return {
-          code: `${semanticImport}\n${consistentMain}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}\n\n${catalogFacetsSource}\n\n${catalogRenderMetaSource}\n\n${swipeFullCatalogSource}\n\n${matchingCoreV4Source}\n\n${kitchenSimplifiedSource}\n\n${kitchenSmartSuggestionsSource}\n\n${catalogDetailSource}`,
+          code: `${semanticImport}\n${consistentMain}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}\n\n${catalogFacetsSource}\n\n${catalogRenderMetaSource}\n\n${catalogScrollFillSource}\n\n${swipeFullCatalogSource}\n\n${matchingCoreV4Source}\n\n${kitchenSimplifiedSource}\n\n${kitchenSmartSuggestionsSource}\n\n${catalogDetailSource}`,
           map: null,
         };
       },
