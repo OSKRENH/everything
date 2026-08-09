@@ -93,6 +93,8 @@ test("первые пять карточек остаются первыми п�
 test("общий размер базы известен с первой страницы", async ({ page }) => {
   await installApi(page);
   await openCatalog(page);
+  await expect(page.locator(".catalog-card")).toHaveCount(5);
+  console.log("CATALOG_COUNT_TEXT", JSON.stringify(await page.locator(".catalog-count").textContent()));
   await expect(page.locator(".catalog-count")).toContainText("В базе — 13");
 });
 
