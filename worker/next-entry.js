@@ -1,5 +1,5 @@
 import safeWorker from "./safe-entry.js";
-import { serveCatalogPage } from "./catalog-page.js";
+import { serveCatalogIndex, serveCatalogPage, serveRecipeDetail } from "./catalog-page.js";
 import { serveLitePage } from "./lite-page.js";
 export { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
 
@@ -99,6 +99,13 @@ async function recordServerFailure(env, ctx, requestId, request, status, duratio
   ctx.waitUntil(saveTelemetry(synthetic, env, requestId).catch(() => {}));
 }
 
+function timedResponse(response, label, startedAt, requestId) {
+  const headers = new Headers(response.headers);
+  headers.set("x-request-id", requestId);
+  headers.set("server-timing", `${label};dur=${Date.now() - startedAt}`);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const startedAt = Date.now();
@@ -106,24 +113,19 @@ export default {
     const url = new URL(request.url);
     try {
       if ((url.pathname === "/lite" || url.pathname === "/lite/recipe") && request.method === "GET") {
-        const response = serveLitePage(request);
-        const headers = new Headers(response.headers);
-        headers.set("x-request-id", requestId);
-        headers.set("server-timing", `lite;dur=${Date.now() - startedAt}`);
-        return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+        return timedResponse(serveLitePage(request), "lite", startedAt, requestId);
       }
       if (url.pathname === "/api/telemetry" && request.method === "POST") {
         return saveTelemetry(request, env, requestId);
       }
       if (url.pathname === "/api/catalog" && request.method === "GET") {
-        const response = await serveCatalogPage(request, requestId);
-        const headers = new Headers(response.headers);
-        headers.set("server-timing", `catalog;dur=${Date.now() - startedAt}`);
-        return new Response(response.body, {
-          status: response.status,
-          statusText: response.statusText,
-          headers,
-        });
+        return timedResponse(await serveCatalogPage(request, requestId), "catalog", startedAt, requestId);
+      }
+      if (url.pathname === "/api/catalog-index" && request.method === "GET") {
+        return timedResponse(await serveCatalogIndex(request, requestId), "catalog-index", startedAt, requestId);
+      }
+      if (url.pathname.startsWith("/api/recipe/") && request.method === "GET") {
+        return timedResponse(await serveRecipeDetail(request, requestId), "recipe", startedAt, requestId);
       }
 
       const response = await safeWorker.fetch(request, env, ctx);
