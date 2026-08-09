@@ -14,6 +14,7 @@ const runtimeFiles = [
   "worker/catalog-page.js",
   "worker/lite-page.js",
   "worker/manual-recipes.js",
+  "worker/simple-recipes.js",
   "src/bootstrap.js",
   "src/ingredient-semantics.js",
   "src/ingredient-semantics-v2.js",
@@ -27,6 +28,11 @@ const runtimeFiles = [
   "src/matching-fixes.inject.js",
   "src/catalog-performance.inject.js",
   "src/catalog-facets.inject.js",
+  "src/swipe-full-catalog.inject.js",
+  "src/matching-core-v4.inject.js",
+  "src/kitchen-simplified.inject.js",
+  "src/kitchen-smart-suggestions.inject.js",
+  "src/catalog-detail.inject.js",
   "public/kutno-features.js",
   "public/feature-sync-throttle.js",
   "public/sw.js",
@@ -42,132 +48,80 @@ test("runtime-файлы Кутно проходят синтаксическу�
   }
 });
 
-test("клиент устойчиво стартует, догружает страницы и знает всю базу", () => {
+test("клиент быстро открывает каталог, индекс и детали грузит отдельно", () => {
   const bridge = readFileSync("src/kutno-bridge.inject.js", "utf8");
-  const matching = readFileSync("src/matching-engine.inject.js", "utf8");
-  const reset = readFileSync("src/fetch-reset.inject.js", "utf8");
-  const fixes = readFileSync("src/matching-fixes.inject.js", "utf8");
   const performance = readFileSync("src/catalog-performance.inject.js", "utf8");
   const facets = readFileSync("src/catalog-facets.inject.js", "utf8");
-  const bootstrap = readFileSync("src/bootstrap.js", "utf8");
+  const smart = readFileSync("src/kitchen-smart-suggestions.inject.js", "utf8");
+  const detail = readFileSync("src/catalog-detail.inject.js", "utf8");
   const api = readFileSync("src/kutno-api.js", "utf8");
-  const store = readFileSync("src/kutno-store.js", "utf8");
-  const next = readFileSync("src/kutno-next.js", "utf8");
-  const catalogCss = readFileSync("public/catalog-stability.css", "utf8");
-  const throttle = readFileSync("public/feature-sync-throttle.js", "utf8");
+  const bootstrap = readFileSync("src/bootstrap.js", "utf8");
   const serviceWorker = readFileSync("public/sw.js", "utf8");
   const vite = readFileSync("vite.config.js", "utf8");
   const index = readFileSync("index.html", "utf8");
+
   assert.match(bridge, /window\.kutnoBridge\s*=/);
-  assert.match(bridge, /getKitchenState/);
-  assert.match(bridge, /setPriorityIngredients/);
-  assert.match(bridge, /getCatalogRecipes/);
-  assert.match(bridge, /restoreSwipeSnapshot/);
-  assert.match(bridge, /restoreCookingSession/);
-  assert.match(matching, /matchingGroupRecipes/);
-  assert.match(matching, /Готовить сейчас/);
-  assert.match(matching, /Хочу использовать/);
-  assert.match(reset, /kutnoFetchBeforeMatching/);
-  assert.match(reset, /window\.fetch = async function kutnoSafeMatchingFetch/);
-  assert.match(fixes, /loadCatalog\(true\)/);
-  assert.match(fixes, /catch\s*\{\s*pathname = ""/);
   assert.match(performance, /CATALOG_PAGE_SIZE = 5/);
   assert.match(performance, /kutnoApi\.catalogPage/);
   assert.match(performance, /catalogSeenCursors/);
-  assert.match(performance, /catalog_cursor_loop/);
-  assert.match(performance, /catalog_cursor_not_advanced/);
-  assert.match(performance, /loadUntilNextFilteredRecipe/);
-  assert.match(performance, /window\.kutnoLoadNextCatalogPage/);
-  assert.match(performance, /localCatalogFallback/);
-  assert.match(performance, /catalogUsingFallback/);
-  assert.match(performance, /CATALOG_INITIAL_SIZE = 5/);
-  assert.match(performance, /CATALOG_INCREMENT = 1/);
-  assert.match(performance, /CATALOG_RETRY_COUNT = 3/);
-  assert.match(performance, /CATALOG_BACKGROUND_RECOVERY_LIMIT = 2/);
-  assert.match(performance, /recoverFullCatalogSilently/);
-  assert.match(performance, /CATALOG_REVEAL_DURATION = 480/);
-  assert.match(performance, /catalog-card-entering/);
-  assert.match(performance, /rootMargin: "60px 0px"/);
   assert.match(performance, /IntersectionObserver/);
-  assert.match(performance, /performantCatalogResults/);
-  assert.match(facets, /catalogIndex/);
-  assert.match(facets, /catalogFacets/);
-  assert.match(facets, /completeCatalogCuisines/);
+  assert.match(facets, /catalogIndexLoadPromise/);
+  assert.match(facets, /kutnoApi\.catalogIndex/);
+  assert.match(facets, /requestIdleCallback/);
   assert.match(facets, /В базе/);
-  assert.match(facets, /catalogStaticTotal/);
-  assert.match(facets, /maximumAttempts/);
-  assert.match(api, /class KutnoApiError/);
-  assert.match(api, /queueTelemetry/);
-  assert.match(store, /quantityAssessment/);
-  assert.match(store, /urgentIngredients/);
-  assert.match(store, /preferencePenalty/);
-  assert.match(next, /Уточнить запасы/);
-  assert.match(next, /recipe_feedback/);
-  assert.match(catalogCss, /@keyframes catalog-card-reveal/);
-  assert.match(catalogCss, /prefers-reduced-motion/);
-  assert.match(throttle, /catch\s*\{\s*pathname = ""/);
+  assert.match(smart, /kutnoApi\.matchingSuggestions/);
+  assert.match(smart, /smart-unlock-ingredient/);
+  assert.match(detail, /hydrateCatalogRecipeV6/);
+  assert.match(detail, /kutnoApi\.recipeDetail/);
+  assert.match(detail, /toggleFavoriteWithCatalogHydrationV6/);
+  assert.match(detail, /stopImmediatePropagation/);
+  assert.match(api, /catalogIndex\(\)/);
+  assert.match(api, /recipeDetail\(id/);
+  assert.match(api, /matchingSuggestions/);
   assert.match(bootstrap, /await import\("\.\/main\.js"\)/);
   assert.match(bootstrap, /requestIdleCallback/);
   assert.match(bootstrap, /navigator\.serviceWorker\.register/);
-  assert.match(bootstrap, /Откройте лёгкую версию/);
   assert.match(serviceWorker, /kutno-resilient-v1/);
-  assert.match(serviceWorker, /networkFirst/);
-  assert.match(serviceWorker, /cacheFirst/);
-  assert.match(vite, /import \{ kutnoApi \} from "\.\/kutno-api\.js"/);
-  assert.ok(vite.indexOf("${matchingSource}") < vite.indexOf("${fetchResetSource}"));
-  assert.ok(vite.indexOf("${matchingFixesSource}") < vite.indexOf("${catalogPerformanceSource}"));
-  assert.ok(vite.indexOf("${catalogPerformanceSource}") < vite.indexOf("${catalogFacetsSource}"));
-  assert.match(vite, /ingredient-semantics-v3/);
-  assert.match(vite, /configuredFeatureBaseStaples/);
-  assert.match(vite, /DEFAULT_FEATURE_BASE_STAPLES/);
-  assert.match(vite, /Соль, воду, растительное масло и сахар/);
+  assert.match(vite, /kitchen-smart-suggestions\.inject\.js/);
+  assert.match(vite, /catalog-detail\.inject\.js/);
+  assert.ok(vite.indexOf("${kitchenSimplifiedSource}") < vite.indexOf("${kitchenSmartSuggestionsSource}"));
+  assert.ok(vite.indexOf("${kitchenSmartSuggestionsSource}") < vite.indexOf("${catalogDetailSource}"));
   assert.match(index, /bootstrap\.js\?v=1/);
   assert.match(index, /data-kutno-shell/);
   assert.match(index, /href="\/lite"/);
   assert.doesNotMatch(index, /rel="preload" as="image"/);
-  assert.doesNotMatch(index, /dom-stability\.js/);
 });
 
-test("Worker формирует страницу, индекс базы и облегчённую версию", () => {
+test("Worker использует статический каталог и не запускает AI в обычном подборе", () => {
   const featureWorker = readFileSync("worker/entry.js", "utf8");
   const matchingWorker = readFileSync("worker/matching-entry.js", "utf8");
   const oilFixWorker = readFileSync("worker/oil-fix-entry.js", "utf8");
   const safeWorker = readFileSync("worker/safe-entry.js", "utf8");
   const nextWorker = readFileSync("worker/next-entry.js", "utf8");
-  const cursor = readFileSync("worker/catalog-cursor.js", "utf8");
   const catalogPage = readFileSync("worker/catalog-page.js", "utf8");
-  const litePage = readFileSync("worker/lite-page.js", "utf8");
-  const manualCatalog = readFileSync("worker/manual-recipes.js", "utf8");
+  const simpleCatalog = readFileSync("worker/simple-recipes.js", "utf8");
   const wrangler = readFileSync("wrangler.jsonc", "utf8");
+
   assert.match(featureWorker, /return baseWorker\.fetch\(request, env, ctx\)/);
-  assert.match(featureWorker, /mergeFeatureState/);
-  assert.match(featureWorker, /sanitizePantry/);
-  assert.match(featureWorker, /sanitizeFeedback/);
-  assert.match(featureWorker, /\/api\/feature-state/);
-  assert.match(featureWorker, /shared_recipes/);
-  assert.match(matchingWorker, /return featureWorker\.fetch\(request, env, ctx\)/);
-  assert.match(matchingWorker, /manualRecipesForPortions/);
+  assert.match(matchingWorker, /catalogFullRecipes/);
+  assert.match(matchingWorker, /ingredientUnlockSuggestions/);
+  assert.match(matchingWorker, /if \(!incoming\.aiIdeas\)/);
+  assert.match(matchingWorker, /compactMatchedRecipe/);
+  assert.doesNotMatch(matchingWorker, /loadCatalogForMatching/);
   assert.match(oilFixWorker, /return matchingWorker\.fetch\(request, env, ctx\)/);
-  assert.match(oilFixWorker, /ingredient-semantics-v3/);
   assert.match(safeWorker, /oilFixWorker\.fetch/);
-  assert.match(safeWorker, /catalogFallback/);
   assert.match(nextWorker, /serveCatalogPage/);
-  assert.match(nextWorker, /serveLitePage/);
-  assert.doesNotMatch(nextWorker, /data\.recipes\.slice/);
-  assert.match(cursor, /CATALOG_VERSION/);
-  assert.match(cursor, /encodeCatalogCursor/);
-  assert.match(cursor, /decodeCatalogCursor/);
+  assert.match(nextWorker, /serveCatalogIndex/);
+  assert.match(nextWorker, /serveRecipeDetail/);
+  assert.match(nextWorker, /\/api\/catalog-index/);
+  assert.match(nextWorker, /\/api\/recipe\//);
   assert.match(catalogPage, /WORLD_RECIPE_CATALOG/);
+  assert.match(catalogPage, /simpleRecipesForPortions/);
   assert.match(catalogPage, /pageSources = sources\.slice/);
-  assert.match(catalogPage, /catalogMetadata/);
-  assert.match(catalogPage, /facets/);
-  assert.match(catalogPage, /index/);
-  assert.match(catalogPage, /offset === 0/);
-  assert.match(catalogPage, /manualRecipesForPortions/);
-  assert.match(litePage, /Рецепты без тяжёлой загрузки/);
-  assert.match(litePage, /serveLitePage/);
-  assert.doesNotMatch(litePage, /<script/);
-  assert.match(nextWorker, /telemetry_events/);
+  assert.match(catalogPage, /compactRecipeForSource/);
+  assert.match(catalogPage, /serveCatalogIndex/);
+  assert.match(catalogPage, /serveRecipeDetail/);
+  assert.match(catalogPage, /stale-while-revalidate/);
+  assert.match(simpleCatalog, /kutno-simple-catalog/);
   assert.match(wrangler, /worker\/next-entry\.js/);
-  assert.match(manualCatalog, /kutno-manual-catalog/);
 });
