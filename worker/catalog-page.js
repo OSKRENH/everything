@@ -29,7 +29,6 @@ function displayAmount(item, portions, baseServings) {
   const unit = String(item.unit || "").trim();
   let rounded = value;
   if (unit === "г" || unit === "мл") rounded = Math.max(1, Math.round(value / 5) * 5);
-  else if (["шт.", "зубч.", "гол.", "пал."].includes(unit)) rounded = Math.max(0.25, Math.round(value * 4) / 4);
   else rounded = Math.max(0.25, Math.round(value * 4) / 4);
   const displayed = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(".", ",");
   return `${displayed} ${unit}`.trim();
@@ -43,6 +42,17 @@ function glossaryFor(name = "") {
       || signature.includes(glossarySignature)
       || (signature.length >= 8 && glossarySignature.includes(signature));
   })?.[1];
+}
+
+function worldSource(recipe) {
+  return {
+    id: `catalog:${recipe.id}`,
+    name: recipe.source?.name || "Кутно · мировая классика",
+    type: "kutno-catalog",
+    note: recipe.source?.note || "Редакционная версия традиционной рецептуры",
+    url: /^https:\/\//i.test(recipe.source?.url || "") ? recipe.source.url : "",
+    license: String(recipe.source?.license || ""),
+  };
 }
 
 function worldRecipeForPortions(recipe, portions) {
@@ -83,29 +93,19 @@ function worldRecipeForPortions(recipe, portions) {
     },
     tip: String(recipe.tip || ""),
     portions,
-    source: {
-      id: `catalog:${recipe.id}`,
-      name: recipe.source?.name || "Кутно · мировая классика",
-      type: "kutno-catalog",
-      note: recipe.source?.note || "Редакционная версия традиционной рецептуры",
-      url: /^https:\/\//i.test(recipe.source?.url || "") ? recipe.source.url : "",
-      license: String(recipe.source?.license || ""),
-    },
+    source: worldSource(recipe),
   };
 }
 
 function finalPreparedRecipe(recipe, portions, kind) {
-  const prefix = kind === "simple" ? "simple" : "manual";
   return {
     ...recipe,
-    id: String(recipe.id || recipe.source?.id || `${prefix}:${normalized(recipe.title)}`),
+    id: String(recipe.id || recipe.source?.id || `${kind}:${normalized(recipe.title)}`),
     portions: Number(recipe.portions) || portions,
     match: null,
     missing: Array.isArray(recipe.missing) ? recipe.missing : [],
     uses: Array.isArray(recipe.uses) ? recipe.uses : [],
-    why: recipe.why || (kind === "simple"
-      ? "Простой домашний рецепт из продуктов, которые уже есть."
-      : "Проверенный рецепт без лишних требований"),
+    why: recipe.why || (kind === "simple" ? "Простой домашний рецепт из продуктов, которые уже есть." : "Проверенный рецепт без лишних требований"),
   };
 }
 
@@ -130,14 +130,12 @@ export function sourceIdentity(kind, recipe) {
   return String(recipe.id || recipe.source?.id || `${kind}:${normalized(recipe.title)}`);
 }
 
-export function fullRecipeForSource(source, portions = 2) {
-  if (!source) return null;
-  if (source.kind === "world") return worldRecipeForPortions(source.recipe, portions);
-  return finalPreparedRecipe(source.recipe, portions, source.kind);
-}
-
-export function catalogFullRecipes(portions = 2) {
-  return catalogSources(portions).map((source) => fullRecipeForSource(source, portions)).filter(Boolean);
+function sourceMeta(source) {
+  if (source.kind === "world") return worldSource(source.recipe);
+  return {
+    ...(source.recipe.source || {}),
+    id: sourceIdentity(source.kind, source.recipe),
+  };
 }
 
 function compactIngredient(item) {
@@ -149,39 +147,47 @@ function compactIngredient(item) {
   };
 }
 
-function compactRecipeForSource(source, context) {
-  const full = fullRecipeForSource(source, 2);
+function compactRecipeForSource(source, context = null) {
+  const recipe = source.recipe;
   const compact = {
-    id: full.id,
+    id: sourceIdentity(source.kind, recipe),
     compact: true,
-    title: full.title,
-    subtitle: full.subtitle,
-    cuisine: full.cuisine,
-    flag: full.flag,
-    course: full.course,
-    protein: full.protein,
-    minutes: full.minutes,
-    difficulty: full.difficulty,
-    equipment: Array.isArray(full.equipment) ? full.equipment : [],
-    ingredients: (Array.isArray(full.ingredients) ? full.ingredients : []).map(compactIngredient),
-    nutrition: { calories: Number(full.nutrition?.calories) || 0 },
-    source: full.source,
+    title: String(recipe.title || ""),
+    subtitle: String(recipe.subtitle || ""),
+    cuisine: String(recipe.cuisine || "Другая кухня"),
+    flag: String(recipe.flag || "🌍"),
+    course: String(recipe.course || "основное"),
+    protein: String(recipe.protein || "без мяса"),
+    minutes: Number(recipe.minutes) || 30,
+    difficulty: String(recipe.difficulty || "легко"),
+    equipment: Array.isArray(recipe.equipment) ? recipe.equipment.map(String) : [],
+    ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map(compactIngredient),
+    nutrition: { calories: Number(recipe.nutrition?.calories) || 0 },
+    source: sourceMeta(source),
     portions: 2,
     missing: [],
     uses: [],
-    why: full.why,
+    why: recipe.why || (source.kind === "world" ? `Классическое блюдо кухни: ${recipe.cuisine}` : "Проверенный рецепт Кутно"),
   };
-  return enrichRecipeSemantics(compact, context);
+  return context ? enrichRecipeSemantics(compact, context) : compact;
+}
+
+export function catalogCompactRecipes() {
+  return catalogSources(2).map((source) => compactRecipeForSource(source));
+}
+
+export function fullRecipeForSource(source, portions = 2) {
+  if (!source) return null;
+  if (source.kind === "world") return worldRecipeForPortions(source.recipe, portions);
+  return finalPreparedRecipe(source.recipe, portions, source.kind);
 }
 
 function catalogIndexEntry(source) {
-  const recipe = fullRecipeForSource(source, 2);
-  const ingredients = (Array.isArray(recipe?.ingredients) ? recipe.ingredients : [])
-    .map((item) => String(item?.name || "").trim())
-    .filter(Boolean);
+  const recipe = source.recipe;
+  const ingredients = (Array.isArray(recipe?.ingredients) ? recipe.ingredients : []).map((item) => String(item?.name || "").trim()).filter(Boolean);
   const cuisine = String(recipe?.cuisine || "Другая кухня");
   return {
-    id: recipe.id,
+    id: sourceIdentity(source.kind, recipe),
     title: String(recipe.title || ""),
     cuisine,
     flag: String(recipe.flag || "🌍"),
@@ -212,8 +218,7 @@ function catalogFacets(sources) {
   const index = sources.map(catalogIndexEntry);
   const cuisineFlags = Object.fromEntries(index.map((recipe) => [recipe.cuisine, recipe.flag]));
   return {
-    cuisines: orderedUnique(index.map((recipe) => recipe.cuisine), ["Домашняя кухня", "Россия"])
-      .map((value) => ({ value, flag: cuisineFlags[value] || "🌍" })),
+    cuisines: orderedUnique(index.map((recipe) => recipe.cuisine), ["Домашняя кухня", "Россия"]).map((value) => ({ value, flag: cuisineFlags[value] || "🌍" })),
     difficulties: orderedUnique(index.map((recipe) => recipe.difficulty), ["легко", "обычно", "сложно"]),
     courses: orderedUnique(index.map((recipe) => recipe.course), ["завтрак", "суп", "основное", "салат", "закуска", "выпечка", "соус"]),
     proteins: orderedUnique(index.map((recipe) => recipe.protein), ["мясо", "рыба и морепродукты", "без мяса"]),
@@ -256,12 +261,7 @@ export async function serveCatalogPage(request, requestId = "") {
 
 export async function serveCatalogIndex(request, requestId = "") {
   const sources = catalogSources(2);
-  return json({
-    index: sources.map(catalogIndexEntry),
-    facets: catalogFacets(sources),
-    total: sources.length,
-    catalogVersion: CATALOG_VERSION,
-  }, 200, requestId ? { "x-request-id": requestId } : {});
+  return json({ index: sources.map(catalogIndexEntry), facets: catalogFacets(sources), total: sources.length, catalogVersion: CATALOG_VERSION }, 200, requestId ? { "x-request-id": requestId } : {});
 }
 
 export async function serveRecipeDetail(request, requestId = "") {
