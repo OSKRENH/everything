@@ -34,6 +34,8 @@ test("клиент быстро открывает каталог, индекс 
   assert.match(performance, /catalogSeenCursors/);
   assert.match(performance, /IntersectionObserver/);
   assert.match(facets, /catalogIndexLoadPromise/);
+  assert.match(facets, /catalogMetadataTotal/);
+  assert.match(facets, /knownCatalogTotal/);
   assert.match(facets, /kutnoApi\.catalogIndex/);
   assert.match(facets, /requestIdleCallback/);
   assert.match(facets, /В базе/);
@@ -49,7 +51,7 @@ test("клиент быстро открывает каталог, индекс 
   assert.match(bootstrap, /await import\("\.\/main\.js"\)/);
   assert.match(bootstrap, /requestIdleCallback/);
   assert.match(bootstrap, /navigator\.serviceWorker\.register/);
-  assert.match(serviceWorker, /kutno-resilient-v1/);
+  assert.match(serviceWorker, /kutno-resilient-v2/);
   assert.match(vite, /kitchen-smart-suggestions\.inject\.js/);
   assert.match(vite, /catalog-detail\.inject\.js/);
   assert.ok(vite.indexOf("${kitchenSimplifiedSource}") < vite.indexOf("${kitchenSmartSuggestionsSource}"));
