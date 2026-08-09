@@ -29,10 +29,33 @@ function matchingUserContextV4() {
   return { pantry: context.pantry, feedback };
 }
 
+function serverMatchingAnalysisV4(recipe, base) {
+  const matching = recipe?.matching;
+  if (!recipe?.compact || !matching?.group) return null;
+  const named = (values) => (Array.isArray(values) ? values : []).map((value) => typeof value === "string" ? { name: value } : value).filter((value) => value?.name);
+  const missingNames = new Set((matching.missingRequired || []).map((value) => normalize(typeof value === "string" ? value : value?.name || "")));
+  const exactAvailable = (base.exactAvailable || []).filter((item) => !missingNames.has(normalize(item?.name || "")));
+  return {
+    ...base,
+    group: matching.group,
+    score: Number(matching.score) || base.score,
+    reasons: Array.isArray(matching.reasons) ? matching.reasons : base.reasons,
+    requiredMissing: named(matching.missingRequired),
+    optionalMissing: named(matching.missingOptional),
+    substitutions: Array.isArray(matching.substitutions) ? matching.substitutions : base.substitutions,
+    missingEquipment: Array.isArray(matching.missingEquipment) ? matching.missingEquipment : base.missingEquipment,
+    quantityShortages: Array.isArray(matching.quantityShortages) ? matching.quantityShortages : base.quantityShortages,
+    preferencePenalty: Number(matching.preferencePenalty) || 0,
+    exactAvailable,
+  };
+}
+
 matchingAnalysis = function trustworthyMatchingAnalysis(recipe) {
-  const base = semanticAnalyzeRecipe(recipe, matchingContext());
-  const analysis = matchingApplyUserContext(recipe, base, matchingUserContextV4());
-  if (recipe?.source?.type === "generated") analysis.score -= 30;
+  const semanticBase = semanticAnalyzeRecipe(recipe, matchingContext());
+  const contextAdjusted = matchingApplyUserContext(recipe, semanticBase, matchingUserContextV4());
+  const authoritative = serverMatchingAnalysisV4(recipe, contextAdjusted);
+  const analysis = authoritative || contextAdjusted;
+  if (recipe?.source?.type === "generated" && !authoritative) analysis.score -= 30;
   return analysis;
 };
 
@@ -96,9 +119,9 @@ generateRecipes = async function trustworthyGenerateRecipes({ append = false } =
 
     matchingExpansionSuggestionV4 = data.suggestedExpansion || null;
     matchingRelaxation = null;
-    const incoming = mergeUniqueRecipes([], data.recipes, excludeTitles, 3);
+    const incoming = mergeUniqueRecipes([], data.recipes, excludeTitles, Math.max(3, data.recipes.length));
     if (append) {
-      recipes = mergeUniqueRecipes(existingRecipes, incoming, [], existingRecipes.length + 3);
+      recipes = mergeUniqueRecipes(existingRecipes, incoming, [], existingRecipes.length + incoming.length);
       if (recipes.length === existingRecipes.length) loadMoreMessage = "Для этого набора больше надёжных вариантов нет";
     } else {
       recipes = incoming;
@@ -145,7 +168,7 @@ renderResults = function trustworthyMatchingResults() {
   const suggestion = matchingExpansionSuggestionV4;
   const buttonText = suggestion.code === "allow-one-purchase"
     ? `Показать с одной покупкой${suggestion.count ? ` · ${suggestion.count}` : ""}`
-    : `Сбросить время и тип блюда${suggestion.count ? ` · ${suggestion.count}` : ""}`;
+    : `Показать все типы блюд${suggestion.count ? ` · ${suggestion.count}` : ""}`;
   const offer = `<section class="generation-error matching-expansion-offer" id="results" aria-live="polite">
     <span>${escapeHtml(suggestion.title || "Можно расширить поиск")}</span>
     <p>${escapeHtml(suggestion.details || "Продукты и техника останутся без изменений.")}</p>
@@ -160,10 +183,7 @@ app.addEventListener("click", (event) => {
   event.preventDefault();
   const code = button.dataset.matchingExpand;
   if (code === "allow-one-purchase") state.searchMode = "plus-one";
-  if (code === "relax-filters") {
-    state.maxMinutes = 0;
-    state.course = "все";
-  }
+  if (code === "relax-filters") state.course = "все";
   matchingExpansionSuggestionV4 = null;
   generationError = "";
   saveState();
