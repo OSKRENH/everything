@@ -5,7 +5,7 @@ import test from "node:test";
 
 const runtimeFiles = [
   "vite.config.js", "worker/entry.js", "worker/matching-entry.js", "worker/oil-fix-entry.js", "worker/safe-entry.js", "worker/next-entry.js", "worker/catalog-cursor.js", "worker/catalog-page.js", "worker/lite-page.js", "worker/manual-recipes.js", "worker/simple-recipes.js",
-  "src/bootstrap.js", "src/ingredient-semantics.js", "src/ingredient-semantics-v2.js", "src/ingredient-semantics-v3.js", "src/kutno-api.js", "src/kutno-store.js", "src/kutno-next.js", "src/kutno-bridge.inject.js", "src/matching-engine.inject.js", "src/fetch-reset.inject.js", "src/matching-fixes.inject.js", "src/catalog-performance.inject.js", "src/catalog-facets.inject.js", "src/catalog-render-meta.inject.js", "src/swipe-full-catalog.inject.js", "src/matching-core-v4.inject.js", "src/kitchen-simplified.inject.js", "src/kitchen-smart-suggestions.inject.js", "src/catalog-detail.inject.js",
+  "src/bootstrap.js", "src/ingredient-semantics.js", "src/ingredient-semantics-v2.js", "src/ingredient-semantics-v3.js", "src/kutno-api.js", "src/kutno-store.js", "src/kutno-next.js", "src/kutno-bridge.inject.js", "src/matching-engine.inject.js", "src/fetch-reset.inject.js", "src/matching-fixes.inject.js", "src/catalog-performance.inject.js", "src/catalog-facets.inject.js", "src/catalog-render-meta.inject.js", "src/catalog-scroll-fill.inject.js", "src/swipe-full-catalog.inject.js", "src/matching-core-v4.inject.js", "src/kitchen-simplified.inject.js", "src/kitchen-smart-suggestions.inject.js", "src/catalog-detail.inject.js",
   "public/kutno-features.js", "public/feature-sync-throttle.js", "public/sw.js",
 ];
 
@@ -21,6 +21,7 @@ test("клиент быстро открывает каталог, индекс 
   const performance = readFileSync("src/catalog-performance.inject.js", "utf8");
   const facets = readFileSync("src/catalog-facets.inject.js", "utf8");
   const renderMeta = readFileSync("src/catalog-render-meta.inject.js", "utf8");
+  const scrollFill = readFileSync("src/catalog-scroll-fill.inject.js", "utf8");
   const smart = readFileSync("src/kitchen-smart-suggestions.inject.js", "utf8");
   const detail = readFileSync("src/catalog-detail.inject.js", "utf8");
   const api = readFileSync("src/kutno-api.js", "utf8");
@@ -42,9 +43,13 @@ test("клиент быстро открывает каталог, индекс 
   assert.match(facets, /requestIdleCallback/);
   assert.match(facets, /В базе/);
   assert.match(renderMeta, /catalogCountHtmlV6/);
+  assert.match(renderMeta, /requestCatalogPageWithMetadataV6/);
   assert.match(renderMeta, /refreshCatalogCountV6/);
   assert.match(renderMeta, /MutationObserver/);
   assert.match(renderMeta, /count\.innerHTML !== next/);
+  assert.match(scrollFill, /finishCatalogRevealWithViewportFillV6/);
+  assert.match(scrollFill, /sentinelIsNearViewport/);
+  assert.match(scrollFill, /revealNextCatalogItem/);
   assert.match(smart, /kutnoApi\.matchingSuggestions/);
   assert.match(smart, /smart-unlock-ingredient/);
   assert.match(detail, /hydrateCatalogRecipeV6/);
@@ -59,10 +64,12 @@ test("клиент быстро открывает каталог, индекс 
   assert.match(bootstrap, /navigator\.serviceWorker\.register/);
   assert.match(serviceWorker, /kutno-resilient-v2/);
   assert.match(vite, /catalog-render-meta\.inject\.js/);
+  assert.match(vite, /catalog-scroll-fill\.inject\.js/);
   assert.match(vite, /kitchen-smart-suggestions\.inject\.js/);
   assert.match(vite, /catalog-detail\.inject\.js/);
   assert.ok(vite.indexOf("${catalogFacetsSource}") < vite.indexOf("${catalogRenderMetaSource}"));
-  assert.ok(vite.indexOf("${catalogRenderMetaSource}") < vite.indexOf("${swipeFullCatalogSource}"));
+  assert.ok(vite.indexOf("${catalogRenderMetaSource}") < vite.indexOf("${catalogScrollFillSource}"));
+  assert.ok(vite.indexOf("${catalogScrollFillSource}") < vite.indexOf("${swipeFullCatalogSource}"));
   assert.ok(vite.indexOf("${kitchenSimplifiedSource}") < vite.indexOf("${kitchenSmartSuggestionsSource}"));
   assert.ok(vite.indexOf("${kitchenSmartSuggestionsSource}") < vite.indexOf("${catalogDetailSource}"));
   assert.match(index, /bootstrap\.js\?v=1/);
