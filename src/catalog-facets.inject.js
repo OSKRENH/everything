@@ -1,5 +1,6 @@
 let catalogIndex = [];
 let catalogFacets = { cuisines: [], difficulties: [], courses: [], proteins: [] };
+let catalogIndexLoadPromise = null;
 
 function safeCatalogFacetList(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
@@ -28,7 +29,7 @@ function fallbackCatalogIndex(recipes = catalogRecipes) {
 
 function captureCatalogMetadata(page, { replace = false, fallback = false } = {}) {
   if (Array.isArray(page?.index) && page.index.length) catalogIndex = page.index;
-  else if (replace && (fallback || !catalogIndex.length)) catalogIndex = fallbackCatalogIndex(page?.recipes);
+  else if (replace && fallback && !catalogIndex.length) catalogIndex = fallbackCatalogIndex(page?.recipes);
 
   if (page?.facets && typeof page.facets === "object") {
     catalogFacets = {
@@ -52,10 +53,28 @@ function captureCatalogMetadata(page, { replace = false, fallback = false } = {}
   }
 }
 
+function loadCatalogIndexInBackground() {
+  if (catalogIndex.length >= catalogTotal || catalogIndexLoadPromise) return catalogIndexLoadPromise;
+  catalogIndexLoadPromise = kutnoApi.catalogIndex()
+    .then((data) => {
+      captureCatalogMetadata(data, { replace: true });
+      if (currentView === "catalog") updateCatalogResults();
+      return catalogIndex;
+    })
+    .catch(() => catalogIndex)
+    .finally(() => { catalogIndexLoadPromise = null; });
+  return catalogIndexLoadPromise;
+}
+
 const catalogApplyPageBeforeFacets = applyCatalogPage;
 applyCatalogPage = function applyCatalogPageWithFacets(page, options = {}) {
   captureCatalogMetadata(page, options);
-  return catalogApplyPageBeforeFacets(page, options);
+  const added = catalogApplyPageBeforeFacets(page, options);
+  if (options.replace && !options.fallback && !Array.isArray(page?.index)) {
+    const schedule = window.requestIdleCallback || ((callback) => window.setTimeout(callback, 120));
+    schedule(() => loadCatalogIndexInBackground());
+  }
+  return added;
 };
 
 catalogCuisines = function completeCatalogCuisines() {
@@ -89,7 +108,7 @@ function catalogHasStaticFilters() {
 
 function catalogStaticTotal() {
   const index = catalogIndex.length ? catalogIndex : fallbackCatalogIndex();
-  if (!index.length) return Math.max(catalogTotal, catalogRecipes.length);
+  if (!index.length || (catalogHasStaticFilters() && catalogIndex.length < catalogTotal)) return catalogHasStaticFilters() ? currentFilteredCatalog().length : Math.max(catalogTotal, catalogRecipes.length);
   const query = normalize(catalogQuery);
   return index.filter((recipe) => {
     const cuisineMatches = catalogCuisine === "все" || recipe.cuisine === catalogCuisine;
