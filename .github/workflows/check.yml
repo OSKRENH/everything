@@ -27,8 +27,16 @@ jobs:
         run: |
           npm install --no-save @playwright/test@1.55.0
           npx playwright install --with-deps chromium webkit
-      - name: QA catalog metadata and filters
-        run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "первые пять"
+      - name: QA catalog first five
+        run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "первые пять карточек"
+      - name: QA catalog total
+        run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "общий размер базы"
+      - name: QA catalog facets
+        run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "все страны"
+      - name: QA catalog index
+        run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "полный индекс"
+      - name: QA catalog country paging
+        run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "выбор страны"
       - name: QA catalog full scroll
         run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "прокрутка"
       - name: QA fast matching
