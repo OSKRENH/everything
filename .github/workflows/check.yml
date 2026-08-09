@@ -8,7 +8,7 @@ on:
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,5 +27,21 @@ jobs:
         run: |
           npm install --no-save @playwright/test@1.55.0
           npx playwright install --with-deps chromium webkit
-      - name: Browser QA
-        run: npx playwright test
+      - name: QA catalog all pages
+        run: npx playwright test test/e2e/catalog-all-pages.spec.mjs
+      - name: QA fast matching
+        run: npx playwright test test/e2e/fast-matching.spec.mjs
+      - name: QA kitchen simplified
+        run: npx playwright test test/e2e/kitchen-simplified.spec.mjs
+      - name: QA kitchen trust
+        run: npx playwright test test/e2e/kitchen-trust.spec.mjs
+      - name: QA next features
+        run: npx playwright test test/e2e/next.spec.mjs
+      - name: QA recipe tools
+        run: npx playwright test test/e2e/recipe-tools.spec.mjs
+      - name: QA resilient start
+        run: npx playwright test test/e2e/resilient-start.spec.mjs
+      - name: QA smoke
+        run: npx playwright test test/e2e/smoke.spec.mjs
+      - name: QA swipe all recipes
+        run: npx playwright test test/e2e/swipe-all-recipes.spec.mjs
