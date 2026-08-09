@@ -41,10 +41,11 @@ test("подсказки показывают продукт, который о�
   assert.ok(data.suggestions.every((item) => !["яйца", "картофель"].includes(item.name.toLocaleLowerCase("ru-RU"))));
 });
 
-test("первая страница каталога остаётся маленькой", async () => {
+test("первая страница каталога остаётся меньше 16 КБ", async () => {
   const response = await serveCatalogPage(new Request("https://kutno.test/api/catalog?limit=5"), "size-test");
   const text = await response.text();
-  assert.ok(text.length < 16_000, `первая страница слишком большая: ${text.length} байт`);
+  const bytes = Buffer.byteLength(text, "utf8");
+  assert.ok(bytes < 16_000, `первая страница слишком большая: ${bytes} байт`);
   const data = JSON.parse(text);
   assert.equal(data.recipes.length, 5);
 });
