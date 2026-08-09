@@ -1,35 +1,17 @@
 import featureWorker from "./entry.js";
-import {
-  analyzeRecipe,
-  enrichRecipeSemantics,
-  MANUAL_EQUIPMENT,
-} from "../src/ingredient-semantics-v3.js";
-import {
-  applyMatchingUserContext,
-  matchingPayloadFromContext,
-} from "../src/matching-user-context.js";
-import { catalogFullRecipes } from "./catalog-page.js";
+import { analyzeRecipe, enrichRecipeSemantics, MANUAL_EQUIPMENT } from "../src/ingredient-semantics-v3.js";
+import { applyMatchingUserContext, matchingPayloadFromContext } from "../src/matching-user-context.js";
+import { catalogCompactRecipes } from "./catalog-page.js";
 
 function json(data, status = 200, headers = {}) {
-  return Response.json(data, {
-    status,
-    headers: {
-      "cache-control": "no-store",
-      "x-content-type-options": "nosniff",
-      ...headers,
-    },
-  });
+  return Response.json(data, { status, headers: { "cache-control": "no-store", "x-content-type-options": "nosniff", ...headers } });
 }
 
 function requestWithJson(request, body) {
   const headers = new Headers(request.headers);
   headers.delete("content-length");
   headers.set("content-type", "application/json");
-  return new Request(request.url, {
-    method: request.method,
-    headers,
-    body: JSON.stringify(body),
-  });
+  return new Request(request.url, { method: request.method, headers, body: JSON.stringify(body) });
 }
 
 function matchingContext(body = {}) {
@@ -48,16 +30,12 @@ function normalizedTitle(value = "") {
   return String(value).toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/[^а-яa-z0-9]+/giu, " ").trim();
 }
 
-function recipeKey(recipe) {
-  return String(recipe?.id || recipe?.source?.id || normalizedTitle(recipe?.title));
-}
-
 function mergeRecipes(...groups) {
   const result = [];
   const seen = new Set();
   for (const recipe of groups.flat()) {
     if (!recipe?.title) continue;
-    const key = recipeKey(recipe);
+    const key = String(recipe.id || recipe.source?.id || normalizedTitle(recipe.title));
     const title = normalizedTitle(recipe.title);
     if (seen.has(key) || result.some((item) => normalizedTitle(item.title) === title)) continue;
     seen.add(key);
@@ -73,8 +51,9 @@ function recipePassesFilters(recipe, body) {
 }
 
 function groupAllowed(group, searchMode) {
-  if (searchMode === "plus-one") return ["ready", "substitute", "one"].includes(group);
-  return ["ready", "substitute"].includes(group);
+  return searchMode === "plus-one"
+    ? ["ready", "substitute", "one"].includes(group)
+    : ["ready", "substitute"].includes(group);
 }
 
 function analyzeWithContext(recipe, context) {
@@ -94,41 +73,35 @@ function enrichedWithContext(recipe, context, analysis = analyzeWithContext(reci
       missingOptional: analysis.optionalMissing.map((item) => item.name),
       substitutions: analysis.substitutions.map((item) => ({ ingredient: item.name, owned: item.match?.owned || "" })),
       missingEquipment: analysis.missingEquipment,
-      priorityHits: analysis.priorityHits,
-      quantityShortages: analysis.quantityShortages.map((item) => ({
-        name: item.name,
-        have: `${item.have.quantity} ${item.have.unit}`.trim(),
-        need: item.need,
-      })),
+      quantityShortages: analysis.quantityShortages.map((item) => ({ name: item.name, have: `${item.have.quantity} ${item.have.unit}`.trim(), need: item.need })),
       preferencePenalty: analysis.preferencePenalty,
     },
   };
 }
 
 function verifiedSourceBonus(recipe) {
-  const sourceType = recipe?.source?.type;
-  if (sourceType === "kutno-simple-catalog") return 70;
-  if (sourceType === "kutno-manual-catalog") return 55;
-  if (sourceType === "kutno-catalog") return 45;
-  if (sourceType === "generated") return -30;
+  if (recipe?.source?.type === "kutno-simple-catalog") return 70;
+  if (recipe?.source?.type === "kutno-manual-catalog") return 55;
+  if (recipe?.source?.type === "kutno-catalog") return 45;
+  if (recipe?.source?.type === "generated") return -30;
   return 0;
 }
 
-function rankRecipes(recipes, body) {
+function rankRecipes(catalog, body) {
   const context = matchingContext(body);
-  return recipes
+  return catalog
     .map((recipe) => {
       const analysis = analyzeWithContext(recipe, context);
       const enriched = enrichedWithContext(recipe, context, analysis);
       const usedCount = Array.isArray(enriched.uses) ? enriched.uses.length : 0;
-      const rank = analysis.score + verifiedSourceBonus(enriched) + Math.min(18, usedCount * 3) - Number(enriched.minutes || 0) / 120;
-      return { recipe: enriched, analysis, rank };
+      return { recipe: enriched, analysis, rank: analysis.score + verifiedSourceBonus(enriched) + Math.min(18, usedCount * 3) - Number(enriched.minutes || 0) / 120 };
     })
     .filter(({ recipe, analysis }) => recipePassesFilters(recipe, body) && groupAllowed(analysis.group, body.searchMode))
     .sort((first, second) => second.rank - first.rank || Number(first.recipe.minutes) - Number(second.recipe.minutes));
 }
 
 function compactMatchedRecipe(recipe) {
+  const matchingMissing = Array.isArray(recipe.matching?.missingRequired) ? recipe.matching.missingRequired : [];
   return {
     id: recipe.id,
     compact: true,
@@ -142,16 +115,11 @@ function compactMatchedRecipe(recipe) {
     difficulty: recipe.difficulty,
     portions: 2,
     equipment: Array.isArray(recipe.equipment) ? recipe.equipment : [],
-    ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item) => ({
-      name: item.name,
-      aliases: Array.isArray(item.aliases) ? item.aliases : [],
-      pantry: item.pantry === true,
-      ...(item.role ? { role: item.role } : {}),
-    })),
+    ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item) => ({ name: item.name, aliases: Array.isArray(item.aliases) ? item.aliases : [], pantry: item.pantry === true, ...(item.role ? { role: item.role } : {}) })),
     nutrition: { calories: Number(recipe.nutrition?.calories) || 0 },
     source: recipe.source,
     matching: recipe.matching,
-    missing: Array.isArray(recipe.missing) ? recipe.missing : recipe.matching?.missingRequired || [],
+    missing: matchingMissing.length ? matchingMissing : Array.isArray(recipe.missing) ? recipe.missing : [],
     uses: Array.isArray(recipe.uses) ? recipe.uses : [],
     why: recipe.why,
   };
@@ -161,12 +129,10 @@ function ingredientUnlockSuggestions(catalog, body, limit = 6) {
   const context = matchingContext({ ...body, searchMode: "strict" });
   const owned = new Set(context.ingredients.map(normalizedTitle));
   const counts = new Map();
-
   for (const recipe of catalog) {
     if (!recipePassesFilters(recipe, { ...body, course: "все", excludeTitles: [] })) continue;
     const analysis = analyzeWithContext(recipe, context);
-    if (analysis.missingEquipment?.length) continue;
-    if (analysis.requiredMissing?.length !== 1) continue;
+    if (analysis.missingEquipment?.length || analysis.requiredMissing?.length !== 1) continue;
     const name = String(analysis.requiredMissing[0]?.name || "").trim();
     const key = normalizedTitle(name);
     if (!name || !key || owned.has(key)) continue;
@@ -175,19 +141,11 @@ function ingredientUnlockSuggestions(catalog, body, limit = 6) {
     if (name.length < current.name.length) current.name = name;
     counts.set(key, current);
   }
-
-  return [...counts.values()]
-    .sort((first, second) => second.count - first.count || first.name.localeCompare(second.name, "ru"))
-    .slice(0, limit);
+  return [...counts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ru")).slice(0, limit);
 }
 
 async function runAiIdeas(body, request, env, ctx) {
-  const {
-    difficulty: ignoredDifficulty,
-    maxMinutes: ignoredMaxMinutes,
-    portions: ignoredPortions,
-    ...unfilteredBody
-  } = body;
+  const { difficulty: _difficulty, maxMinutes: _maxMinutes, portions: _portions, ...unfilteredBody } = body;
   const generationBody = {
     ...unfilteredBody,
     portions: 2,
@@ -209,35 +167,18 @@ function resultResponse(recipes, body, { source = "deterministic-catalog", sugge
     source,
     relaxation: null,
     ...(suggestedExpansion ? { suggestedExpansion } : {}),
-    originalFilters: {
-      searchMode: body.searchMode,
-      course: body.course,
-    },
+    originalFilters: { searchMode: body.searchMode, course: body.course },
   });
 }
 
 function expansionSuggestion(body, catalog) {
   if (body.searchMode !== "plus-one") {
     const plusOne = rankRecipes(catalog, { ...body, searchMode: "plus-one" });
-    if (plusOne.length) {
-      return {
-        code: "allow-one-purchase",
-        title: "Есть варианты с одной покупкой",
-        details: "Можно отдельно показать блюда, где не хватает ровно одного обязательного продукта.",
-        count: plusOne.length,
-      };
-    }
+    if (plusOne.length) return { code: "allow-one-purchase", title: "Есть варианты с одной покупкой", details: "Можно отдельно показать блюда, где не хватает ровно одного обязательного продукта.", count: plusOne.length };
   }
   if (body.course && body.course !== "все") {
     const withoutCourse = rankRecipes(catalog, { ...body, course: "все" });
-    if (withoutCourse.length) {
-      return {
-        code: "relax-filters",
-        title: "Подходящие блюда есть в других разделах",
-        details: "Продукты и техника останутся прежними; изменится только тип блюда.",
-        count: withoutCourse.length,
-      };
-    }
+    if (withoutCourse.length) return { code: "relax-filters", title: "Подходящие блюда есть в других разделах", details: "Продукты и техника останутся прежними; изменится только тип блюда.", count: withoutCourse.length };
   }
   return null;
 }
@@ -259,18 +200,14 @@ async function smartGenerate(request, env, ctx) {
   if (!Array.isArray(incoming.ingredients) || !incoming.ingredients.length) return featureWorker.fetch(request, env, ctx);
 
   const body = normalizedBody(incoming);
-  const catalog = catalogFullRecipes(2);
+  const catalog = catalogCompactRecipes();
   const suggestions = ingredientUnlockSuggestions(catalog, body);
-  const rankedFull = rankRecipes(catalog, body).map((item) => item.recipe);
-  const catalogRanked = rankedFull.map(compactMatchedRecipe);
+  const catalogRanked = rankRecipes(catalog, body).map(({ recipe }) => compactMatchedRecipe(recipe));
 
-  if (catalogRanked.length) {
-    if (!incoming.aiIdeas) {
-      return resultResponse(catalogRanked, body, { suggestions });
-    }
+  if (catalogRanked.length && !incoming.aiIdeas) return resultResponse(catalogRanked, body, { suggestions });
+  if (catalogRanked.length && incoming.aiIdeas) {
     const generated = await runAiIdeas(body, request, env, ctx);
-    const combined = mergeRecipes(catalogRanked, generated.recipes);
-    return resultResponse(combined, body, {
+    return resultResponse(mergeRecipes(catalogRanked, generated.recipes), body, {
       source: generated.recipes.length ? "deterministic-plus-ai" : "deterministic-catalog",
       suggestions,
       extra: generated.data || {},
@@ -278,28 +215,12 @@ async function smartGenerate(request, env, ctx) {
   }
 
   const suggestedExpansion = expansionSuggestion(body, catalog);
-  if (!incoming.aiIdeas) {
-    return resultResponse([], body, {
-      suggestions,
-      suggestedExpansion,
-      extra: { error: suggestedExpansion?.title || "Для этого набора пока нет точного рецепта" },
-    });
-  }
+  if (!incoming.aiIdeas) return resultResponse([], body, { suggestions, suggestedExpansion, extra: { error: suggestedExpansion?.title || "Для этого набора пока нет точного рецепта" } });
 
   const generated = await runAiIdeas(body, request, env, ctx);
-  if (generated.recipes.length) {
-    return resultResponse(generated.recipes, body, {
-      source: "workers-ai",
-      suggestions,
-      extra: generated.data || {},
-    });
-  }
+  if (generated.recipes.length) return resultResponse(generated.recipes, body, { source: "workers-ai", suggestions, extra: generated.data || {} });
   if (!generated.data && !generated.response.ok) return generated.response;
-  return resultResponse([], body, {
-    suggestions,
-    suggestedExpansion,
-    extra: { error: suggestedExpansion?.title || "Добавьте ещё один основной продукт" },
-  });
+  return resultResponse([], body, { suggestions, suggestedExpansion, extra: { error: suggestedExpansion?.title || "Добавьте ещё один основной продукт" } });
 }
 
 async function matchingSuggestions(request) {
@@ -312,8 +233,7 @@ async function matchingSuggestions(request) {
     searchMode: "strict",
   });
   if (!body.ingredients.length) return json({ suggestions: [] });
-  const suggestions = ingredientUnlockSuggestions(catalogFullRecipes(2), body);
-  return json({ suggestions }, 200, { "cache-control": "public, max-age=60, s-maxage=300" });
+  return json({ suggestions: ingredientUnlockSuggestions(catalogCompactRecipes(), body) }, 200, { "cache-control": "public, max-age=60, s-maxage=300" });
 }
 
 export default {
