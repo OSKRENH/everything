@@ -4,46 +4,14 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const runtimeFiles = [
-  "vite.config.js",
-  "worker/entry.js",
-  "worker/matching-entry.js",
-  "worker/oil-fix-entry.js",
-  "worker/safe-entry.js",
-  "worker/next-entry.js",
-  "worker/catalog-cursor.js",
-  "worker/catalog-page.js",
-  "worker/lite-page.js",
-  "worker/manual-recipes.js",
-  "worker/simple-recipes.js",
-  "src/bootstrap.js",
-  "src/ingredient-semantics.js",
-  "src/ingredient-semantics-v2.js",
-  "src/ingredient-semantics-v3.js",
-  "src/kutno-api.js",
-  "src/kutno-store.js",
-  "src/kutno-next.js",
-  "src/kutno-bridge.inject.js",
-  "src/matching-engine.inject.js",
-  "src/fetch-reset.inject.js",
-  "src/matching-fixes.inject.js",
-  "src/catalog-performance.inject.js",
-  "src/catalog-facets.inject.js",
-  "src/swipe-full-catalog.inject.js",
-  "src/matching-core-v4.inject.js",
-  "src/kitchen-simplified.inject.js",
-  "src/kitchen-smart-suggestions.inject.js",
-  "src/catalog-detail.inject.js",
-  "public/kutno-features.js",
-  "public/feature-sync-throttle.js",
-  "public/sw.js",
+  "vite.config.js", "worker/entry.js", "worker/matching-entry.js", "worker/oil-fix-entry.js", "worker/safe-entry.js", "worker/next-entry.js", "worker/catalog-cursor.js", "worker/catalog-page.js", "worker/lite-page.js", "worker/manual-recipes.js", "worker/simple-recipes.js",
+  "src/bootstrap.js", "src/ingredient-semantics.js", "src/ingredient-semantics-v2.js", "src/ingredient-semantics-v3.js", "src/kutno-api.js", "src/kutno-store.js", "src/kutno-next.js", "src/kutno-bridge.inject.js", "src/matching-engine.inject.js", "src/fetch-reset.inject.js", "src/matching-fixes.inject.js", "src/catalog-performance.inject.js", "src/catalog-facets.inject.js", "src/swipe-full-catalog.inject.js", "src/matching-core-v4.inject.js", "src/kitchen-simplified.inject.js", "src/kitchen-smart-suggestions.inject.js", "src/catalog-detail.inject.js",
+  "public/kutno-features.js", "public/feature-sync-throttle.js", "public/sw.js",
 ];
 
 test("runtime-файлы Кутно проходят синтаксическую проверку", () => {
   for (const file of runtimeFiles) {
-    const result = spawnSync(process.execPath, ["--check", file], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-    });
+    const result = spawnSync(process.execPath, ["--check", file], { cwd: process.cwd(), encoding: "utf8" });
     assert.equal(result.status, 0, `${file}: ${result.stderr || result.stdout}`);
   }
 });
@@ -92,7 +60,7 @@ test("клиент быстро открывает каталог, индекс 
   assert.doesNotMatch(index, /rel="preload" as="image"/);
 });
 
-test("Worker использует статический каталог и не запускает AI в обычном подборе", () => {
+test("Worker использует лёгкий статический индекс и не запускает AI в обычном подборе", () => {
   const featureWorker = readFileSync("worker/entry.js", "utf8");
   const matchingWorker = readFileSync("worker/matching-entry.js", "utf8");
   const oilFixWorker = readFileSync("worker/oil-fix-entry.js", "utf8");
@@ -103,9 +71,11 @@ test("Worker использует статический каталог и не 
   const wrangler = readFileSync("wrangler.jsonc", "utf8");
 
   assert.match(featureWorker, /return baseWorker\.fetch\(request, env, ctx\)/);
-  assert.match(matchingWorker, /catalogFullRecipes/);
+  assert.match(matchingWorker, /catalogSources/);
+  assert.match(matchingWorker, /matchingCatalog/);
+  assert.match(matchingWorker, /matchingAmount/);
   assert.match(matchingWorker, /ingredientUnlockSuggestions/);
-  assert.match(matchingWorker, /if \(!incoming\.aiIdeas\)/);
+  assert.match(matchingWorker, /!incoming\.aiIdeas/);
   assert.match(matchingWorker, /compactMatchedRecipe/);
   assert.doesNotMatch(matchingWorker, /loadCatalogForMatching/);
   assert.match(oilFixWorker, /return matchingWorker\.fetch\(request, env, ctx\)/);
