@@ -21,6 +21,10 @@ let catalogTotal = 0;
 let catalogPageLoading = false;
 let catalogPageError = "";
 let catalogSeenCursors = new Set();
+let catalogScrollVersion = 0;
+let catalogRevealScrollVersion = 0;
+let catalogFilterSeekPending = false;
+let catalogFilterSeekKey = "";
 
 function catalogDelay(milliseconds) {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
@@ -322,6 +326,7 @@ function finishCatalogReveal(card, header) {
   card?.classList.remove("catalog-card-entering");
   header?.classList.remove("matching-group-header-entering");
   catalogLoadPending = false;
+  catalogRevealScrollVersion = catalogScrollVersion;
   armCatalogAutoLoad();
 }
 
@@ -332,6 +337,7 @@ function animateNewCatalogCard(grid) {
   const card = cards.at(-1);
   if (!card) {
     catalogLoadPending = false;
+    catalogRevealScrollVersion = catalogScrollVersion;
     return false;
   }
   const group = card.closest(".matching-group");
@@ -355,6 +361,18 @@ async function loadUntilNextFilteredRecipe(previousFilteredCount) {
   return filteredCount;
 }
 
+async function seekFilteredCatalog(filterKey) {
+  if (catalogFilterSeekPending || !catalogNextCursor) return;
+  catalogFilterSeekPending = true;
+  catalogFilterSeekKey = filterKey;
+  try {
+    await loadUntilNextFilteredRecipe(0);
+  } finally {
+    catalogFilterSeekPending = false;
+  }
+  if (currentView === "catalog" && catalogFilterSeekKey === currentCatalogFilterKey()) updateCatalogResults();
+}
+
 async function revealNextCatalogItem() {
   if (catalogLoadPending) return;
   catalogLoadPending = true;
@@ -375,8 +393,15 @@ async function revealNextCatalogItem() {
   updateCatalogResults();
   if (!catalogAnimateNext) {
     catalogLoadPending = false;
+    catalogRevealScrollVersion = catalogScrollVersion;
     requestAnimationFrame(armCatalogAutoLoad);
   }
+}
+
+function sentinelIsNearViewport(sentinel) {
+  if (!sentinel) return false;
+  const bounds = sentinel.getBoundingClientRect();
+  return bounds.top <= window.innerHeight + 60 && bounds.bottom >= -60;
 }
 
 function armCatalogAutoLoad() {
@@ -384,21 +409,21 @@ function armCatalogAutoLoad() {
   catalogLoadObserver = null;
   const sentinel = document.querySelector("[data-catalog-scroll-sentinel]");
   if (!sentinel || catalogLoadPending) return;
-  if (typeof IntersectionObserver === "undefined") {
-    const onScroll = () => {
-      if (sentinel.getBoundingClientRect().top > window.innerHeight + 60) return;
-      window.removeEventListener("scroll", onScroll);
-      revealNextCatalogItem();
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return;
-  }
+  if (typeof IntersectionObserver === "undefined") return;
   catalogLoadObserver = new IntersectionObserver((entries) => {
     if (!entries.some((entry) => entry.isIntersecting)) return;
+    if (catalogScrollVersion <= catalogRevealScrollVersion) return;
     revealNextCatalogItem();
   }, { rootMargin: "60px 0px" });
   catalogLoadObserver.observe(sentinel);
 }
+
+window.addEventListener("scroll", () => {
+  catalogScrollVersion += 1;
+  if (currentView !== "catalog" || catalogLoadPending || catalogScrollVersion <= catalogRevealScrollVersion) return;
+  const sentinel = document.querySelector("[data-catalog-scroll-sentinel]");
+  if (sentinelIsNearViewport(sentinel)) revealNextCatalogItem();
+}, { passive: true });
 
 updateCatalogResults = function performantCatalogResults() {
   const count = document.querySelector(".catalog-count");
@@ -407,11 +432,13 @@ updateCatalogResults = function performantCatalogResults() {
 
   const filtered = currentFilteredCatalog();
   const nextFilterKey = currentCatalogFilterKey();
-  if (catalogFilterKey !== nextFilterKey) {
+  const filterChanged = catalogFilterKey !== nextFilterKey;
+  if (filterChanged) {
     catalogFilterKey = nextFilterKey;
     catalogVisibleLimit = CATALOG_INITIAL_SIZE;
     catalogAnimateNext = false;
     catalogLoadPending = false;
+    catalogRevealScrollVersion = catalogScrollVersion;
   }
 
   let quickKey = "";
@@ -431,7 +458,8 @@ updateCatalogResults = function performantCatalogResults() {
     grid.innerHTML = catalogNextCursor
       ? `${catalogScrollSentinel(Math.max(0, catalogTotal - catalogRecipes.length))}<p class="catalog-empty">Ищем подходящие рецепты дальше…</p>`
       : `<p class="catalog-empty">Ничего не нашлось. Попробуйте убрать один из фильтров.</p>`;
-    requestAnimationFrame(armCatalogAutoLoad);
+    if (filterChanged && catalogNextCursor) queueMicrotask(() => seekFilteredCatalog(nextFilterKey));
+    else requestAnimationFrame(armCatalogAutoLoad);
     return;
   }
 
