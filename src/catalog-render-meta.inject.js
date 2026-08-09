@@ -1,4 +1,5 @@
 const renderCatalogViewBeforeMetadataV6 = renderCatalogView;
+let catalogCountRefreshQueuedV6 = false;
 
 function catalogCountHtmlV6() {
   const filtered = currentFilteredCatalog();
@@ -11,6 +12,21 @@ function catalogCountHtmlV6() {
   return `${label} — ${exactTotal.toString().padStart(2, "0")}${state.ingredients.length ? matchingSummary(filtered) : ""}`;
 }
 
+function refreshCatalogCountV6() {
+  catalogCountRefreshQueuedV6 = false;
+  if (currentView !== "catalog" || catalogLoading || catalogError) return;
+  const count = document.querySelector(".catalog-count");
+  if (!count) return;
+  const next = catalogCountHtmlV6();
+  if (count.innerHTML !== next) count.innerHTML = next;
+}
+
+function scheduleCatalogCountRefreshV6() {
+  if (catalogCountRefreshQueuedV6) return;
+  catalogCountRefreshQueuedV6 = true;
+  queueMicrotask(refreshCatalogCountV6);
+}
+
 renderCatalogView = function renderCatalogViewWithMetadataV6() {
   const markup = renderCatalogViewBeforeMetadataV6();
   if (catalogLoading || catalogError || !markup.includes('class="catalog-count"')) return markup;
@@ -19,3 +35,7 @@ renderCatalogView = function renderCatalogViewWithMetadataV6() {
     `<div class="catalog-count">${catalogCountHtmlV6()}</div>`,
   );
 };
+
+new MutationObserver(scheduleCatalogCountRefreshV6).observe(app, { childList: true, subtree: true });
+window.addEventListener("hashchange", scheduleCatalogCountRefreshV6);
+scheduleCatalogCountRefreshV6();
