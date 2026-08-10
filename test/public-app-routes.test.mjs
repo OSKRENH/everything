@@ -3,10 +3,12 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { serveCrawlerRules, servePublicAppPage } from "../worker/public-app-pages.js";
+import { recipeImageSet, recipeImageUrls, recipePhotoManifest, serveRecipeImage, serveRecipePhotoManifest } from "../worker/recipe-images.js";
 import { seoRecipeEntries } from "../worker/seo-pages.js";
 
 const indexHtml = readFileSync("index.html", "utf8");
 const env = {
+  STRICT_SEO_MARKERS: "true",
   ASSETS: {
     async fetch() {
       return new Response(indexHtml, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
@@ -15,7 +17,7 @@ const env = {
 };
 
 test("новые публичные модули проходят синтаксическую проверку", () => {
-  for (const file of ["worker/public-app-pages.js", "worker/fresh-sitemap.js", "src/public-routes.js"]) {
+  for (const file of ["worker/public-app-pages.js", "worker/fresh-sitemap.js", "worker/recipe-images.js", "src/public-routes.js", "public/recipe-photos.js"]) {
     const result = spawnSync(process.execPath, ["--check", file], { encoding: "utf8" });
     assert.equal(result.status, 0, `${file}: ${result.stderr || result.stdout}`);
   }
@@ -56,13 +58,50 @@ test("уникальный URL рецепта грузит shell, видимый
   assert.match(html, /"recipeInstructions":\[/);
   assert.match(html, /"datePublished":"2026-08-10"/);
   assert.match(html, /"dateModified":"2026-08-10"/);
+  assert.match(html, /<meta property="og:type" content="article" \/>/);
   assert.match(html, new RegExp(`<h1[^>]*data-seo-title[^>]*>${entry.recipe.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h1>`));
   assert.match(html, /data-seo-content[^>]*>[\s\S]*<h2>Ингредиенты<\/h2>[\s\S]*<h2>Как готовить<\/h2>/);
 });
 
-test("несуществующий рецепт не превращается в app shell", async () => {
+test("рецепт без hasPhoto не получает image или og:image", async () => {
+  const entry = seoRecipeEntries(2).find((item) => item.source?.recipe?.hasPhoto !== true) || seoRecipeEntries(2)[0];
+  const response = await servePublicAppPage(new Request(`https://kutno.ru${entry.pathname}`), env);
+  const html = await response.text();
+  assert.doesNotMatch(html, /"image":\[/);
+  assert.doesNotMatch(html, /property="og:image"/);
+  assert.doesNotMatch(html, /name="twitter:image"/);
+  assert.match(html, /name="twitter:card" content="summary"/);
+});
+
+test("фото URL выводятся только при явном hasPhoto", () => {
+  assert.deepEqual(recipeImageUrls({}, "syrniki"), []);
+  assert.deepEqual(recipeImageUrls({ hasPhoto: false }, "syrniki"), []);
+  assert.deepEqual(recipeImageUrls({ hasPhoto: true }, "syrniki"), [
+    "https://kutno.ru/img/syrniki-1x1.webp",
+    "https://kutno.ru/img/syrniki-4x3.webp",
+    "https://kutno.ru/img/syrniki-16x9.webp",
+  ]);
+  assert.equal(recipeImageSet({ hasPhoto: true }, "syrniki").social, "https://kutno.ru/img/syrniki-16x9.webp");
+});
+
+test("пока картинки не включены, фото-манифест пуст", async () => {
+  assert.deepEqual(recipePhotoManifest(2), []);
+  const response = serveRecipePhotoManifest(new Request("https://kutno.ru/api/photo-manifest"));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { photos: [] });
+});
+
+test("/img безопасно отдаёт 404 до подключения R2", async () => {
+  const response = await serveRecipeImage(new Request("https://kutno.ru/img/syrniki-4x3.webp"), {});
+  assert.equal(response.status, 404);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+});
+
+test("несуществующий рецепт возвращает 404 и noindex в единственном обработчике", async () => {
   const response = await servePublicAppPage(new Request("https://kutno.ru/recipe/net-takogo"), env);
-  assert.equal(response, null);
+  assert.equal(response.status, 404);
+  assert.match(response.headers.get("x-robots-tag") || "", /noindex/);
+  assert.match(await response.text(), /Рецепт не найден/);
 });
 
 test("robots явно разрешает OpenAI и не кэшируется на edge", async () => {
@@ -82,12 +121,19 @@ test("клиентский маршрут открывает Базу и шта�
   const source = readFileSync("src/public-routes.js", "utf8");
   const bootstrap = readFileSync("src/bootstrap.js", "utf8");
   const wrangler = readFileSync("wrangler.jsonc", "utf8");
+  const photos = readFileSync("public/recipe-photos.js", "utf8");
   assert.match(source, /data-view=\\?"catalog/);
   assert.match(source, /kutnoBridge\.openRecipe/);
   assert.match(source, /MutationObserver/);
   assert.match(source, /recipe-sheet/);
   assert.match(source, /history\.pushState/);
   assert.match(bootstrap, /await import\("\.\/public-routes\.js"\)/);
+  assert.match(bootstrap, /\/recipe-photos\.js\?v=1/);
+  assert.match(photos, /fetchPriority = "high"/);
+  assert.match(photos, /image\.loading = "lazy"/);
+  assert.match(photos, /image\.width = meta\.width/);
+  assert.match(photos, /image\.height = meta\.height/);
   assert.match(wrangler, /"\/recipe\/\*"/);
+  assert.match(wrangler, /"\/img\/\*"/);
   assert.match(wrangler, /"\/robots\.txt"/);
 });
