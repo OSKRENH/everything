@@ -165,6 +165,13 @@ function enrichedWithContext(recipe, context, analysis = analyzeWithContext(reci
   };
 }
 
+function rankingScore(item) {
+  return item.usedCount * 10
+    - item.missingCount * 7
+    - item.optionalMissing
+    - item.substitutions * 2;
+}
+
 function rankRecipes(catalog, body) {
   const context = matchingContext(body);
   return catalog
@@ -186,7 +193,8 @@ function rankRecipes(catalog, body) {
       && groupAllowed(analysis)
       && recipe.usedCount >= 1
       && (!context.enforceEquipment || analysis.missingEquipment.length === 0))
-    .sort((a, b) => a.missingCount - b.missingCount
+    .sort((a, b) => rankingScore(b) - rankingScore(a)
+      || a.missingCount - b.missingCount
       || b.usedCount - a.usedCount
       || b.exactRequired - a.exactRequired
       || a.substitutions - b.substitutions
