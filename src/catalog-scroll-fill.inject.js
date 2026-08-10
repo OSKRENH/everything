@@ -38,11 +38,31 @@ function catalogColumnCountV8() {
 }
 
 function catalogRevealBatchV8() {
+  // На телефоне пользователь явно продолжает список крупным пакетом, а не по одной карточке.
+  if (window.matchMedia?.("(max-width: 700px)")?.matches) return 5;
   return Math.max(1, catalogColumnCountV8());
 }
 
 function ensureCatalogVisibleBatchV8() {
   if (catalogVisibleLimit < CATALOG_INITIAL_VISIBLE_V8) catalogVisibleLimit = CATALOG_INITIAL_VISIBLE_V8;
+}
+
+function animateCatalogBatchV9(startIndex) {
+  requestAnimationFrame(() => {
+    const cards = [...document.querySelectorAll(".catalog-grid .catalog-card")];
+    const incoming = cards.slice(Math.max(0, startIndex));
+    incoming.forEach((card, index) => {
+      card.classList.remove("catalog-card-entering");
+      card.style.animationDelay = `${Math.min(index, 6) * 65}ms`;
+      // Перезапускаем существующую анимацию reveal для каждой новой карточки.
+      void card.offsetWidth;
+      card.classList.add("catalog-card-entering");
+      window.setTimeout(() => {
+        card.classList.remove("catalog-card-entering");
+        card.style.removeProperty("animation-delay");
+      }, CATALOG_REVEAL_DURATION + 520);
+    });
+  });
 }
 
 requestCatalogPage = async function requestCatalogPageTwelveV8(cursor = "") {
@@ -84,8 +104,9 @@ revealNextCatalogItem = async function revealNextCatalogRowV8() {
   catalogLoadObserver = null;
 
   const batch = catalogRevealBatchV8();
-  const target = Math.max(CATALOG_INITIAL_VISIBLE_V8, catalogVisibleLimit) + batch;
   let filtered = currentFilteredCatalog();
+  const previousVisible = Math.min(Math.max(CATALOG_INITIAL_VISIBLE_V8, catalogVisibleLimit), filtered.length);
+  const target = Math.max(CATALOG_INITIAL_VISIBLE_V8, catalogVisibleLimit) + batch;
   let attempts = 0;
 
   while (catalogNextCursor && filtered.length < target && attempts < 20) {
@@ -99,6 +120,7 @@ revealNextCatalogItem = async function revealNextCatalogRowV8() {
   catalogAnimateNext = false;
   catalogLoadPending = false;
   updateCatalogResults();
+  animateCatalogBatchV9(previousVisible);
 };
 
 updateCatalogResults = function updateCatalogResultsResponsiveV8() {
