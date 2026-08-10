@@ -53,6 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           sed -i '0,/\${SITE_ORIGIN}/s//\\${SITE_ORIGIN}/' /tmp/bootstrap-static-recipe-assets.mjs
+          sed -i 's/\${directory}/\\${directory}/g' /tmp/bootstrap-static-recipe-assets.mjs
           node /tmp/bootstrap-static-recipe-assets.mjs
 
       - name: Install dependencies
