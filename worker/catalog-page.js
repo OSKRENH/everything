@@ -3,6 +3,7 @@ import { CATALOG_VERSION, INGREDIENT_GLOSSARY, WORLD_RECIPE_CATALOG } from "./re
 import { manualRecipesForPortions } from "./manual-recipes.js";
 import { simpleRecipesForPortions } from "./simple-recipes.js";
 import { expandedHomeRecipesForPortions } from "./home-recipes-expanded.js";
+import { finishHomeRecipesForPortions } from "./home-recipes-finish.js";
 import { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
 
 const DEFAULT_LIMIT = 5;
@@ -139,6 +140,7 @@ export function catalogSources(portions = 2) {
   };
   simpleRecipesForPortions(targetPortions).forEach((recipe) => add("simple", recipe));
   expandedHomeRecipesForPortions(targetPortions).forEach((recipe) => add("home", recipe));
+  finishHomeRecipesForPortions(targetPortions).forEach((recipe) => add("home", recipe));
   WORLD_RECIPE_CATALOG.forEach((recipe) => add("world", recipe));
   manualRecipesForPortions(targetPortions).forEach((recipe) => add("manual", recipe));
   return sources;
