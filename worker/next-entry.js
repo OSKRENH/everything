@@ -1,6 +1,7 @@
 import safeWorker from "./safe-entry.js";
 import { serveCatalogIndex, serveCatalogPage, serveRecipeDetail } from "./catalog-page.js";
 import { serveLitePage } from "./lite-page.js";
+import { serveSeoRequest } from "./seo-pages.js";
 export { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
 
 const MAX_TELEMETRY_EVENTS = 20;
@@ -112,6 +113,16 @@ export default {
     const requestId = crypto.randomUUID();
     const url = new URL(request.url);
     try {
+      if (url.hostname === "www.kutno.ru") {
+        url.hostname = "kutno.ru";
+        return Response.redirect(url.toString(), 308);
+      }
+
+      const seoResponse = serveSeoRequest(request);
+      if (seoResponse) {
+        return timedResponse(seoResponse, "seo", startedAt, requestId);
+      }
+
       if ((url.pathname === "/lite" || url.pathname === "/lite/recipe") && request.method === "GET") {
         return timedResponse(serveLitePage(request), "lite", startedAt, requestId);
       }
