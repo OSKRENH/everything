@@ -76,3 +76,31 @@ jobs:
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             -H "Content-Type: application/json" \
             --data '{"purge_everything":true}'
+      - name: Verify live sitemap and trigger D1 schema migration
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          expected=$(node --input-type=module -e 'import { seoRecipeEntries } from "./worker/seo-pages.js"; console.log(seoRecipeEntries(2).length + 2)')
+          actual=0
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error --max-time 20 https://kutno.ru/sitemap.xml -o /tmp/kutno-sitemap.xml; then
+              actual=$(node --input-type=module -e 'import fs from "node:fs"; const xml=fs.readFileSync("/tmp/kutno-sitemap.xml","utf8"); console.log((xml.match(/<loc>/g)||[]).length)')
+            fi
+            if [ "$actual" = "$expected" ]; then
+              break
+            fi
+            echo "Waiting for fresh sitemap: expected $expected URLs, got $actual (attempt $attempt/12)"
+            sleep 10
+          done
+          if [ "$actual" != "$expected" ]; then
+            echo "Live sitemap is stale: expected $expected URLs, got $actual"
+            exit 1
+          fi
+          echo "Live sitemap is fresh: $actual URLs"
+
+          status=$(curl --silent --show-error --max-time 20 -o /tmp/kutno-feature-state.json -w '%{http_code}' https://kutno.ru/api/feature-state)
+          if [ "$status" != "401" ]; then
+            echo "Feature-state migration probe returned HTTP $status instead of 401"
+            cat /tmp/kutno-feature-state.json || true
+            exit 1
+          fi
+          echo "D1 schema migration probe completed before expected auth rejection (HTTP 401)."
