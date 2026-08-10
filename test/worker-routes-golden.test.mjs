@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import worker from "../worker/next-entry.js";
-import { WORLD_RECIPE_CATALOG } from "../worker/recipe-catalog.js";
 import { seoRecipeEntries } from "../worker/seo-pages.js";
+import { catalogRuntimeRecipes } from "../worker/catalog-page.js";
+import { runtimeAssets } from "./runtime-assets.mjs";
 
 const indexHtml = readFileSync("index.html", "utf8");
 
@@ -27,20 +28,12 @@ const env = {
     prepare(sql) { return statement(sql); },
     async batch(items) { return Promise.all(items.map((item) => item.run?.() || { success: true })); },
   },
-  ASSETS: {
-    async fetch(request) {
-      const pathname = new URL(request.url).pathname;
-      if (pathname === "/" || pathname === "/index.html") {
-        return new Response(indexHtml, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=60" } });
-      }
-      return new Response("asset not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
-    },
-  },
+  ASSETS: runtimeAssets(indexHtml),
 };
 
 const ctx = { waitUntil() {} };
 const firstRecipe = seoRecipeEntries(2)[0];
-const liteRecipeId = `catalog:${WORLD_RECIPE_CATALOG[0].id}`;
+const liteRecipeId = catalogRuntimeRecipes()[0].id;
 
 function req(method, path, body) {
   const init = { method, headers: {} };
@@ -91,7 +84,7 @@ const cases = [
   ["GET /api/nonexistent", req("GET", "/api/nonexistent"), 404, "application/json"],
 ];
 
-test("golden routes фиксируют внешний контракт до схлопывания Worker-слоёв", async () => {
+test("golden routes сохраняют внешний контракт после разгрузки Worker", async () => {
   for (const [name, request, status, type] of cases) {
     const response = await worker.fetch(request, env, ctx);
     assert.equal(response.status, status, name);
