@@ -1,4 +1,4 @@
-import { CATALOG_VERSION } from "./recipe-catalog.js";
+import { CATALOG_VERSION } from "./catalog-version.js";
 
 const CURSOR_PREFIX = `kutno:${CATALOG_VERSION}:`;
 

@@ -127,6 +127,19 @@ test("на десктопе Показать ещё добавляет полн�
   await expect(page.getByRole("button", { name: /Показать ещё/ })).toContainText("2 из 2");
 });
 
+test("на мобильном Показать ещё добавляет пять карточек с плавной анимацией", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installApi(page);
+  await openCatalog(page);
+  const cards = page.locator(".catalog-card");
+  await expect(cards).toHaveCount(12);
+  const button = page.getByRole("button", { name: /Показать ещё/ });
+  await expect(button).toContainText("5 из 5");
+  await button.click();
+  await expect(cards).toHaveCount(17);
+  await expect.poll(async () => cards.nth(12).evaluate((element) => getComputedStyle(element).animationName), { timeout: 1200 }).toBe("catalog-card-reveal");
+});
+
 test("все страны видны из лёгких facets без загрузки следующих карточек", async ({ page }) => {
   const api = await installApi(page);
   await openCatalog(page);

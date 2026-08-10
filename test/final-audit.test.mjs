@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import matchingWorker from "../worker/matching-entry.js";
-import { catalogRuntimeRecipes, loadRecipeBody } from "../worker/catalog-page.js";
+import { loadRecipeBody } from "../worker/catalog-page.js";
+import { loadRuntimeRecipes } from "../worker/catalog-runtime-store.js";
 import { runtimeEnv } from "./runtime-assets.mjs";
 
 async function generate(ingredients, extra = {}) {
@@ -64,7 +65,7 @@ test("25 бытовых сочетаний имеют рецепт миниму�
 });
 
 test("семь новых бытовых рецептов входят в домашний каталог", async () => {
-  const recipes = catalogRuntimeRecipes();
+  const recipes = await loadRuntimeRecipes(new Request("https://kutno.test/"));
   const env = runtimeEnv();
   const expected = [
     "Салат из помидоров и огурцов со сметаной", "Салат из помидоров и огурцов с маслом", "Рисовая каша на молоке", "Тыквенная каша с рисом на молоке", "Морковно-яблочный салат", "Отварные пельмени со сметаной", "Куриные крылья в медово-соевом соусе",

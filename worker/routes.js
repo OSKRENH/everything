@@ -6,7 +6,7 @@ import { ensureFeatureStateTextSchema } from "./feature-state-migration.js";
 import { serveFreshSitemap } from "./fresh-sitemap.js";
 import { serveLitePage } from "./lite-page.js";
 import { serveCrawlerRules, servePublicAppPage } from "./public-app-pages.js";
-import { serveRecipePhotoManifest } from "./recipe-images.js";
+import { recipeImageSet, serveRecipePhotoManifest } from "./recipe-images.js";
 import { saveTelemetry } from "./telemetry.js";
 
 function methodIs(request, allowed) { return allowed.includes(request.method); }
@@ -19,6 +19,20 @@ const toBase = ({ request, env, ctx }) => baseWorker.fetch(request, env, ctx);
 const toFeature = ({ request, env, ctx }) => featureWorker.fetch(request, env, ctx);
 const toMatching = ({ request, env, ctx }) => matchingWorker.fetch(request, env, ctx);
 
+async function toMatchingWithPhotos({ request, env, ctx }) {
+  const response = await matchingWorker.fetch(request, env, ctx);
+  if (!response.ok || !(response.headers.get("content-type") || "").includes("application/json")) return response;
+  const data = await response.json().catch(() => null);
+  if (!data || !Array.isArray(data.recipes)) return response;
+  data.recipes = data.recipes.map((recipe) => {
+    const photo = recipeImageSet(recipe);
+    return { ...recipe, hasPhoto: Boolean(photo), photo };
+  });
+  const headers = new Headers(response.headers);
+  headers.delete("content-length");
+  return new Response(JSON.stringify(data), { status: response.status, statusText: response.statusText, headers });
+}
+
 export const ROUTES = [
   exact("/robots.txt", ["GET", "HEAD"], "robots", ({ request }) => serveCrawlerRules(request)),
   exact("/sitemap.xml", ["GET", "HEAD"], "sitemap", ({ request }) => serveFreshSitemap(request)),
@@ -27,11 +41,11 @@ export const ROUTES = [
   custom("lite", ({ pathname, method }) => method === "GET" && (pathname === "/lite" || pathname === "/lite/recipe"), ({ request, env }) => serveLitePage(request, env)),
 
   exact("/api/telemetry", ["POST"], "telemetry", ({ request, env, requestId }) => saveTelemetry(request, env, requestId)),
-  exact("/api/catalog", ["GET"], "catalog", ({ request, requestId }) => serveCatalogPage(request, requestId)),
-  exact("/api/catalog-index", ["GET"], "catalog-index", ({ request, requestId }) => serveCatalogIndex(request, requestId)),
+  exact("/api/catalog", ["GET"], "catalog", ({ request, env, requestId }) => serveCatalogPage(request, env, requestId)),
+  exact("/api/catalog-index", ["GET"], "catalog-index", ({ request, env, requestId }) => serveCatalogIndex(request, env, requestId)),
   prefix("/api/recipe/", ["GET"], "recipe", ({ request, env, requestId }) => serveRecipeDetail(request, env, requestId)),
 
-  exact("/api/generate", ["POST"], "generate", toMatching),
+  exact("/api/generate", ["POST"], "generate", toMatchingWithPhotos),
   exact("/api/matching-suggestions", ["GET"], "matching-suggestions", toMatching),
 
   exact("/api/feature-state", ["GET", "PUT"], "feature-state", toFeature, [ensureSchemas]),

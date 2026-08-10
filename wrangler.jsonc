@@ -1,9 +1,13 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "kutno",
-  "main": "worker/next-entry.js",
+  "main": ".worker-build/index.js",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
+  "no_bundle": true,
+  "build": {
+    "command": "node scripts/build-worker.mjs"
+  },
   "routes": [
     {
       "pattern": "kutno.ru",

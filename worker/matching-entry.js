@@ -1,7 +1,7 @@
 import featureWorker from "./entry.js";
 import { analyzeRecipe, enrichRecipeSemantics } from "../src/ingredient-semantics-v3.js";
 import { applyMatchingUserContext, matchingPayloadFromContext } from "../src/matching-user-context.js";
-import { RUNTIME_RECIPES } from "./generated/catalog-runtime.js";
+import { loadRuntimeRecipes } from "./catalog-runtime-store.js";
 
 const MATCHING_PAGE_SIZE = 20;
 const RUNTIME_BASE_PORTIONS = 2;
@@ -101,8 +101,9 @@ function matchingRecipeFromRuntime(recipe, portions) {
   };
 }
 
-function matchingCatalog(portions = 2) {
-  return RUNTIME_RECIPES.map((recipe) => matchingRecipeFromRuntime(recipe, portions));
+async function matchingCatalog(request, env, portions = 2) {
+  const runtime = await loadRuntimeRecipes(request, env);
+  return runtime.map((recipe) => matchingRecipeFromRuntime(recipe, portions));
 }
 
 function difficultyRank(value = "") {
@@ -301,7 +302,7 @@ async function smartGenerate(request, env, ctx) {
   const ingredients = Array.isArray(incoming.ingredients) ? incoming.ingredients.filter((item) => String(item || "").trim()) : [];
   if (!ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
   const body = normalizedBody({ ...incoming, ingredients });
-  const catalog = matchingCatalog(body.portions);
+  const catalog = await matchingCatalog(request, env, body.portions);
   const suggestions = ingredientUnlockSuggestions(catalog, body);
   const catalogRanked = rankRecipes(catalog, body).map(({ recipe }) => compactMatchedRecipe(recipe));
 
@@ -319,7 +320,7 @@ async function smartGenerate(request, env, ctx) {
   return pagedResultResponse([], body, { suggestions, extra: { error: suggestions.length ? "Добавьте один из предложенных продуктов" : "Попробуйте другой набор продуктов" } });
 }
 
-async function matchingSuggestions(request) {
+async function matchingSuggestions(request, env) {
   const url = new URL(request.url);
   const body = normalizedBody({
     ingredients: url.searchParams.getAll("ingredient"),
@@ -331,14 +332,15 @@ async function matchingSuggestions(request) {
     searchMode: "strict",
   });
   if (!body.ingredients.length) return json({ suggestions: [] });
-  return json({ suggestions: ingredientUnlockSuggestions(matchingCatalog(body.portions), body) }, 200, { "cache-control": "public, max-age=60, s-maxage=300" });
+  const catalog = await matchingCatalog(request, env, body.portions);
+  return json({ suggestions: ingredientUnlockSuggestions(catalog, body) }, 200, { "cache-control": "public, max-age=60, s-maxage=300" });
 }
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === "/api/generate" && request.method === "POST") return smartGenerate(request, env, ctx);
-    if (url.pathname === "/api/matching-suggestions" && request.method === "GET") return matchingSuggestions(request);
+    if (url.pathname === "/api/matching-suggestions" && request.method === "GET") return matchingSuggestions(request, env);
     return featureWorker.fetch(request, env, ctx);
   },
 };

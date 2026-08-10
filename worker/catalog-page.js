@@ -1,6 +1,8 @@
 import { enrichRecipeSemantics } from "../src/ingredient-semantics-v3.js";
 import { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
+import { loadRuntimeRecipes } from "./catalog-runtime-store.js";
 import { CATALOG_VERSION, RUNTIME_RECIPES } from "./generated/catalog-runtime.js";
+import { recipeImageSet } from "./recipe-images.js";
 
 const DEFAULT_LIMIT = 5;
 const MAX_LIMIT = 12;
@@ -34,6 +36,7 @@ function compactIngredient(item) {
 }
 
 function compactRecipe(recipe, context = null) {
+  const photo = recipeImageSet(recipe);
   const compact = {
     id: String(recipe.id),
     compact: true,
@@ -53,7 +56,8 @@ function compactRecipe(recipe, context = null) {
     missing: [],
     uses: [],
     why: recipe.why || "Проверенный рецепт Кутно",
-    hasPhoto: recipe.hasPhoto === true,
+    hasPhoto: Boolean(photo),
+    photo,
   };
   return context ? enrichRecipeSemantics(compact, context) : compact;
 }
@@ -62,8 +66,9 @@ export function catalogRuntimeRecipes() {
   return RUNTIME_RECIPES;
 }
 
-export function catalogCompactRecipes() {
-  return RUNTIME_RECIPES.map((recipe) => compactRecipe(recipe));
+export async function catalogCompactRecipes(request = new Request("https://kutno.test/"), env = {}) {
+  const runtime = await loadRuntimeRecipes(request, env);
+  return runtime.map((recipe) => compactRecipe(recipe));
 }
 
 export function catalogRuntimeRecipe(id) {
@@ -73,6 +78,7 @@ export function catalogRuntimeRecipe(id) {
 function catalogIndexEntry(recipe) {
   const ingredients = (Array.isArray(recipe?.ingredients) ? recipe.ingredients : []).map((item) => String(item?.name || "").trim()).filter(Boolean);
   const cuisine = String(recipe?.cuisine || "Другая кухня");
+  const photo = recipeImageSet(recipe);
   return {
     id: String(recipe.id),
     title: String(recipe.title || ""),
@@ -84,6 +90,8 @@ function catalogIndexEntry(recipe) {
     minutes: Number(recipe.minutes) || 30,
     ingredients,
     searchable: normalized([recipe.title, cuisine, ...ingredients].join(" ")),
+    hasPhoto: Boolean(photo),
+    photo,
   };
 }
 
@@ -122,6 +130,12 @@ function contextFromUrl(url) {
   };
 }
 
+function runtimeArgs(envOrRequestId = {}, requestId = "") {
+  return typeof envOrRequestId === "string"
+    ? { env: {}, requestId: envOrRequestId }
+    : { env: envOrRequestId || {}, requestId: requestId || "" };
+}
+
 async function bodyFromKv(env, recipe) {
   if (!env?.RECIPE_BODIES?.get) return null;
   try {
@@ -147,36 +161,40 @@ export async function loadRecipeBody(request, env, id, portions = 2) {
   return payload?.variants?.[target] || payload?.recipe || null;
 }
 
-export async function serveCatalogPage(request, requestId = "") {
+export async function serveCatalogPage(request, envOrRequestId = {}, requestId = "") {
+  const args = runtimeArgs(envOrRequestId, requestId);
+  const runtime = await loadRuntimeRecipes(request, args.env);
   const url = new URL(request.url);
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number(url.searchParams.get("limit")) || DEFAULT_LIMIT));
   const offset = decodeCatalogCursor(url.searchParams.get("cursor") || "");
-  const pageRecipes = RUNTIME_RECIPES.slice(offset, offset + limit);
+  const pageRecipes = runtime.slice(offset, offset + limit);
   const context = contextFromUrl(url);
   const recipes = pageRecipes.map((recipe) => compactRecipe(recipe, context));
   const nextOffset = offset + pageRecipes.length;
-  const nextCursor = nextOffset < RUNTIME_RECIPES.length ? encodeCatalogCursor(nextOffset) : "";
+  const nextCursor = nextOffset < runtime.length ? encodeCatalogCursor(nextOffset) : "";
   return json({
     recipes,
-    total: RUNTIME_RECIPES.length,
+    total: runtime.length,
     nextCursor,
     page: Math.floor(offset / limit) + 1,
     limit,
     catalogVersion: CATALOG_VERSION,
-    ...(offset === 0 ? { facets: catalogFacets(RUNTIME_RECIPES) } : {}),
+    ...(offset === 0 ? { facets: catalogFacets(runtime) } : {}),
   }, 200, {
-    ...(requestId ? { "x-request-id": requestId } : {}),
+    ...(args.requestId ? { "x-request-id": args.requestId } : {}),
     "x-kutno-catalog-page": String(Math.floor(offset / limit) + 1),
   });
 }
 
-export async function serveCatalogIndex(request, requestId = "") {
+export async function serveCatalogIndex(request, envOrRequestId = {}, requestId = "") {
+  const args = runtimeArgs(envOrRequestId, requestId);
+  const runtime = await loadRuntimeRecipes(request, args.env);
   return json({
-    index: RUNTIME_RECIPES.map(catalogIndexEntry),
-    facets: catalogFacets(RUNTIME_RECIPES),
-    total: RUNTIME_RECIPES.length,
+    index: runtime.map(catalogIndexEntry),
+    facets: catalogFacets(runtime),
+    total: runtime.length,
     catalogVersion: CATALOG_VERSION,
-  }, 200, requestId ? { "x-request-id": requestId } : {});
+  }, 200, args.requestId ? { "x-request-id": args.requestId } : {});
 }
 
 export async function serveRecipeDetail(request, env, requestId = "") {

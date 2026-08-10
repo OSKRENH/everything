@@ -1,4 +1,4 @@
-import { INGREDIENT_GLOSSARY, WORLD_RECIPE_CATALOG } from "../worker/recipe-catalog.js";
+import { INGREDIENT_GLOSSARY, WORLD_RECIPE_CATALOG } from "./data/recipe-catalog-source.js";
 import { manualRecipesForPortions } from "../worker/manual-recipes.js";
 import { simpleRecipesForPortions } from "../worker/simple-recipes.js";
 import { expandedHomeRecipesForPortions } from "../worker/home-recipes-expanded.js";

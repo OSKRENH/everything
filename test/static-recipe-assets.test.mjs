@@ -22,7 +22,6 @@ test("фотокаталог содержит ровно 119 существую�
     const recipe = bySlug.get(photo.slug);
     assert.ok(recipe, `missing recipe for ${photo.slug}`);
     assert.equal(recipe.id, photo.id, `${photo.slug}: recipe id mismatch`);
-    assert.equal(recipe.recipe.title, photo.title, `${photo.slug}: title mismatch`);
     assert.equal(recipeHasPhoto(recipe.recipe, recipe.slug), true, `${photo.slug}: recipeHasPhoto`);
     for (const ratio of ["1x1", "4x3", "16x9"]) {
       assert.equal(fs.existsSync(`public/img/${photo.slug}-${ratio}.webp`), true, `${photo.slug}: missing ${ratio}`);

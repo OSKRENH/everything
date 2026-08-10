@@ -1,4 +1,4 @@
-import { recipeHasPhoto } from "./recipe-photo-catalog.js";
+import { RECIPE_PHOTO_CATALOG, recipeHasPhoto } from "./recipe-photo-catalog.js";
 import { seoRecipeEntries } from "./seo-pages.js";
 
 const SITE_ORIGIN = "https://kutno.ru";
@@ -9,9 +9,18 @@ function cleanSlug(value = "") {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ? slug : "";
 }
 
+const PHOTO_SLUG_BY_ID = new Map(RECIPE_PHOTO_CATALOG.map((item) => [String(item.id || ""), cleanSlug(item.slug)]).filter(([id, slug]) => id && slug));
+
+export function recipePhotoSlug(recipe, slugOverride = "") {
+  const explicit = cleanSlug(slugOverride || recipe?.seoSlug);
+  if (explicit && recipeHasPhoto(recipe, explicit)) return explicit;
+  const id = String(recipe?.id || recipe?.source?.id || "").trim();
+  return id ? PHOTO_SLUG_BY_ID.get(id) || "" : "";
+}
+
 export function recipeImageUrls(recipe, slugOverride = "") {
-  const slug = cleanSlug(slugOverride || recipe?.seoSlug);
-  if (!slug || !recipeHasPhoto(recipe, slug)) return [];
+  const slug = recipePhotoSlug(recipe, slugOverride);
+  if (!slug) return [];
   return IMAGE_RATIOS.map((ratio) => `${SITE_ORIGIN}/img/${slug}-${ratio}.webp`);
 }
 
@@ -27,8 +36,9 @@ export function recipeImageSet(recipe, slugOverride = "") {
 
 export function recipePhotoManifest(portions = 2) {
   return seoRecipeEntries(portions).flatMap((entry) => {
-    if (!recipeHasPhoto(entry.recipe, entry.slug)) return [];
-    return [{ id: entry.id, title: entry.recipe.title, slug: entry.slug }];
+    const slug = recipePhotoSlug(entry.recipe, entry.slug);
+    if (!slug) return [];
+    return [{ id: entry.id, title: entry.recipe.title, slug }];
   });
 }
 

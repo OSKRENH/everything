@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { catalogRuntimeRecipes, loadRecipeBody } from "../worker/catalog-page.js";
+import { loadRecipeBody } from "../worker/catalog-page.js";
+import { loadRuntimeRecipes } from "../worker/catalog-runtime-store.js";
 import { runtimeEnv } from "./runtime-assets.mjs";
 
 const pieceAmount = /^\d+(?:[.,]\d+)?\s*(?:шт\.?|зубч\.?|гол\.?)$/i;
@@ -8,7 +9,8 @@ const env = runtimeEnv();
 
 test("штучные ингредиенты runtime-каталога не становятся дробными", async () => {
   let checked = 0;
-  for (const recipe of catalogRuntimeRecipes()) {
+  const recipes = await loadRuntimeRecipes(new Request("https://kutno.test/"));
+  for (const recipe of recipes) {
     const full = await loadRecipeBody(new Request("https://kutno.test/"), env, recipe.id, 1);
     assert.ok(full, recipe.title);
     recipe.ingredients.forEach((raw, index) => {
@@ -24,7 +26,8 @@ test("штучные ингредиенты runtime-каталога не ста
 
 test("соль из pantry показывается как по вкусу", async () => {
   let checked = 0;
-  for (const recipe of catalogRuntimeRecipes()) {
+  const recipes = await loadRuntimeRecipes(new Request("https://kutno.test/"));
+  for (const recipe of recipes) {
     const saltIndexes = recipe.ingredients.flatMap((raw, index) => raw.pantry === true && /соль/i.test(String(raw.name || "")) ? [index] : []);
     if (!saltIndexes.length) continue;
     const full = await loadRecipeBody(new Request("https://kutno.test/"), env, recipe.id, 2);
