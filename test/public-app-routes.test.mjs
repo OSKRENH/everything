@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { serveCrawlerRules, servePublicAppPage } from "../worker/public-app-pages.js";
-import { recipeImageSet, recipeImageUrls, recipePhotoManifest, serveRecipeImage, serveRecipePhotoManifest } from "../worker/recipe-images.js";
+import { recipeImageSet, recipeImageUrls, recipePhotoManifest, serveRecipePhotoManifest } from "../worker/recipe-images.js";
+import { recipeHasPhoto } from "../worker/recipe-photo-catalog.js";
 import { seoRecipeEntries } from "../worker/seo-pages.js";
 import { runtimeEnv } from "./runtime-assets.mjs";
 
@@ -11,7 +12,7 @@ const indexHtml = readFileSync("index.html", "utf8");
 const env = runtimeEnv(indexHtml, { STRICT_SEO_MARKERS: "true" });
 
 test("новые публичные модули проходят синтаксическую проверку", () => {
-  for (const file of ["worker/public-app-pages.js", "worker/fresh-sitemap.js", "worker/recipe-images.js", "src/public-routes.js", "public/recipe-photos.js"]) {
+  for (const file of ["worker/public-app-pages.js", "worker/fresh-sitemap.js", "worker/recipe-images.js", "worker/recipe-photo-catalog.js", "src/public-routes.js", "public/recipe-photos.js"]) {
     const result = spawnSync(process.execPath, ["--check", file], { encoding: "utf8" });
     assert.equal(result.status, 0, `${file}: ${result.stderr || result.stdout}`);
   }
@@ -55,8 +56,21 @@ test("уникальный URL рецепта грузит shell, видимый
   assert.match(html, /data-seo-content[^>]*>[\s\S]*<h2>Ингредиенты<\/h2>[\s\S]*<h2>Как готовить<\/h2>/);
 });
 
-test("рецепт без hasPhoto не получает image или og:image", async () => {
-  const entry = seoRecipeEntries(2).find((item) => item.hasPhoto !== true) || seoRecipeEntries(2)[0];
+test("рецепт с иллюстрацией получает 16:9 OG/Twitter и три URL в Recipe JSON-LD", async () => {
+  const entry = seoRecipeEntries(2).find((item) => item.slug === "syrniki");
+  assert.ok(entry);
+  const response = await servePublicAppPage(new Request(`https://kutno.ru${entry.pathname}`), env);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /property="og:image" content="https:\/\/kutno\.ru\/img\/syrniki-16x9\.webp"/);
+  assert.match(html, /name="twitter:image" content="https:\/\/kutno\.ru\/img\/syrniki-16x9\.webp"/);
+  assert.match(html, /"image":\["https:\/\/kutno\.ru\/img\/syrniki-1x1\.webp","https:\/\/kutno\.ru\/img\/syrniki-4x3\.webp","https:\/\/kutno\.ru\/img\/syrniki-16x9\.webp"\]/);
+  assert.match(html, /name="twitter:card" content="summary_large_image"/);
+});
+
+test("рецепт без записи в фотокаталоге не получает image или og:image", async () => {
+  const entry = seoRecipeEntries(2).find((item) => !recipeHasPhoto(item.recipe, item.slug));
+  assert.ok(entry);
   const response = await servePublicAppPage(new Request(`https://kutno.ru${entry.pathname}`), env);
   const html = await response.text();
   assert.doesNotMatch(html, /"image":\[/);
@@ -65,24 +79,32 @@ test("рецепт без hasPhoto не получает image или og:image",
   assert.match(html, /name="twitter:card" content="summary"/);
 });
 
-test("фото URL выводятся только при явном hasPhoto", () => {
-  assert.deepEqual(recipeImageUrls({}, "syrniki"), []);
-  assert.deepEqual(recipeImageUrls({ hasPhoto: false }, "syrniki"), []);
-  assert.deepEqual(recipeImageUrls({ hasPhoto: true }, "syrniki"), ["https://kutno.ru/img/syrniki-1x1.webp", "https://kutno.ru/img/syrniki-4x3.webp", "https://kutno.ru/img/syrniki-16x9.webp"]);
-  assert.equal(recipeImageSet({ hasPhoto: true }, "syrniki").social, "https://kutno.ru/img/syrniki-16x9.webp");
+test("фото URL строятся только для slug из фотокаталога", () => {
+  assert.equal(recipeHasPhoto({}, "syrniki"), true);
+  assert.deepEqual(recipeImageUrls({}, "syrniki"), ["https://kutno.ru/img/syrniki-1x1.webp", "https://kutno.ru/img/syrniki-4x3.webp", "https://kutno.ru/img/syrniki-16x9.webp"]);
+  assert.equal(recipeImageSet({}, "syrniki").social, "https://kutno.ru/img/syrniki-16x9.webp");
+  assert.deepEqual(recipeImageUrls({}, "net-takogo-retsepta"), []);
 });
 
-test("пока картинки не включены, фото-манифест пуст", async () => {
-  assert.deepEqual(recipePhotoManifest(2), []);
+test("фото-манифест возвращает ровно 119 подключённых рецептов", async () => {
+  const photos = recipePhotoManifest(2);
+  assert.equal(photos.length, 119);
+  assert.equal(new Set(photos.map((item) => item.slug)).size, 119);
   const response = serveRecipePhotoManifest(new Request("https://kutno.ru/api/photo-manifest"));
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { photos: [] });
+  assert.deepEqual(await response.json(), { photos });
 });
 
-test("/img безопасно отдаёт 404 до подключения R2", async () => {
-  const response = await serveRecipeImage(new Request("https://kutno.ru/img/syrniki-4x3.webp"), {});
-  assert.equal(response.status, 404);
-  assert.equal(response.headers.get("cache-control"), "no-store");
+test("/img полностью исключён из Worker/R2 и остаётся Static Assets маршрутом", () => {
+  const routes = readFileSync("worker/routes.js", "utf8");
+  const wrangler = readFileSync("wrangler.jsonc", "utf8");
+  assert.equal(routes.includes("serveRecipeImage"), false);
+  assert.equal(routes.includes('"recipe-image"'), false);
+  assert.equal(routes.includes('prefix("/img/'), false);
+  assert.doesNotMatch(wrangler, /"\/img\/\*"/);
+  assert.doesNotMatch(wrangler, /r2_buckets|\bIMAGES\b/);
+  assert.match(wrangler, /"directory"\s*:\s*"\.\/dist"/);
+  assert.match(wrangler, /"binding"\s*:\s*"ASSETS"/);
 });
 
 test("несуществующий рецепт возвращает 404 и noindex в единственном обработчике", async () => {
@@ -120,6 +142,6 @@ test("клиентский маршрут открывает Базу и шта�
   assert.match(photos, /image\.width = meta\.width/);
   assert.match(photos, /image\.height = meta\.height/);
   assert.match(wrangler, /"\/recipe\/\*"/);
-  assert.match(wrangler, /"\/img\/\*"/);
+  assert.doesNotMatch(wrangler, /"\/img\/\*"/);
   assert.match(wrangler, /"\/robots\.txt"/);
 });

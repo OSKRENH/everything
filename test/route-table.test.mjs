@@ -33,6 +33,7 @@ test("ключевые запросы выбирают ровно один ож�
     ["GET", "/api/shared-recipes/abc", "shared-recipes-read"],
     ["GET", "/api/nonexistent", "api-fallback"],
     ["GET", "/anything", "assets"],
+    ["GET", "/img/syrniki-4x3.webp", "assets"],
   ];
   for (const [method, path, expected] of cases) {
     assert.equal(matchRoute(request(method, path))?.name, expected, `${method} ${path}`);

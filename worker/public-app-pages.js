@@ -38,7 +38,7 @@ function ingredientLine(item) {
 function recipeStructuredData(entry) {
   const { recipe, pathname } = entry;
   const url = canonical(pathname);
-  const images = recipeImageUrls({ hasPhoto: entry.source?.recipe?.hasPhoto === true }, entry.slug);
+  const images = recipeImageUrls(entry.recipe, entry.slug);
   const nutrition = recipe?.nutrition || {};
   const portions = Math.max(1, Number(recipe?.portions) || 2);
   const recipeData = {
@@ -198,7 +198,7 @@ export async function servePublicAppPage(request, env) {
   const description = isRecipe ? recipeDescription(route.recipe) : `Полная база Кутно: ${route.entries.length} рецептов с ингредиентами, шагами, временем приготовления и КБЖУ.`;
   const canonicalUrl = canonical(route.pathname);
   const structuredData = isRecipe ? recipeStructuredData(route) : catalogStructuredData(route.entries);
-  const photo = isRecipe ? recipeImageSet({ hasPhoto: route.source?.recipe?.hasPhoto === true }, route.slug) : null;
+  const photo = isRecipe ? recipeImageSet(route.recipe, route.slug) : null;
   const clientRoute = isRecipe ? { type: "recipe", id: route.id, slug: route.slug, pathname: route.pathname, title: route.recipe.title, hasPhoto: Boolean(photo) } : { type: "catalog", pathname: "/recipes" };
   const strictSeoMarkers = env?.STRICT_SEO_MARKERS === true || env?.STRICT_SEO_MARKERS === "true";
 

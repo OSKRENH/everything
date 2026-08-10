@@ -6,7 +6,7 @@ import { ensureFeatureStateTextSchema } from "./feature-state-migration.js";
 import { serveFreshSitemap } from "./fresh-sitemap.js";
 import { serveLitePage } from "./lite-page.js";
 import { serveCrawlerRules, servePublicAppPage } from "./public-app-pages.js";
-import { serveRecipeImage, serveRecipePhotoManifest } from "./recipe-images.js";
+import { serveRecipePhotoManifest } from "./recipe-images.js";
 import { saveTelemetry } from "./telemetry.js";
 
 function methodIs(request, allowed) { return allowed.includes(request.method); }
@@ -22,7 +22,6 @@ const toMatching = ({ request, env, ctx }) => matchingWorker.fetch(request, env,
 export const ROUTES = [
   exact("/robots.txt", ["GET", "HEAD"], "robots", ({ request }) => serveCrawlerRules(request)),
   exact("/sitemap.xml", ["GET", "HEAD"], "sitemap", ({ request }) => serveFreshSitemap(request)),
-  prefix("/img/", ["GET", "HEAD"], "recipe-image", ({ request, env }) => serveRecipeImage(request, env)),
   exact("/api/photo-manifest", ["GET", "HEAD"], "photo-manifest", ({ request }) => serveRecipePhotoManifest(request)),
   custom("public-app", ({ pathname, method }) => ["GET", "HEAD"].includes(method) && (pathname === "/recipes" || pathname === "/recipes/" || pathname === "/recipe" || pathname === "/recipe/" || pathname.startsWith("/recipe/")), ({ request, env }) => servePublicAppPage(request, env)),
   custom("lite", ({ pathname, method }) => method === "GET" && (pathname === "/lite" || pathname === "/lite/recipe"), ({ request, env }) => serveLitePage(request, env)),
