@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "npm test && vite build",
+    "build": "npm test && vite build && node scripts/check-static-recipe-assets.mjs dist/img",
     "deploy": "wrangler deploy",
     "check": "npm run build && wrangler deploy --dry-run",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "check:static-assets": "node scripts/check-static-recipe-assets.mjs public/img && node scripts/check-static-recipe-assets.mjs dist/img"
   },
   "devDependencies": {
     "vite": "^8.2.0",
