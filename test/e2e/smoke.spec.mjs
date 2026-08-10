@@ -125,17 +125,14 @@ test("основной путь: кухня → рецепт → база → и
 
   await page.getByRole("button", { name: "База", exact: true }).click();
   await expect(page.getByRole("heading", { name: "База рецептов" })).toBeVisible();
-  await expect(page.locator(".catalog-card")).toHaveCount(5);
+  await expect(page.locator(".catalog-card")).toHaveCount(catalog.length);
+  await expect(page.locator(".catalog-count")).toContainText(`В базе — ${String(catalog.length).padStart(2, "0")}`);
+  await expect(page.locator("[data-catalog-scroll-sentinel]")).toHaveCount(0);
   await expect(page.locator(".pot-loader-large")).toHaveCount(0);
   expect(api.catalogRequests()).toBe(1);
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
-
-  await page.locator("[data-catalog-scroll-sentinel]").scrollIntoViewIfNeeded();
-  await expect.poll(() => page.locator(".catalog-card").count()).toBe(6);
-  await page.waitForTimeout(650);
-  await expect(page.locator(".catalog-card-entering")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Сохранить в избранное" }).first().click();
   await expect(page.locator('.header-nav [data-view="favorites"]')).toContainText("1");

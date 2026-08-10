@@ -62,13 +62,15 @@ async function installApi(page) {
     if (url.pathname === "/api/catalog") {
       catalogRequests += 1;
       const cursor = url.searchParams.get("cursor") || "";
-      const offset = cursor === "page-5" ? 5 : cursor === "page-10" ? 10 : 0;
-      const recipes = catalog.slice(offset, offset + 5);
-      const nextCursor = offset === 0 ? "page-5" : offset === 5 ? "page-10" : "";
+      const limit = Math.max(1, Number(url.searchParams.get("limit")) || 5);
+      const offset = /^page-\d+$/.test(cursor) ? Number(cursor.slice(5)) : 0;
+      const recipes = catalog.slice(offset, offset + limit);
+      const nextOffset = offset + recipes.length;
+      const nextCursor = nextOffset < catalog.length ? `page-${nextOffset}` : "";
       return route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ recipes, total: catalog.length, nextCursor, limit: 5, ...(offset === 0 ? { facets } : {}) }),
+        body: JSON.stringify({ recipes, total: catalog.length, nextCursor, limit, ...(offset === 0 ? { facets } : {}) }),
       });
     }
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
@@ -81,19 +83,20 @@ async function openCatalog(page) {
   await page.getByRole("button", { name: "База", exact: true }).click();
 }
 
-test("первые пять карточек остаются первыми пятью до прокрутки", async ({ page }) => {
+test("первые двенадцать карточек остаются на экране до явного продолжения", async ({ page }) => {
   const api = await installApi(page);
   await openCatalog(page);
-  await expect(page.locator(".catalog-card")).toHaveCount(5);
+  await expect(page.locator(".catalog-card")).toHaveCount(12);
+  await expect(page.getByRole("button", { name: /Показать ещё/ })).toBeVisible();
   await page.waitForTimeout(1200);
-  await expect(page.locator(".catalog-card")).toHaveCount(5);
+  await expect(page.locator(".catalog-card")).toHaveCount(12);
   expect(api.requests()).toBe(1);
 });
 
 test("общий размер базы известен с первой страницы", async ({ page }) => {
   await installApi(page);
   await openCatalog(page);
-  await expect(page.locator(".catalog-card")).toHaveCount(5);
+  await expect(page.locator(".catalog-card")).toHaveCount(12);
   console.log("CATALOG_COUNT_TEXT", JSON.stringify(await page.locator(".catalog-count").textContent()));
   await expect(page.locator(".catalog-count")).toContainText("В базе — 13");
 });
@@ -103,13 +106,14 @@ test("все страны видны из лёгких facets без загру�
   await openCatalog(page);
   await expect(page.getByRole("button", { name: "🇷🇺 Россия", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "🇯🇵 Япония", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "🇵🇪 Перу", exact: true })).toBeVisible();
   expect(api.requests()).toBe(1);
 });
 
 test("полный индекс загружается отдельно после первого экрана", async ({ page }) => {
   const api = await installApi(page);
   await openCatalog(page);
-  await expect(page.locator(".catalog-card")).toHaveCount(5);
+  await expect(page.locator(".catalog-card")).toHaveCount(12);
   await expect.poll(api.indexRequests).toBeGreaterThanOrEqual(1);
   expect(api.requests()).toBe(1);
 });
@@ -118,25 +122,21 @@ test("выбор страны сам находит рецепт на следу
   const api = await installApi(page);
   await openCatalog(page);
   await expect.poll(api.indexRequests).toBeGreaterThanOrEqual(1);
-  await page.getByRole("button", { name: "🇷🇺 Россия", exact: true }).click();
+  await page.getByRole("button", { name: "🇵🇪 Перу", exact: true }).click();
   await expect(page.locator(".catalog-count")).toContainText("Найдено — 01");
-  await expect.poll(() => page.locator(".catalog-card h3").allTextContents(), { timeout: 10_000 }).toContain("Полный каталог 6");
+  await expect.poll(() => page.locator(".catalog-card h3").allTextContents(), { timeout: 10_000 }).toContain("Полный каталог 13");
   expect(api.requests()).toBeGreaterThanOrEqual(2);
 });
 
-test("прокрутка доходит до последнего рецепта без повторов", async ({ page }) => {
+test("кнопка Показать ещё доходит до последнего рецепта без повторов", async ({ page }) => {
   const api = await installApi(page);
   await openCatalog(page);
-  await expect(page.locator(".catalog-card")).toHaveCount(5);
+  await expect(page.locator(".catalog-card")).toHaveCount(12);
 
-  await expect.poll(async () => {
-    const sentinel = page.locator("[data-catalog-scroll-sentinel]");
-    if (await sentinel.count()) await sentinel.scrollIntoViewIfNeeded();
-    await page.waitForTimeout(650);
-    return page.locator(".catalog-card").count();
-  }, { timeout: 30_000, intervals: [300, 650, 650, 650, 650, 650] }).toBe(catalog.length);
+  await page.getByRole("button", { name: /Показать ещё/ }).click();
+  await expect(page.locator(".catalog-card")).toHaveCount(catalog.length);
 
-  expect(api.requests()).toBe(3);
+  expect(api.requests()).toBe(2);
   const titles = await page.locator(".catalog-card h3").allTextContents();
   expect(titles).toHaveLength(catalog.length);
   expect(new Set(titles).size).toBe(catalog.length);
