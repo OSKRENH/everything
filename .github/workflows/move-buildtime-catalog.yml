@@ -1,0 +1,39 @@
+name: Move build-time catalog
+
+on:
+  push:
+    branches: [agent/am-mobile-batch-and-photo-tz]
+    paths: [.move-catalog-trigger]
+
+permissions:
+  contents: write
+
+jobs:
+  move:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/am-mobile-batch-and-photo-tz
+      - name: Audit and move heavy source
+        run: |
+          echo "Current references:"
+          grep -RIn --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist "recipe-catalog.js" . || true
+          if grep -RIl --exclude=recipe-catalog.js "recipe-catalog.js" worker src public 2>/dev/null | grep -q .; then
+            echo "Runtime code still imports recipe-catalog.js; refusing automatic move."
+            grep -RIn --exclude=recipe-catalog.js "recipe-catalog.js" worker src public || true
+            exit 1
+          fi
+          mkdir -p scripts/data
+          git mv worker/recipe-catalog.js scripts/data/recipe-catalog-source.js
+          find scripts -maxdepth 1 -type f \( -name '*.mjs' -o -name '*.js' \) -print0 | xargs -0 sed -i 's#../worker/recipe-catalog\.js#./data/recipe-catalog-source.js#g'
+          find test -type f \( -name '*.mjs' -o -name '*.js' \) -print0 | xargs -0 sed -i 's#../worker/recipe-catalog\.js#../scripts/data/recipe-catalog-source.js#g'
+          echo "References after move:"
+          grep -RIn --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist "recipe-catalog" scripts test worker src public || true
+      - name: Commit move
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A worker/recipe-catalog.js scripts/data/recipe-catalog-source.js scripts test
+          git commit -m "Move heavy recipe catalog to build-time data"
+          git push origin HEAD:agent/am-mobile-batch-and-photo-tz
