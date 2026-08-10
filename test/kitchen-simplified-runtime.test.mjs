@@ -55,7 +55,7 @@ test("Worker не обрезает выдачу до трёх и использ�
   assert.match(worker, /MATCHING_PAGE_SIZE = 20/);
   assert.match(worker, /total: recipes\.length/);
   assert.match(worker, /offset \+ page\.length < recipes\.length/);
-  assert.match(worker, /RUNTIME_RECIPES/);
+  assert.match(worker, /loadRuntimeRecipes/);
   assert.match(worker, /matchingCatalog/);
   assert.doesNotMatch(worker, /catalogSources/);
   assert.doesNotMatch(worker, /recipes\.slice\(0, 3\)/);
