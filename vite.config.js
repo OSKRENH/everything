@@ -69,6 +69,23 @@ async function sendWebResponse(webResponse, nodeResponse) {
   nodeResponse.end(body);
 }
 
+const devLiteEnv = {
+  ASSETS: {
+    async fetch(request) {
+      const pathname = new URL(request.url).pathname;
+      if (!pathname.startsWith("/recipe-data/")) return new Response("asset not found", { status: 404 });
+      try {
+        const file = path.resolve(process.cwd(), "public", pathname.slice(1));
+        const publicRoot = path.resolve(process.cwd(), "public");
+        if (!file.startsWith(`${publicRoot}${path.sep}`)) return new Response("asset not found", { status: 404 });
+        return new Response(fs.readFileSync(file), { status: 200, headers: { "content-type": "application/json" } });
+      } catch {
+        return new Response("asset not found", { status: 404 });
+      }
+    },
+  },
+};
+
 const featureSource = consistentFeatureSource();
 let resolvedConfig;
 
@@ -110,7 +127,7 @@ export default defineConfig({
           if (pathname === "/lite" || pathname === "/lite/recipe") {
             const origin = `http://${request.headers.host || "127.0.0.1"}`;
             const webRequest = new Request(new URL(request.url || pathname, origin), { method: "GET" });
-            await sendWebResponse(serveLitePage(webRequest), response);
+            await sendWebResponse(await serveLitePage(webRequest, devLiteEnv), response);
             return;
           }
           if (pathname !== "/kutno-features.js") return next();

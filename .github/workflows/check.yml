@@ -23,6 +23,10 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
+      - name: Verify generated recipe runtime
+        run: |
+          node scripts/generate-recipe-runtime.mjs
+          git diff --exit-code -- worker/generated public/recipe-data
       - name: Test
         run: npm test
       - name: Build

@@ -4,16 +4,10 @@ import test from "node:test";
 import { seoRecipeEntries, seoSlug } from "../worker/seo-pages.js";
 import { serveFreshSitemap } from "../worker/fresh-sitemap.js";
 import { serveCrawlerRules, servePublicAppPage } from "../worker/public-app-pages.js";
+import { runtimeEnv } from "./runtime-assets.mjs";
 
 const indexHtml = readFileSync("index.html", "utf8");
-const env = {
-  STRICT_SEO_MARKERS: "true",
-  ASSETS: {
-    async fetch() {
-      return new Response(indexHtml, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
-    },
-  },
-};
+const env = runtimeEnv(indexHtml, { STRICT_SEO_MARKERS: "true" });
 
 test("SEO slug стабилен и пригоден для URL", () => {
   assert.equal(seoSlug("Жареная картошка с луком"), "zharenaya-kartoshka-s-lukom");

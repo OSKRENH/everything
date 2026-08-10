@@ -1,3 +1,4 @@
+import { loadRecipeBody } from "./catalog-page.js";
 import { seoRecipeEntries } from "./seo-pages.js";
 import { recipeImageSet, recipeImageUrls } from "./recipe-images.js";
 
@@ -7,12 +8,7 @@ const CONTENT_PUBLISHED = "2026-08-10";
 const CONTENT_MODIFIED = "2026-08-10";
 
 function escapeHtml(value = "") {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 
 function jsonScript(value) {
@@ -142,9 +138,7 @@ function replaceMarker(html, pattern, replacement, markerName, strict = false) {
 function routeBootCopy(html, route, strict = false) {
   const kicker = route.type === "catalog" ? "База Кутно" : "Кутно / рецепт";
   const title = route.type === "catalog" ? "Все рецепты" : route.recipe.title;
-  const copy = route.type === "catalog"
-    ? "Открываем полноценную базу рецептов Кутно…"
-    : route.recipe.subtitle || "Открываем рецепт в Кутно…";
+  const copy = route.type === "catalog" ? "Открываем полноценную базу рецептов Кутно…" : route.recipe.subtitle || "Открываем рецепт в Кутно…";
   let output = html;
   output = replaceMarker(output, /(<p[^>]*data-seo-kicker[^>]*>)[\s\S]*?(<\/p>)/i, `$1${escapeHtml(kicker)}$2`, "data-seo-kicker", strict);
   output = replaceMarker(output, /(<h1[^>]*data-seo-title[^>]*>)[\s\S]*?(<\/h1>)/i, `$1${escapeHtml(title)}$2`, "data-seo-title", strict);
@@ -155,10 +149,7 @@ function routeBootCopy(html, route, strict = false) {
 
 async function appShell(request, env) {
   const shellUrl = new URL("/", request.url);
-  const shellRequest = new Request(shellUrl, {
-    method: "GET",
-    headers: { accept: "text/html", "user-agent": request.headers.get("user-agent") || "" },
-  });
+  const shellRequest = new Request(shellUrl, { method: "GET", headers: { accept: "text/html", "user-agent": request.headers.get("user-agent") || "" } });
   const response = await env.ASSETS.fetch(shellRequest);
   if (!response.ok) return null;
   return response.text();
@@ -167,7 +158,7 @@ async function appShell(request, env) {
 function publicRouteFor(request) {
   if (request.method !== "GET" && request.method !== "HEAD") return null;
   const url = new URL(request.url);
-  const entries = seoRecipeEntries(2);
+  const entries = seoRecipeEntries();
   if (url.pathname === "/recipes/") return { redirect: `${SITE_ORIGIN}/recipes` };
   if (url.pathname === "/recipes") return { type: "catalog", pathname: "/recipes", entries };
   if (url.pathname === "/recipe" || url.pathname === "/recipe/") return { redirect: `${SITE_ORIGIN}/recipes` };
@@ -181,16 +172,11 @@ function publicRouteFor(request) {
 
 function missingRecipeResponse(request) {
   const html = request.method === "HEAD" ? "" : `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,follow"><link rel="canonical" href="${SITE_ORIGIN}/recipes"><title>Рецепт не найден | Кутно</title></head><body><main><h1>Рецепт не найден</h1><p>Возможно, ссылка устарела. <a href="/recipes">Открыть все рецепты</a>.</p></main></body></html>`;
-  return new Response(html, {
-    status: 404,
-    headers: {
-      "content-type": "text/html; charset=utf-8",
-      "content-language": "ru",
-      "cache-control": "public, max-age=60",
-      "x-robots-tag": "noindex, follow",
-      "x-content-type-options": "nosniff",
-    },
-  });
+  return new Response(html, { status: 404, headers: { "content-type": "text/html; charset=utf-8", "content-language": "ru", "cache-control": "public, max-age=60", "x-robots-tag": "noindex, follow", "x-content-type-options": "nosniff" } });
+}
+
+function unavailableRecipeResponse() {
+  return new Response("Рецепт временно недоступен", { status: 503, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "retry-after": "30" } });
 }
 
 export async function servePublicAppPage(request, env) {
@@ -199,19 +185,21 @@ export async function servePublicAppPage(request, env) {
   if (route.redirect) return Response.redirect(route.redirect, 301);
   if (route.missing) return missingRecipeResponse(request);
 
+  if (route.type === "recipe") {
+    const fullRecipe = await loadRecipeBody(request, env, route.id, 2);
+    if (!fullRecipe) return unavailableRecipeResponse();
+    route.recipe = fullRecipe;
+  }
+
   const shell = await appShell(request, env);
   if (!shell) return null;
   const isRecipe = route.type === "recipe";
   const title = isRecipe ? `${route.recipe.title} — рецепт в Кутно` : "База рецептов Кутно — все рецепты";
-  const description = isRecipe
-    ? recipeDescription(route.recipe)
-    : `Полная база Кутно: ${route.entries.length} рецептов с ингредиентами, шагами, временем приготовления и КБЖУ.`;
+  const description = isRecipe ? recipeDescription(route.recipe) : `Полная база Кутно: ${route.entries.length} рецептов с ингредиентами, шагами, временем приготовления и КБЖУ.`;
   const canonicalUrl = canonical(route.pathname);
   const structuredData = isRecipe ? recipeStructuredData(route) : catalogStructuredData(route.entries);
   const photo = isRecipe ? recipeImageSet({ hasPhoto: route.source?.recipe?.hasPhoto === true }, route.slug) : null;
-  const clientRoute = isRecipe
-    ? { type: "recipe", id: route.id, slug: route.slug, pathname: route.pathname, title: route.recipe.title, hasPhoto: Boolean(photo) }
-    : { type: "catalog", pathname: "/recipes" };
+  const clientRoute = isRecipe ? { type: "recipe", id: route.id, slug: route.slug, pathname: route.pathname, title: route.recipe.title, hasPhoto: Boolean(photo) } : { type: "catalog", pathname: "/recipes" };
   const strictSeoMarkers = env?.STRICT_SEO_MARKERS === true || env?.STRICT_SEO_MARKERS === "true";
 
   let html = routeBootCopy(shell, route, strictSeoMarkers);
@@ -235,16 +223,7 @@ export async function servePublicAppPage(request, env) {
   html = html.replace(/<noscript>[\s\S]*?<\/noscript>/i, routeNoscript(route, route.entries));
 
   if (request.method === "HEAD") html = "";
-  return new Response(html, {
-    status: 200,
-    headers: {
-      "content-type": "text/html; charset=utf-8",
-      "content-language": "ru",
-      "cache-control": HTML_CACHE,
-      "x-content-type-options": "nosniff",
-      "x-kutno-public-route": route.type,
-    },
-  });
+  return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "content-language": "ru", "cache-control": HTML_CACHE, "x-content-type-options": "nosniff", "x-kutno-public-route": route.type } });
 }
 
 export function serveCrawlerRules(request) {
@@ -252,13 +231,5 @@ export function serveCrawlerRules(request) {
   if (url.pathname !== "/robots.txt" || (request.method !== "GET" && request.method !== "HEAD")) return null;
   const groups = ["OAI-SearchBot", "GPTBot", "ChatGPT-User", "OAI-AdsBot", "*"];
   const body = `${groups.map((agent) => `User-agent: ${agent}\nAllow: /\nDisallow: /api/\nDisallow: /lite`).join("\n\n")}\n\nSitemap: ${SITE_ORIGIN}/sitemap.xml\n`;
-  return new Response(request.method === "HEAD" ? "" : body, {
-    status: 200,
-    headers: {
-      "content-type": "text/plain; charset=utf-8",
-      "cache-control": "no-store",
-      "cdn-cache-control": "no-store",
-      "x-content-type-options": "nosniff",
-    },
-  });
+  return new Response(request.method === "HEAD" ? "" : body, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "cdn-cache-control": "no-store", "x-content-type-options": "nosniff" } });
 }

@@ -1,33 +1,38 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { catalogSources, fullRecipeForSource } from "../worker/catalog-page.js";
+import { catalogRuntimeRecipes, loadRecipeBody } from "../worker/catalog-page.js";
+import { runtimeEnv } from "./runtime-assets.mjs";
 
-const pieceUnit = /^(?:шт\.?|зубч\.?|гол\.?)$/i;
+const pieceAmount = /^\d+(?:[.,]\d+)?\s*(?:шт\.?|зубч\.?|гол\.?)$/i;
+const env = runtimeEnv();
 
-test("штучные ингредиенты мирового каталога не становятся дробными", () => {
+test("штучные ингредиенты runtime-каталога не становятся дробными", async () => {
   let checked = 0;
-  for (const source of catalogSources(1).filter((item) => item.kind === "world")) {
-    const full = fullRecipeForSource(source, 1);
-    source.recipe.ingredients.forEach((raw, index) => {
-      if (typeof raw.amount !== "number" || !pieceUnit.test(String(raw.unit || "").trim())) return;
+  for (const recipe of catalogRuntimeRecipes()) {
+    const full = await loadRecipeBody(new Request("https://kutno.test/"), env, recipe.id, 1);
+    assert.ok(full, recipe.title);
+    recipe.ingredients.forEach((raw, index) => {
+      if (!pieceAmount.test(String(raw.amount || "").trim())) return;
       checked += 1;
       const amount = String(full.ingredients[index]?.amount || "");
-      assert.match(amount, /^\d+\s/, `${source.recipe.title}: ${raw.name} → ${amount}`);
-      assert.doesNotMatch(amount, /[,.]\d+/, `${source.recipe.title}: ${raw.name} → ${amount}`);
+      assert.match(amount, /^\d+\s/, `${recipe.title}: ${raw.name} → ${amount}`);
+      assert.doesNotMatch(amount, /[,.]\d+/, `${recipe.title}: ${raw.name} → ${amount}`);
     });
   }
   assert.ok(checked > 0);
 });
 
-test("числовая соль из pantry показывается как по вкусу", () => {
+test("соль из pantry показывается как по вкусу", async () => {
   let checked = 0;
-  for (const source of catalogSources(2).filter((item) => item.kind === "world")) {
-    const full = fullRecipeForSource(source, 2);
-    source.recipe.ingredients.forEach((raw, index) => {
-      if (typeof raw.amount !== "number" || raw.pantry !== true || !/соль/i.test(String(raw.name || ""))) return;
+  for (const recipe of catalogRuntimeRecipes()) {
+    const saltIndexes = recipe.ingredients.flatMap((raw, index) => raw.pantry === true && /соль/i.test(String(raw.name || "")) ? [index] : []);
+    if (!saltIndexes.length) continue;
+    const full = await loadRecipeBody(new Request("https://kutno.test/"), env, recipe.id, 2);
+    assert.ok(full, recipe.title);
+    for (const index of saltIndexes) {
       checked += 1;
-      assert.equal(full.ingredients[index]?.amount, "по вкусу", `${source.recipe.title}: ${raw.name}`);
-    });
+      assert.equal(full.ingredients[index]?.amount, "по вкусу", `${recipe.title}: ${recipe.ingredients[index].name}`);
+    }
   }
   assert.ok(checked > 0);
 });

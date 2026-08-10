@@ -1,9 +1,10 @@
 import featureWorker from "./entry.js";
 import { analyzeRecipe, enrichRecipeSemantics } from "../src/ingredient-semantics-v3.js";
 import { applyMatchingUserContext, matchingPayloadFromContext } from "../src/matching-user-context.js";
-import { catalogSources, sourceIdentity } from "./catalog-page.js";
+import { RUNTIME_RECIPES } from "./generated/catalog-runtime.js";
 
 const MATCHING_PAGE_SIZE = 20;
+const RUNTIME_BASE_PORTIONS = 2;
 
 function json(data, status = 200, headers = {}) {
   return Response.json(data, { status, headers: { "cache-control": "no-store", "x-content-type-options": "nosniff", ...headers } });
@@ -27,8 +28,6 @@ function matchingContext(body = {}) {
   return {
     ingredients: Array.isArray(body.ingredients) ? body.ingredients : [],
     priorityIngredients: Array.isArray(body.priorityIngredients) ? body.priorityIngredients : [],
-    // В основном сценарии бытовая техника не является фильтром. Она учитывается
-    // только по явному opt-in enforceEquipment.
     equipment: body.enforceEquipment === true && Array.isArray(body.equipment) ? body.equipment : [],
     enforceEquipment: body.enforceEquipment === true,
     baseIngredients: Array.isArray(body.baseIngredients) ? body.baseIngredients : undefined,
@@ -55,28 +54,26 @@ function mergeRecipes(...groups) {
   return result;
 }
 
-function matchingAmount(source, item, portions) {
-  if (source.kind !== "world" || typeof item?.amount !== "number") return String(item?.amount || "");
-  const value = item.amount * portions / Math.max(1, Number(source.recipe.servings) || 2);
-  const unit = String(item.unit || "").trim();
-  const ingredient = normalizedTitle(item?.name);
-  if (item?.pantry === true && /соль|перец|паприк|спец|приправа|зелень/.test(ingredient)) return "по вкусу";
-  let rounded = value;
-  if (unit === "г" || unit === "мл") rounded = Math.max(5, Math.round(value / 5) * 5);
-  else if (/^(?:шт\.?|зубч\.?|гол\.?)$/i.test(unit)) rounded = Math.max(1, Math.ceil(value));
-  else rounded = Math.round(value * 4) / 4;
-  const display = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(".", ",");
-  return `${display} ${unit}`.trim();
+function scaleAmount(amount, portions) {
+  const text = String(amount || "").trim();
+  if (!text || /по вкусу/i.test(text) || portions === RUNTIME_BASE_PORTIONS) return text;
+  const match = text.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/u);
+  if (!match) return text;
+  const factor = portions / RUNTIME_BASE_PORTIONS;
+  const unit = String(match[2] || "").trim();
+  const raw = Number(match[1].replace(",", ".")) * factor;
+  let value = raw;
+  if (/^(г|мл)$/iu.test(unit)) value = Math.max(1, Math.round(raw / 5) * 5);
+  else if (/^(?:шт\.?|зубч\.?|гол\.?)$/iu.test(unit)) value = Math.max(1, Math.ceil(raw));
+  else value = Math.max(0.25, Math.round(raw * 4) / 4);
+  const displayed = Number.isInteger(value) ? String(value) : String(value).replace(".", ",");
+  return `${displayed}${unit ? ` ${unit}` : ""}`;
 }
 
-function matchingRecipeFromSource(source, portions) {
-  const recipe = source.recipe;
-  const id = sourceIdentity(source.kind, recipe);
-  const sourceMeta = source.kind === "world"
-    ? { id, name: recipe.source?.name || "Кутно · мировая классика", type: "kutno-catalog", note: recipe.source?.note || "Редакционная версия традиционной рецептуры", url: recipe.source?.url || "" }
-    : { ...(recipe.source || {}), id };
+function matchingRecipeFromRuntime(recipe, portions) {
+  const factor = portions / RUNTIME_BASE_PORTIONS;
   return {
-    id,
+    id: String(recipe.id),
     compact: true,
     title: String(recipe.title || ""),
     subtitle: String(recipe.subtitle || ""),
@@ -90,21 +87,22 @@ function matchingRecipeFromSource(source, portions) {
     equipment: Array.isArray(recipe.equipment) ? recipe.equipment.map(String) : [],
     ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item) => ({
       name: String(item?.name || ""),
-      amount: matchingAmount(source, item, portions),
+      amount: scaleAmount(item?.amount, portions),
       aliases: Array.isArray(item?.aliases) ? item.aliases.map(String).filter(Boolean) : [],
       pantry: item?.pantry === true,
       ...(item?.role ? { role: String(item.role) } : {}),
     })),
-    nutrition: { calories: Number(recipe.nutrition?.calories) || 0 },
-    source: sourceMeta,
+    nutrition: { calories: Math.max(0, Math.round((Number(recipe.nutrition?.calories) || 0) * factor)) },
+    source: recipe.source || {},
     missing: [],
     uses: [],
-    why: recipe.why || (source.kind === "world" ? `Классическое блюдо кухни: ${recipe.cuisine}` : "Проверенный рецепт Кутно"),
+    why: recipe.why || "Проверенный рецепт Кутно",
+    hasPhoto: recipe.hasPhoto === true,
   };
 }
 
 function matchingCatalog(portions = 2) {
-  return catalogSources(portions).map((source) => matchingRecipeFromSource(source, portions));
+  return RUNTIME_RECIPES.map((recipe) => matchingRecipeFromRuntime(recipe, portions));
 }
 
 function difficultyRank(value = "") {
@@ -166,10 +164,7 @@ function enrichedWithContext(recipe, context, analysis = analyzeWithContext(reci
 }
 
 function rankingScore(item) {
-  return item.usedCount * 10
-    - item.missingCount * 7
-    - item.optionalMissing
-    - item.substitutions * 2;
+  return item.usedCount * 10 - item.missingCount * 7 - item.optionalMissing - item.substitutions * 2;
 }
 
 function rankRecipes(catalog, body) {

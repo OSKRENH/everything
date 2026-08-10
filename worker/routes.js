@@ -9,21 +9,10 @@ import { serveCrawlerRules, servePublicAppPage } from "./public-app-pages.js";
 import { serveRecipeImage, serveRecipePhotoManifest } from "./recipe-images.js";
 import { saveTelemetry } from "./telemetry.js";
 
-function methodIs(request, allowed) {
-  return allowed.includes(request.method);
-}
-
-function exact(path, methods, name, handler, before = []) {
-  return { name, methods, path, handler, before };
-}
-
-function prefix(pathPrefix, methods, name, handler, before = []) {
-  return { name, methods, prefix: pathPrefix, handler, before };
-}
-
-function custom(name, matches, handler, before = []) {
-  return { name, matches, handler, before };
-}
+function methodIs(request, allowed) { return allowed.includes(request.method); }
+function exact(path, methods, name, handler, before = []) { return { name, methods, path, handler, before }; }
+function prefix(pathPrefix, methods, name, handler, before = []) { return { name, methods, prefix: pathPrefix, handler, before }; }
+function custom(name, matches, handler, before = []) { return { name, matches, handler, before }; }
 
 const ensureSchemas = async ({ env }) => ensureFeatureStateTextSchema(env);
 const toBase = ({ request, env, ctx }) => baseWorker.fetch(request, env, ctx);
@@ -35,15 +24,13 @@ export const ROUTES = [
   exact("/sitemap.xml", ["GET", "HEAD"], "sitemap", ({ request }) => serveFreshSitemap(request)),
   prefix("/img/", ["GET", "HEAD"], "recipe-image", ({ request, env }) => serveRecipeImage(request, env)),
   exact("/api/photo-manifest", ["GET", "HEAD"], "photo-manifest", ({ request }) => serveRecipePhotoManifest(request)),
-  custom("public-app", ({ pathname, method }) => ["GET", "HEAD"].includes(method) && (
-    pathname === "/recipes" || pathname === "/recipes/" || pathname === "/recipe" || pathname === "/recipe/" || pathname.startsWith("/recipe/")
-  ), ({ request, env }) => servePublicAppPage(request, env)),
-  custom("lite", ({ pathname, method }) => method === "GET" && (pathname === "/lite" || pathname === "/lite/recipe"), ({ request }) => serveLitePage(request)),
+  custom("public-app", ({ pathname, method }) => ["GET", "HEAD"].includes(method) && (pathname === "/recipes" || pathname === "/recipes/" || pathname === "/recipe" || pathname === "/recipe/" || pathname.startsWith("/recipe/")), ({ request, env }) => servePublicAppPage(request, env)),
+  custom("lite", ({ pathname, method }) => method === "GET" && (pathname === "/lite" || pathname === "/lite/recipe"), ({ request, env }) => serveLitePage(request, env)),
 
   exact("/api/telemetry", ["POST"], "telemetry", ({ request, env, requestId }) => saveTelemetry(request, env, requestId)),
   exact("/api/catalog", ["GET"], "catalog", ({ request, requestId }) => serveCatalogPage(request, requestId)),
   exact("/api/catalog-index", ["GET"], "catalog-index", ({ request, requestId }) => serveCatalogIndex(request, requestId)),
-  prefix("/api/recipe/", ["GET"], "recipe", ({ request, requestId }) => serveRecipeDetail(request, requestId)),
+  prefix("/api/recipe/", ["GET"], "recipe", ({ request, env, requestId }) => serveRecipeDetail(request, env, requestId)),
 
   exact("/api/generate", ["POST"], "generate", toMatching),
   exact("/api/matching-suggestions", ["GET"], "matching-suggestions", toMatching),
