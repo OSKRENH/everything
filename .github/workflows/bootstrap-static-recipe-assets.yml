@@ -62,6 +62,29 @@ jobs:
           path.write_text(source)
           PY
           node /tmp/bootstrap-static-recipe-assets.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('test/public-app-routes.test.mjs')
+          source = path.read_text()
+          lines = []
+          replaced_route = False
+          replaced_wrangler = False
+          for line in source.splitlines():
+              if 'assert.doesNotMatch(routes, /serveRecipeImage|recipe-image|prefix' in line:
+                  lines.append('  assert.doesNotMatch(routes, /serveRecipeImage|recipe-image/);')
+                  lines.append('  assert.equal(routes.includes(\'prefix("/img/\'), false);')
+                  replaced_route = True
+              elif 'assert.match(wrangler, /"\\/img\\/\\*"/);' in line:
+                  lines.append('  assert.doesNotMatch(wrangler, /"\\/img\\/\\*"/);')
+                  replaced_wrangler = True
+              else:
+                  lines.append(line)
+          if not replaced_route:
+              raise SystemExit('static route assertion was not patched')
+          if not replaced_wrangler:
+              raise SystemExit('legacy wrangler /img assertion was not patched')
+          path.write_text('\n'.join(lines) + '\n')
+          PY
 
       - name: Install dependencies
         run: npm ci
