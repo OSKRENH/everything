@@ -1,5 +1,5 @@
 import { dispatchRoute } from "./routes.js";
-import { json, recordServerFailure, sanitizeTelemetryEvent } from "./telemetry.js";
+import { json, recordServerFailure } from "./telemetry.js";
 export { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
 export { sanitizeTelemetryEvent } from "./telemetry.js";
 
@@ -31,5 +31,3 @@ export default {
     }
   },
 };
-
-void sanitizeTelemetryEvent;
