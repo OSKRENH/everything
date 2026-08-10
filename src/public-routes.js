@@ -26,6 +26,16 @@ function currentLocation() {
   return `${location.pathname}${location.search}${location.hash}`;
 }
 
+function openCatalogView() {
+  const button = document.querySelector('[data-view="catalog"]');
+  if (button && !button.classList.contains("active")) button.click();
+}
+
+function closeRecipeOverlay() {
+  const close = document.querySelector('.recipe-sheet [data-action="close-recipe"]');
+  if (close) close.click();
+}
+
 async function catalogIds() {
   if (!catalogIds.promise) {
     catalogIds.promise = fetch("/api/catalog-index", { headers: { accept: "application/json" } })
@@ -56,12 +66,12 @@ async function openRecipeById(id, title = "", animate = false) {
 async function applyPublicRoute(route = window.__KUTNO_PUBLIC_ROUTE__) {
   if (!route || !window.kutnoBridge) return;
   if (route.type === "catalog") {
-    window.kutnoBridge.closeRecipe?.();
-    window.kutnoBridge.setView?.("catalog");
+    closeRecipeOverlay();
+    openCatalogView();
     return;
   }
   if (route.type !== "recipe") return;
-  window.kutnoBridge.setView?.("catalog");
+  openCatalogView();
   history.replaceState({
     ...(history.state || {}),
     kutnoDirectRecipe: true,
@@ -108,21 +118,21 @@ document.addEventListener("click", (event) => {
     return;
   }
   history.replaceState({}, "", "/recipes");
-  queueMicrotask(() => window.kutnoBridge?.setView?.("catalog"));
+  queueMicrotask(openCatalogView);
 }, true);
 
 window.addEventListener("popstate", () => {
   if (location.pathname === "/recipes") {
-    window.kutnoBridge?.closeRecipe?.();
-    window.kutnoBridge?.setView?.("catalog");
+    closeRecipeOverlay();
+    openCatalogView();
     return;
   }
   if (location.pathname.startsWith("/recipe/") && history.state?.kutnoRecipeId) {
-    window.kutnoBridge?.setView?.("catalog");
+    openCatalogView();
     openRecipeById(history.state.kutnoRecipeId, history.state.kutnoRecipeTitle || "", false).catch(() => {});
     return;
   }
-  if (!location.pathname.startsWith("/recipe/")) window.kutnoBridge?.closeRecipe?.();
+  if (!location.pathname.startsWith("/recipe/")) closeRecipeOverlay();
 });
 
 applyPublicRoute().catch(() => {});
