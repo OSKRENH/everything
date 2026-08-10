@@ -127,7 +127,7 @@ jobs:
           set -euo pipefail
           test ! -e dist/.git
           git switch -c agent/recipe-images-static-assets-20260811
-          git add .gitignore .github/workflows/check.yml package.json public/_headers public/img scripts/check-static-recipe-assets.mjs test/public-app-routes.test.mjs test/route-table.test.mjs test/static-recipe-assets.test.mjs worker/public-app-pages.js worker/recipe-images.js worker/recipe-photo-catalog.js worker/routes.js wrangler.jsonc
+          git add .gitignore package.json public/_headers public/img scripts/check-static-recipe-assets.mjs test/public-app-routes.test.mjs test/route-table.test.mjs test/static-recipe-assets.test.mjs worker/public-app-pages.js worker/recipe-images.js worker/recipe-photo-catalog.js worker/routes.js wrangler.jsonc
           git diff --cached --check
           if git diff --cached --name-only | grep -Eq '^(dist|node_modules)/'; then
             echo 'dist/ or node_modules/ must not be committed'
