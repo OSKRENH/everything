@@ -37,7 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m pip install --quiet gdown
-          gdown --fuzzy 'https://drive.google.com/file/d/17J-Q3S_0vYYGxRYkeeUG20zrE89LlmWu/view?usp=drivesdk' -O /tmp/kutno-recipe-images-webp.zip
+          gdown 'https://drive.google.com/file/d/17J-Q3S_0vYYGxRYkeeUG20zrE89LlmWu/view?usp=drivesdk' -O /tmp/kutno-recipe-images-webp.zip
           test "$(stat -c%s /tmp/kutno-recipe-images-webp.zip)" -gt 40000000
           unzip -t /tmp/kutno-recipe-images-webp.zip >/dev/null
           rm -rf public/img
