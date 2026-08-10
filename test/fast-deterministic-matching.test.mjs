@@ -31,28 +31,26 @@ test("обычный подбор работает без AI binding и возв
   assert.ok(data.recipes.every((recipe) => !("steps" in recipe)));
 });
 
-test("одно яйцо не превращается в омлет на четыре яйца", async () => {
-  const base = {
+test("одно яйцо не считается достаточным для омлета на четыре яйца", async () => {
+  const data = await (await generate({
     ingredients: ["яйца", "картофель"],
-    equipment: ["Сковорода", "Кастрюля"],
+    equipment: [],
     pantry: {
       яйца: { name: "яйца", quantity: 1, unit: "шт." },
       картофель: { name: "картофель", quantity: 800, unit: "г" },
     },
     course: "все",
-  };
+  })).json();
 
-  const strictData = await (await generate({ ...base, searchMode: "strict" })).json();
-  assert.equal(strictData.recipes.some((recipe) => recipe.title === "Омлет"), false);
-
-  const plusOneData = await (await generate({ ...base, searchMode: "plus-one" })).json();
-  const omelette = plusOneData.recipes.find((recipe) => recipe.title === "Омлет");
-  assert.ok(omelette, "омлет должен появиться только как вариант с одной покупкой/нехваткой");
+  const omelette = data.recipes.find((recipe) => recipe.title === "Омлет");
+  assert.ok(omelette, "близкий рецепт не должен исчезать из выдачи");
+  assert.equal(omelette.matching?.group, "one");
   assert.ok(omelette.missing.includes("яйца"));
+  assert.ok(omelette.matching?.quantityShortages?.some((item) => item.name === "яйца"));
 });
 
 test("подсказки показывают продукт, который открывает новые блюда", async () => {
-  const response = await matchingWorker.fetch(new Request("https://kutno.test/api/matching-suggestions?ingredient=яйца&ingredient=картофель&equipment=Сковорода&equipment=Кастрюля"), {}, {});
+  const response = await matchingWorker.fetch(new Request("https://kutno.test/api/matching-suggestions?ingredient=яйца&ingredient=картофель"), {}, {});
   assert.equal(response.status, 200);
   const data = await response.json();
   assert.ok(Array.isArray(data.suggestions));
