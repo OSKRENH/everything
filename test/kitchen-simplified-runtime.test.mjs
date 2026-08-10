@@ -47,13 +47,14 @@ test("результаты содержат сортировки и постеп
   assert.match(source, /new MutationObserver\(scheduleKitchenSortMountV5\)/);
 });
 
-test("Worker и клиент не обрезают подходящие рецепты до трёх", () => {
-  const client = readFileSync("src/kitchen-simplified.inject.js", "utf8");
+test("Worker не обрезает выдачу до трёх и использует честную пагинацию", () => {
+  const client = readFileSync("src/main.js", "utf8");
   const worker = readFileSync("worker/matching-entry.js", "utf8");
 
-  assert.match(client, /Math\.max\(3, data\.recipes\.length\)/);
-  assert.match(client, /hasMoreRecipes = false/);
-  assert.match(worker, /hasMore: false/);
+  assert.match(client, /hasMoreRecipes = Boolean\(data\.hasMore\)/);
+  assert.match(worker, /MATCHING_PAGE_SIZE = 20/);
+  assert.match(worker, /total: recipes\.length/);
+  assert.match(worker, /offset \+ page\.length < recipes\.length/);
   assert.match(worker, /catalogSources/);
   assert.match(worker, /matchingCatalog/);
   assert.doesNotMatch(worker, /recipes\.slice\(0, 3\)/);
