@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { serveCatalogIndex, serveCatalogPage, serveRecipeDetail } from "../worker/catalog-page.js";
 import { decodeCatalogCursor } from "../worker/catalog-cursor.js";
+import { runtimeEnv } from "./runtime-assets.mjs";
+
+const env = runtimeEnv();
 
 async function page(cursor = "", limit = 5) {
   const params = new URLSearchParams({ portions: "2", limit: String(limit) });
@@ -47,7 +50,7 @@ test("индекс загружается отдельно и содержит �
 test("полный рецепт приходит только по id", async () => {
   const first = await page();
   const summary = first.recipes[0];
-  const response = await serveRecipeDetail(new Request(`https://kutno.test/api/recipe/${encodeURIComponent(summary.id)}?portions=2`), "qa-detail");
+  const response = await serveRecipeDetail(new Request(`https://kutno.test/api/recipe/${encodeURIComponent(summary.id)}?portions=2`), env, "qa-detail");
   assert.equal(response.status, 200);
   const data = await response.json();
   assert.equal(data.recipe.id, summary.id);
