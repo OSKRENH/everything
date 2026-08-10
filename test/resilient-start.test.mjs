@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { serveLitePage } from "../worker/lite-page.js";
+import { runtimeEnv } from "./runtime-assets.mjs";
+
+const env = runtimeEnv();
 
 for (const file of ["src/bootstrap.js", "worker/lite-page.js", "public/sw.js", "worker/routes.js"]) {
   test(`${file} проходит синтаксическую проверку`, () => {
@@ -30,24 +33,24 @@ test("Service Worker включается только на защищённом
   assert.match(bootstrap, /navigator\.serviceWorker\.register/);
 });
 
-test("лёгкая страница работает без JavaScript и остаётся компактной", () => {
-  const response = serveLitePage(new Request("https://kutno.test/lite?products=яйца,рис"));
+test("лёгкая страница работает без JavaScript и остаётся компактной", async () => {
+  const response = await serveLitePage(new Request("https://kutno.test/lite?products=яйца,рис"), env);
   assert.equal(response.status, 200);
-  return response.text().then((html) => {
-    assert.match(html, /Лёгкая версия/);
-    assert.match(html, /Рецепты без тяжёлой загрузки/);
-    assert.match(html, /<form/);
-    assert.match(html, /\/lite\/recipe\?id=/);
-    assert.doesNotMatch(html, /<script/);
-    assert.ok(Buffer.byteLength(html, "utf8") < 16_000, "страница /lite должна проходить в одном маленьком ответе");
-  });
+  const html = await response.text();
+  assert.match(html, /Лёгкая версия/);
+  assert.match(html, /Рецепты без тяжёлой загрузки/);
+  assert.match(html, /<form/);
+  assert.match(html, /\/lite\/recipe\?id=/);
+  assert.doesNotMatch(html, /<script/);
+  assert.ok(Buffer.byteLength(html, "utf8") < 16_000, "страница /lite должна проходить в одном маленьком ответе");
 });
 
 test("страница отдельного рецепта формируется Worker-ом", async () => {
-  const list = await serveLitePage(new Request("https://kutno.test/lite")).text();
+  const listResponse = await serveLitePage(new Request("https://kutno.test/lite"), env);
+  const list = await listResponse.text();
   const id = list.match(/\/lite\/recipe\?id=([^"&]+)/)?.[1];
   assert.ok(id);
-  const response = serveLitePage(new Request(`https://kutno.test/lite/recipe?id=${id}`));
+  const response = await serveLitePage(new Request(`https://kutno.test/lite/recipe?id=${id}`), env);
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /Ингредиенты/);
