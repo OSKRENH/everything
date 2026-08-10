@@ -1,4 +1,4 @@
-import { catalogSources, fullRecipeForSource, sourceIdentity } from "./catalog-page.js";
+import { RUNTIME_RECIPES } from "./generated/catalog-runtime.js";
 
 const CYRILLIC = {
   а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "yo", ж: "zh", з: "z", и: "i", й: "y",
@@ -19,19 +19,18 @@ export function seoSlug(value = "") {
     .slice(0, 96) || "recipe";
 }
 
-export function seoRecipeEntries(portions = 2) {
+export function seoRecipeEntries() {
   const usedSlugs = new Map();
-  return catalogSources(portions).map((source) => {
-    const recipe = fullRecipeForSource(source, portions);
+  return RUNTIME_RECIPES.map((recipe) => {
     if (!recipe?.title) return null;
-    const baseSlug = seoSlug(recipe.title || sourceIdentity(source.kind, source.recipe));
+    const baseSlug = seoSlug(recipe.title || recipe.id);
     const seen = usedSlugs.get(baseSlug) || 0;
     usedSlugs.set(baseSlug, seen + 1);
     const slug = seen ? `${baseSlug}-${seen + 1}` : baseSlug;
     return {
-      source,
+      source: { kind: "runtime", recipe },
       recipe,
-      id: sourceIdentity(source.kind, source.recipe),
+      id: String(recipe.id),
       slug,
       pathname: `/recipe/${slug}`,
     };
