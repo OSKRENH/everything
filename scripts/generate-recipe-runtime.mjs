@@ -1,6 +1,7 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { catalogSources, fullRecipeForSource, sourceIdentity } from "./catalog-source.mjs";
-import { CATALOG_VERSION, INGREDIENT_GLOSSARY } from "../worker/recipe-catalog.js";
+import { CATALOG_VERSION } from "../worker/catalog-version.js";
+import { INGREDIENT_GLOSSARY } from "../worker/recipe-catalog.js";
 
 const generatedDir = new URL("../worker/generated/", import.meta.url);
 const bodiesDir = new URL("../public/recipe-data/", import.meta.url);
