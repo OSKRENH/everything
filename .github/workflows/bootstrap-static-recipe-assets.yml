@@ -1,0 +1,102 @@
+name: Bootstrap recipe static assets
+
+on:
+  push:
+    branches: [agent/kutno-static-assets-bootstrap]
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout bootstrap branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Preserve bootstrap script and reset to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp scripts/bootstrap-static-recipe-assets.mjs /tmp/bootstrap-static-recipe-assets.mjs
+          git fetch origin main
+          git reset --hard origin/main
+          git clean -fdx
+
+      - name: Download approved illustration archive from Google Drive
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet gdown
+          gdown --fuzzy 'https://drive.google.com/file/d/17J-Q3S_0vYYGxRYkeeUG20zrE89LlmWu/view?usp=drivesdk' -O /tmp/kutno-recipe-images-webp.zip
+          test "$(stat -c%s /tmp/kutno-recipe-images-webp.zip)" -gt 40000000
+          unzip -t /tmp/kutno-recipe-images-webp.zip >/dev/null
+          rm -rf public/img
+          mkdir -p public/img
+          unzip -j -q /tmp/kutno-recipe-images-webp.zip '*.webp' -d public/img
+          test "$(find public/img -maxdepth 1 -type f -name '*.webp' | wc -l)" -eq 357
+
+      - name: Apply Static Assets integration
+        run: node /tmp/bootstrap-static-recipe-assets.mjs
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Wrangler dry run
+        run: npx wrangler deploy --dry-run
+
+      - name: Smoke test Static Assets HTTP
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler dev --local --port 8799 > /tmp/wrangler-static.log 2>&1 &
+          pid=$!
+          cleanup() { kill "$pid" 2>/dev/null || true; }
+          trap cleanup EXIT
+          ready=0
+          for attempt in $(seq 1 30); do
+            code=$(curl --silent --output /tmp/syrniki.webp --dump-header /tmp/syrniki.headers --write-out '%{http_code}' http://127.0.0.1:8799/img/syrniki-4x3.webp || true)
+            if [ "$code" = "200" ]; then ready=1; break; fi
+            sleep 1
+          done
+          if [ "$ready" != "1" ]; then
+            cat /tmp/wrangler-static.log
+            exit 1
+          fi
+          grep -qi '^content-type: image/webp' /tmp/syrniki.headers
+          missing=$(curl --silent --output /tmp/missing.webp --write-out '%{http_code}' http://127.0.0.1:8799/img/definitely-not-a-recipe.webp)
+          test "$missing" = "404"
+
+      - name: Create one-commit feature branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e dist/.git
+          git switch -c agent/recipe-images-static-assets-20260811
+          git add .gitignore .github/workflows/check.yml package.json public/_headers public/img scripts/check-static-recipe-assets.mjs test/public-app-routes.test.mjs test/route-table.test.mjs test/static-recipe-assets.test.mjs worker/public-app-pages.js worker/recipe-images.js worker/recipe-photo-catalog.js worker/routes.js wrangler.jsonc
+          git diff --cached --check
+          if git diff --cached --name-only | grep -Eq '^(dist|node_modules)/'; then
+            echo 'dist/ or node_modules/ must not be committed'
+            exit 1
+          fi
+          test "$(git diff --cached --name-only -- public/img | wc -l)" -eq 357
+          git config user.name 'kutno-static-assets-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git commit -m 'Serve recipe images as static assets'
+          test "$(git rev-list --count origin/main..HEAD)" -eq 1
+          git push -u origin agent/recipe-images-static-assets-20260811
