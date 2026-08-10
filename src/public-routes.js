@@ -36,14 +36,45 @@ function closeRecipeOverlay() {
   if (close) close.click();
 }
 
-async function catalogIds() {
-  if (!catalogIds.promise) {
-    catalogIds.promise = fetch("/api/catalog-index", { headers: { accept: "application/json" } })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => new Set((data?.index || []).map((item) => String(item.id || "")).filter(Boolean)))
-      .catch(() => new Set());
+function catalogEntryMatchesCurrent(entry, current) {
+  if (!entry || !current?.recipe) return false;
+  const currentId = String(current.id || "");
+  const entryId = String(entry.id || "");
+  if (currentId && entryId && currentId === entryId) return true;
+  const currentTitle = slug(current.recipe.title || "");
+  const entryTitle = slug(entry.title || "");
+  return Boolean(currentTitle && entryTitle && currentTitle === entryTitle);
+}
+
+function localCatalogEntry(current) {
+  const recipes = window.kutnoBridge?.getCatalogRecipes?.() || [];
+  return recipes.find((recipe) => catalogEntryMatchesCurrent({
+    id: window.kutnoBridge?.getRecipeId?.(recipe) || recipe?.id || recipe?.source?.id || "",
+    title: recipe?.title || "",
+  }, current)) || null;
+}
+
+async function catalogIndex() {
+  if (!catalogIndex.promise) {
+    catalogIndex.promise = fetch("/api/catalog-index", { headers: { accept: "application/json" } })
+      .then((response) => {
+        if (!response.ok) throw new Error(`catalog index ${response.status}`);
+        return response.json();
+      })
+      .then((data) => Array.isArray(data?.index) ? data.index : [])
+      .catch(() => {
+        catalogIndex.promise = null;
+        return [];
+      });
   }
-  return catalogIds.promise;
+  return catalogIndex.promise;
+}
+
+async function publicCatalogEntry(current) {
+  const local = localCatalogEntry(current);
+  if (local) return local;
+  const index = await catalogIndex();
+  return index.find((entry) => catalogEntryMatchesCurrent(entry, current)) || null;
 }
 
 async function fetchRecipe(id) {
@@ -86,20 +117,23 @@ async function syncRecipeUrlFromOverlay() {
   if (overlaySyncQueued) return;
   overlaySyncQueued = true;
   queueMicrotask(async () => {
-    overlaySyncQueued = false;
-    const current = window.kutnoBridge?.getCurrentRecipe?.();
-    if (!current?.recipe || !document.querySelector(".recipe-sheet")) return;
-    const ids = await catalogIds();
-    if (!ids.has(String(current.id || ""))) return;
-    const pathname = recipePath(current.recipe);
-    if (!pathname || location.pathname === pathname) return;
-    const returnTo = location.pathname.startsWith("/recipe/") ? "/recipes" : currentLocation();
-    history.pushState({
-      kutnoRecipeOverlay: true,
-      kutnoRecipeId: current.id,
-      kutnoRecipeTitle: current.recipe.title || "",
-      returnTo,
-    }, "", pathname);
+    try {
+      const current = window.kutnoBridge?.getCurrentRecipe?.();
+      if (!current?.recipe || !document.querySelector(".recipe-sheet")) return;
+      const entry = await publicCatalogEntry(current);
+      if (!entry) return;
+      const pathname = recipePath({ title: entry.title || current.recipe.title });
+      if (!pathname || location.pathname === pathname) return;
+      const returnTo = location.pathname.startsWith("/recipe/") ? "/recipes" : currentLocation();
+      history.pushState({
+        kutnoRecipeOverlay: true,
+        kutnoRecipeId: entry.id || current.id,
+        kutnoRecipeTitle: entry.title || current.recipe.title || "",
+        returnTo,
+      }, "", pathname);
+    } finally {
+      overlaySyncQueued = false;
+    }
   });
 }
 
@@ -109,6 +143,10 @@ if (app) {
     if (document.querySelector(".recipe-sheet")) syncRecipeUrlFromOverlay();
   }).observe(app, { childList: true, subtree: true });
 }
+
+window.addEventListener("kutno:bridge-ready", () => {
+  if (document.querySelector(".recipe-sheet")) syncRecipeUrlFromOverlay();
+});
 
 document.addEventListener("click", (event) => {
   const close = event.target.closest?.("[data-action='close-recipe']");
@@ -137,4 +175,4 @@ window.addEventListener("popstate", () => {
 
 applyPublicRoute().catch(() => {});
 
-window.kutnoPublicRoute = { slug, recipePath, apply: applyPublicRoute };
+window.kutnoPublicRoute = { slug, recipePath, apply: applyPublicRoute, sync: syncRecipeUrlFromOverlay };
