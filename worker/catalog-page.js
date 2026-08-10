@@ -27,7 +27,6 @@ const RUNTIME_BY_ID = new Map(RUNTIME_RECIPES.map((recipe) => [String(recipe.id)
 function compactIngredient(item) {
   return {
     name: String(item?.name || ""),
-    amount: String(item?.amount || ""),
     aliases: Array.isArray(item?.aliases) ? item.aliases.map(String).filter(Boolean) : [],
     pantry: item?.pantry === true,
     ...(item?.role ? { role: String(item.role) } : {}),
