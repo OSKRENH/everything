@@ -4,6 +4,7 @@ import { serveLitePage } from "./lite-page.js";
 import { serveCrawlerRules, servePublicAppPage } from "./public-app-pages.js";
 import { serveSeoRequest } from "./seo-pages.js";
 import { ensureFeatureStateTextSchema } from "./feature-state-migration.js";
+import { serveFreshSitemap } from "./fresh-sitemap.js";
 export { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
 
 const MAX_TELEMETRY_EVENTS = 20;
@@ -122,6 +123,9 @@ export default {
 
       const crawlerResponse = serveCrawlerRules(request);
       if (crawlerResponse) return timedResponse(crawlerResponse, "robots", startedAt, requestId);
+
+      const sitemapResponse = serveFreshSitemap(request);
+      if (sitemapResponse) return timedResponse(sitemapResponse, "sitemap", startedAt, requestId);
 
       const publicAppResponse = await servePublicAppPage(request, env);
       if (publicAppResponse) return timedResponse(publicAppResponse, "public-app", startedAt, requestId);
