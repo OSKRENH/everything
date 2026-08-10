@@ -107,11 +107,14 @@ test("семь новых бытовых рецептов входят в дом
   }
 });
 
-test("SEO stale-кэш везде ограничен десятью минутами и purge остаётся в deploy workflow", async () => {
-  const seo = await readFile(new URL("../worker/seo-pages.js", import.meta.url), "utf8");
+test("SEO stale-кэш в живых обработчиках ограничен десятью минутами и purge остаётся в deploy workflow", async () => {
+  const publicApp = await readFile(new URL("../worker/public-app-pages.js", import.meta.url), "utf8");
+  const photos = await readFile(new URL("../worker/recipe-images.js", import.meta.url), "utf8");
   const workflow = await readFile(new URL("../.github/workflows/check.yml", import.meta.url), "utf8");
-  assert.doesNotMatch(seo, /stale-while-revalidate=86400/);
-  assert.ok((seo.match(/stale-while-revalidate=600/g) || []).length >= 2);
+  assert.doesNotMatch(publicApp, /stale-while-revalidate=86400/);
+  assert.doesNotMatch(photos, /stale-while-revalidate=86400/);
+  assert.match(publicApp, /stale-while-revalidate=600/);
+  assert.match(photos, /stale-while-revalidate=600/);
   assert.match(workflow, /purge_cache/);
   assert.match(workflow, /purge_everything/);
 });
