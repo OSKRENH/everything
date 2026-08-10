@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { serveLitePage } from "../worker/lite-page.js";
 
-for (const file of ["src/bootstrap.js", "worker/lite-page.js", "public/sw.js"]) {
+for (const file of ["src/bootstrap.js", "worker/lite-page.js", "public/sw.js", "worker/routes.js"]) {
   test(`${file} проходит синтаксическую проверку`, () => {
     const result = spawnSync(process.execPath, ["--check", file], { encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -55,11 +55,12 @@ test("страница отдельного рецепта формируетс�
   assert.doesNotMatch(html, /<script/);
 });
 
-test("Worker подключает /lite до основного matching worker", () => {
-  const worker = readFileSync("worker/next-entry.js", "utf8");
-  assert.match(worker, /serveLitePage/);
-  assert.match(worker, /url\.pathname === "\/lite"/);
-  assert.match(worker, /matchingWorker\.fetch/);
-  assert.ok(worker.indexOf("serveLitePage(request)") < worker.indexOf("matchingWorker.fetch"));
-  assert.doesNotMatch(worker, /safeWorker/);
+test("/lite имеет явный приоритет в единой таблице маршрутов", () => {
+  const entry = readFileSync("worker/next-entry.js", "utf8");
+  const routes = readFileSync("worker/routes.js", "utf8");
+  assert.match(entry, /dispatchRoute/);
+  assert.doesNotMatch(entry, /matchingWorker|featureWorker|baseWorker|safeWorker/);
+  assert.match(routes, /custom\("lite"/);
+  assert.match(routes, /exact\("\/api\/generate"/);
+  assert.ok(routes.indexOf('custom("lite"') < routes.indexOf('exact("/api/generate"'));
 });

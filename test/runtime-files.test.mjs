@@ -4,9 +4,9 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const runtimeFiles = [
-  "vite.config.js", "worker/entry.js", "worker/matching-entry.js", "worker/oil-fix-entry.js", "worker/safe-entry.js", "worker/next-entry.js", "worker/catalog-cursor.js", "worker/catalog-page.js", "worker/lite-page.js", "worker/manual-recipes.js", "worker/simple-recipes.js", "worker/home-recipes-expanded.js", "worker/feature-state-migration.js", "worker/fresh-sitemap.js", "worker/public-app-pages.js",
+  "vite.config.js", "worker/index.js", "worker/entry.js", "worker/matching-entry.js", "worker/next-entry.js", "worker/routes.js", "worker/telemetry.js", "worker/catalog-cursor.js", "worker/catalog-page.js", "worker/lite-page.js", "worker/manual-recipes.js", "worker/simple-recipes.js", "worker/home-recipes-expanded.js", "worker/feature-state-migration.js", "worker/fresh-sitemap.js", "worker/public-app-pages.js", "worker/recipe-images.js",
   "src/bootstrap.js", "src/ingredient-semantics.js", "src/ingredient-semantics-v2.js", "src/ingredient-semantics-v3.js", "src/kutno-api.js", "src/kutno-store.js", "src/kutno-next.js", "src/kutno-bridge.inject.js", "src/matching-engine.inject.js", "src/fetch-reset.inject.js", "src/matching-fixes.inject.js", "src/catalog-performance.inject.js", "src/catalog-facets.inject.js", "src/catalog-render-meta.inject.js", "src/catalog-scroll-fill.inject.js", "src/swipe-full-catalog.inject.js", "src/matching-core-v4.inject.js", "src/kitchen-simplified.inject.js", "src/kitchen-smart-suggestions.inject.js", "src/catalog-detail.inject.js", "src/audit-v7.inject.js",
-  "public/kutno-features.js", "public/feature-sync-throttle.js", "public/sw.js",
+  "public/kutno-features.js", "public/feature-sync-throttle.js", "public/recipe-photos.js", "public/sw.js",
 ];
 
 test("runtime-файлы Кутно проходят синтаксическую проверку", () => {
@@ -84,10 +84,10 @@ test("клиент быстро открывает каталог, индекс 
   assert.doesNotMatch(index, /rel="preload" as="image"/);
 });
 
-test("Worker использует статический каталог и короткую активную цепочку", () => {
-  const featureWorker = readFileSync("worker/entry.js", "utf8");
+test("Worker использует статический каталог и один явный диспетчер маршрутов", () => {
   const matchingWorker = readFileSync("worker/matching-entry.js", "utf8");
   const nextWorker = readFileSync("worker/next-entry.js", "utf8");
+  const routes = readFileSync("worker/routes.js", "utf8");
   const catalogPage = readFileSync("worker/catalog-page.js", "utf8");
   const simpleCatalog = readFileSync("worker/simple-recipes.js", "utf8");
   const expandedCatalog = readFileSync("worker/home-recipes-expanded.js", "utf8");
@@ -95,7 +95,6 @@ test("Worker использует статический каталог и ко�
   const v2 = readFileSync("src/ingredient-semantics-v2.js", "utf8");
   const wrangler = readFileSync("wrangler.jsonc", "utf8");
 
-  assert.match(featureWorker, /return baseWorker\.fetch\(request, env, ctx\)/);
   assert.match(matchingWorker, /catalogSources/);
   assert.match(matchingWorker, /matchingCatalog/);
   assert.match(matchingWorker, /matchingAmount/);
@@ -103,13 +102,14 @@ test("Worker использует статический каталог и ко�
   assert.match(matchingWorker, /!incoming\.aiIdeas/);
   assert.match(matchingWorker, /compactMatchedRecipe/);
   assert.doesNotMatch(matchingWorker, /loadCatalogForMatching|verifiedSourceBonus/);
-  assert.match(nextWorker, /matchingWorker\.fetch/);
-  assert.doesNotMatch(nextWorker, /safeWorker|oilFixWorker/);
-  assert.match(nextWorker, /serveCatalogPage/);
-  assert.match(nextWorker, /serveCatalogIndex/);
-  assert.match(nextWorker, /serveRecipeDetail/);
-  assert.match(nextWorker, /serveFreshSitemap/);
-  assert.match(nextWorker, /ensureFeatureStateTextSchema/);
+  assert.match(nextWorker, /dispatchRoute/);
+  assert.doesNotMatch(nextWorker, /matchingWorker|featureWorker|baseWorker|safeWorker|oilFixWorker/);
+  assert.match(routes, /export const ROUTES = \[/);
+  assert.match(routes, /exact\("\/api\/generate"/);
+  assert.match(routes, /exact\("\/api\/catalog"/);
+  assert.match(routes, /exact\("\/api\/feature-state"/);
+  assert.match(routes, /custom\("assets"/);
+  assert.match(routes, /ensureFeatureStateTextSchema/);
   assert.match(catalogPage, /WORLD_RECIPE_CATALOG/);
   assert.match(catalogPage, /simpleRecipesForPortions/);
   assert.match(catalogPage, /expandedHomeRecipesForPortions/);
