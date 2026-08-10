@@ -43,7 +43,7 @@ export const ROUTES = [
   exact("/api/telemetry", ["POST"], "telemetry", ({ request, env, requestId }) => saveTelemetry(request, env, requestId)),
   exact("/api/catalog", ["GET"], "catalog", ({ request, requestId }) => serveCatalogPage(request, requestId)),
   exact("/api/catalog-index", ["GET"], "catalog-index", ({ request, requestId }) => serveCatalogIndex(request, requestId)),
-  prefix("/api/recipe/", ["GET"], "recipe", ({ request, requestId }) => serveRecipeDetail(request, requestId)),
+  prefix("/api/recipe/", ["GET"], "recipe", ({ request, env, requestId }) => serveRecipeDetail(request, env, requestId)),
 
   exact("/api/generate", ["POST"], "generate", toMatching),
   exact("/api/matching-suggestions", ["GET"], "matching-suggestions", toMatching),
