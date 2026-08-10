@@ -6,7 +6,7 @@ test("клиент и Worker используют одно ядро запасо
   const vite = readFileSync("vite.config.js", "utf8");
   const client = readFileSync("src/matching-core-v4.inject.js", "utf8");
   const worker = readFileSync("worker/matching-entry.js", "utf8");
-  const finalWorker = readFileSync("worker/oil-fix-entry.js", "utf8");
+  const next = readFileSync("worker/next-entry.js", "utf8");
 
   assert.match(vite, /matching-user-context\.js/);
   assert.match(vite, /matching-core-v4\.inject\.js/);
@@ -16,17 +16,18 @@ test("клиент и Worker используют одно ядро запасо
   assert.match(worker, /ingredient-semantics-v3\.js/);
   assert.doesNotMatch(worker, /ingredient-semantics-v2\.js/);
   assert.match(worker, /applyMatchingUserContext/);
-  assert.match(finalWorker, /applyMatchingUserContext/);
+  assert.match(next, /matchingWorker\.fetch/);
+  assert.doesNotMatch(next, /oil-fix-entry|safe-entry/);
 });
 
-test("строгий режим предлагает расширение, но не включает его автоматически", () => {
+test("близкие варианты показываются сразу вместо скрытого режима расширения", () => {
   const worker = readFileSync("worker/matching-entry.js", "utf8");
-  const client = readFileSync("src/matching-core-v4.inject.js", "utf8");
-  assert.match(worker, /suggestedExpansion/);
-  assert.match(worker, /code: "allow-one-purchase"/);
-  assert.match(worker, /if \(body\.searchMode !== "plus-one"\)/);
-  assert.match(client, /data-matching-expand/);
-  assert.match(client, /state\.searchMode = "plus-one"/);
+  const audit = readFileSync("src/audit-v7.inject.js", "utf8");
+  assert.match(worker, /analysis\.requiredMissing\?\.length \|\| 0\) <= 3/);
+  assert.doesNotMatch(worker, /suggestedExpansion/);
+  assert.match(audit, /Готовьте сейчас/);
+  assert.match(audit, /Купить один продукт/);
+  assert.match(audit, /Почти подходит/);
 });
 
 test("локальный каталог используется только при ошибке запроса", () => {
