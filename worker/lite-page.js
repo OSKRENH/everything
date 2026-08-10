@@ -1,15 +1,10 @@
-import { WORLD_RECIPE_CATALOG } from "./recipe-catalog.js";
-import { manualRecipesForPortions } from "./manual-recipes.js";
+import { loadRecipeBody } from "./catalog-page.js";
+import { RUNTIME_RECIPES } from "./generated/catalog-runtime.js";
 
 const PAGE_SIZE = 8;
 
 function escapeHtml(value = "") {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 
 function normalize(value = "") {
@@ -36,49 +31,18 @@ function layout(title, content) {
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fafaf7"><title>${escapeHtml(title)} · Кутно</title><style>${liteCss()}</style></head><body><main class="p"><header class="h"><a class="logo" href="/lite">Кутно</a><a class="full" href="/">Полная версия</a></header>${content}</main></body></html>`;
 }
 
-function amountText(item, portions = 2, servings = 2) {
-  if (typeof item?.amount !== "number") return String(item?.amount || "по вкусу");
-  const value = item.amount * portions / Math.max(1, Number(servings) || portions);
-  const rounded = ["г", "мл"].includes(item.unit) ? Math.max(1, Math.round(value / 5) * 5) : Math.max(.25, Math.round(value * 4) / 4);
-  return `${String(Number.isInteger(rounded) ? rounded : rounded).replace(".", ",")} ${item.unit || ""}`.trim();
-}
-
-function allRecipes(portions = 2) {
-  const world = WORLD_RECIPE_CATALOG.map((recipe) => ({
-    id: `catalog:${recipe.id}`,
+function liteRecipes() {
+  return RUNTIME_RECIPES.map((recipe) => ({
+    id: String(recipe.id),
     title: recipe.title,
     subtitle: recipe.subtitle,
-    cuisine: recipe.cuisine,
+    cuisine: recipe.cuisine || "Домашняя кухня",
     flag: recipe.flag || "🌍",
     course: recipe.course || "основное",
     minutes: Number(recipe.minutes) || 30,
     difficulty: recipe.difficulty || "легко",
-    ingredients: (recipe.ingredients || []).map((item) => ({ ...item, amountText: amountText(item, portions, recipe.servings) })),
-    steps: recipe.steps || [],
-    tip: recipe.tip || "",
-    source: recipe.source,
-  }));
-  const manual = manualRecipesForPortions(portions).map((recipe) => ({
-    id: String(recipe.id || recipe.source?.id || `manual:${normalize(recipe.title)}`),
-    title: recipe.title,
-    subtitle: recipe.subtitle,
-    cuisine: recipe.cuisine || "Домашняя кухня",
-    flag: recipe.flag || "🥗",
-    course: recipe.course || "салат",
-    minutes: Number(recipe.minutes) || 10,
-    difficulty: recipe.difficulty || "легко",
     ingredients: (recipe.ingredients || []).map((item) => ({ ...item, amountText: String(item.amount || "по вкусу") })),
-    steps: recipe.steps || [],
-    tip: recipe.tip || "",
-    source: recipe.source,
   }));
-  const seen = new Set();
-  return [...world, ...manual].filter((recipe) => {
-    const key = normalize(recipe.title);
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
 }
 
 function productTerms(value = "") {
@@ -100,7 +64,7 @@ function listPage(request) {
   const query = normalize(qRaw);
   const products = productTerms(productsRaw);
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
-  const scored = allRecipes(2).map((recipe, index) => {
+  const scored = liteRecipes().map((recipe, index) => {
     const score = recipeScore(recipe, query, products);
     return score ? { recipe, index, ...score } : null;
   }).filter(Boolean).sort((a, b) => b.matched - a.matched || a.missing - b.missing || a.index - b.index);
@@ -117,17 +81,17 @@ function listPage(request) {
   return responseHtml(layout("Лёгкая версия", `<section class="hero"><div class="k">Лёгкая версия</div><h1>Рецепты без тяжёлой загрузки</h1><p>Работает без изображений, авторизации и клиентского приложения. Введите блюдо, страну или продукты через запятую.</p></section><form class="form" action="/lite" method="get"><label for="q">Поиск</label><input id="q" name="q" value="${escapeHtml(qRaw)}" placeholder="Блюдо или страна"><label for="products">Продукты</label><input id="products" name="products" value="${escapeHtml(productsRaw)}" placeholder="яйца, рис, помидоры"><button type="submit">Найти рецепты</button></form><div class="meta">Найдено — ${scored.length}</div>${cards}${pager}`));
 }
 
-function recipePage(request) {
+async function recipePage(request, env) {
   const url = new URL(request.url);
   const id = url.searchParams.get("id") || "";
-  const recipe = allRecipes(2).find((item) => item.id === id);
+  const recipe = await loadRecipeBody(request, env, id, 2);
   if (!recipe) return responseHtml(layout("Рецепт не найден", `<section class="hero"><h1>Рецепт не найден</h1><a class="back" href="/lite">Вернуться к поиску</a></section>`), 404);
-  const ingredients = recipe.ingredients.map((item) => `<li><strong>${escapeHtml(item.name)}</strong>${item.amountText ? ` — ${escapeHtml(item.amountText)}` : ""}</li>`).join("");
-  const steps = recipe.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("");
-  return responseHtml(layout(recipe.title, `<article class="recipe"><a class="back" href="/lite">← Все рецепты</a><div class="tag">${escapeHtml(recipe.flag)} ${escapeHtml(recipe.cuisine)} · ${escapeHtml(recipe.course)} · ${recipe.minutes} мин</div><h1>${escapeHtml(recipe.title)}</h1><p>${escapeHtml(recipe.subtitle || "")}</p><h2>Ингредиенты</h2><ul>${ingredients}</ul><h2>Как готовить</h2><ol>${steps}</ol>${recipe.tip ? `<p class="note"><strong>Совет:</strong> ${escapeHtml(recipe.tip)}</p>` : ""}</article>`));
+  const ingredients = (recipe.ingredients || []).map((item) => `<li><strong>${escapeHtml(item.name)}</strong>${item.amount ? ` — ${escapeHtml(item.amount)}` : ""}</li>`).join("");
+  const steps = (recipe.steps || []).map((step) => `<li>${escapeHtml(step)}</li>`).join("");
+  return responseHtml(layout(recipe.title, `<article class="recipe"><a class="back" href="/lite">← Все рецепты</a><div class="tag">${escapeHtml(recipe.flag || "🌍")} ${escapeHtml(recipe.cuisine || "")} · ${escapeHtml(recipe.course || "")} · ${Number(recipe.minutes) || 30} мин</div><h1>${escapeHtml(recipe.title)}</h1><p>${escapeHtml(recipe.subtitle || "")}</p><h2>Ингредиенты</h2><ul>${ingredients}</ul><h2>Как готовить</h2><ol>${steps}</ol>${recipe.tip ? `<p class="note"><strong>Совет:</strong> ${escapeHtml(recipe.tip)}</p>` : ""}</article>`));
 }
 
-export function serveLitePage(request) {
+export async function serveLitePage(request, env) {
   const pathname = new URL(request.url).pathname;
-  return pathname === "/lite/recipe" ? recipePage(request) : listPage(request);
+  return pathname === "/lite/recipe" ? recipePage(request, env) : listPage(request);
 }
