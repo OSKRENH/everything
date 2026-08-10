@@ -4,10 +4,11 @@ const STYLE_URLS = [
   "/kutno-features.css?v=2",
   "/matching-engine.css?v=1",
   "/matching-mobile-fix.css?v=1",
-  "/catalog-stability.css?v=3",
+  "/catalog-stability.css?v=4",
   "/manual-mode.css?v=1",
   "/kutno-next.css?v=1",
   "/recipe-photos.css?v=1",
+  "/mobile-recipe-ux.css?v=1",
 ];
 
 function setShellStatus(message, failed = false) {
@@ -103,6 +104,7 @@ async function startApplication() {
   try {
     await import("./main.js");
     await import("./public-routes.js");
+    await loadPublicModule("/mobile-recipe-ux.js?v=1");
     document.documentElement.dataset.kutnoReady = "true";
     window.dispatchEvent(new CustomEvent("kutno:ready"));
 
