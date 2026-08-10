@@ -1,613 +1,490 @@
-// Generated from the approved recipe illustration archive. Keep this list explicit and independent from generated hasPhoto flags.
-export const RECIPE_PHOTO_CATALOG = Object.freeze([
-  {
-    "id": "catalog:es-alioli",
-    "title": "Алиоли",
-    "slug": "alioli"
-  },
-  {
-    "id": "catalog:es-gazpacho",
-    "title": "Андалусский гаспачо",
-    "slug": "andalusskiy-gaspacho"
-  },
-  {
-    "id": "home-vegetable-pan-eggplant",
-    "title": "Баклажаны с луком на сковороде",
-    "slug": "baklazhany-s-lukom-na-skovorode"
-  },
-  {
-    "id": "catalog:in-butter-chicken",
-    "title": "Баттер чикен",
-    "slug": "batter-chiken"
-  },
-  {
-    "id": "catalog:ru-beef-stroganoff",
-    "title": "Бефстроганов",
-    "slug": "befstroganov"
-  },
-  {
-    "id": "home-vegetable-pan-pepper",
-    "title": "Болгарский перец с луком на сковороде",
-    "slug": "bolgarskiy-perets-s-lukom-na-skovorode"
-  },
-  {
-    "id": "home-vegetable-pan-broccoli",
-    "title": "Брокколи с луком на сковороде",
-    "slug": "brokkoli-s-lukom-na-skovorode"
-  },
-  {
-    "id": "catalog:vn-bun-cha",
-    "title": "Бун-ча",
-    "slug": "bun-cha"
-  },
-  {
-    "id": "catalog:in-dal-tadka",
-    "title": "Дал тадка",
-    "slug": "dal-tadka"
-  },
-  {
-    "id": "simple:simple-potato-pancakes",
-    "title": "Драники",
-    "slug": "draniki"
-  },
-  {
-    "id": "manual:manual-greek-salad",
-    "title": "Греческий салат",
-    "slug": "grecheskiy-salat"
-  },
-  {
-    "id": "home-ground-meat-buckwheat",
-    "title": "Гречка с фаршем",
-    "slug": "grechka-s-farshem"
-  },
-  {
-    "id": "home-buckwheat-beef",
-    "title": "Гречка с говядиной",
-    "slug": "grechka-s-govyadinoy"
-  },
-  {
-    "id": "home-buckwheat-chicken",
-    "title": "Гречка с курицей",
-    "slug": "grechka-s-kuritsey"
-  },
-  {
-    "id": "home-buckwheat-vegetables",
-    "title": "Гречка с морковью и перцем",
-    "slug": "grechka-s-morkovyu-i-pertsem"
-  },
-  {
-    "id": "home-buckwheat-mushroom",
-    "title": "Гречка с шампиньонами",
-    "slug": "grechka-s-shampinonami"
-  },
-  {
-    "id": "home-buckwheat-egg",
-    "title": "Гречка с яйцом",
-    "slug": "grechka-s-yaytsom"
-  },
-  {
-    "id": "home-buckwheat-onion",
-    "title": "Гречка с жареным луком",
-    "slug": "grechka-s-zharenym-lukom"
-  },
-  {
-    "id": "catalog:mx-guacamole",
-    "title": "Гуакамоле",
-    "slug": "guakamole"
-  },
-  {
-    "id": "home-vegetable-pan-zucchini",
-    "title": "Кабачки с луком на сковороде",
-    "slug": "kabachki-s-lukom-na-skovorode"
-  },
-  {
-    "id": "catalog:it-cacio-e-pepe",
-    "title": "Качо-э-пепе",
-    "slug": "kacho-e-pepe"
-  },
-  {
-    "id": "manual:manual-caprese",
-    "title": "Капрезе",
-    "slug": "kapreze"
-  },
-  {
-    "id": "home-ground-meat-potato",
-    "title": "Картофель с фаршем на сковороде",
-    "slug": "kartofel-s-farshem-na-skovorode"
-  },
-  {
-    "id": "home-potato-bake-mushroom",
-    "title": "Картофель, запечённый с грибами",
-    "slug": "kartofel-zapechyonnyy-s-gribami"
-  },
-  {
-    "id": "home-potato-bake-chicken",
-    "title": "Картофель, запечённый с курицей",
-    "slug": "kartofel-zapechyonnyy-s-kuritsey"
-  },
-  {
-    "id": "home-potato-bake-onion",
-    "title": "Картофель, запечённый с луком",
-    "slug": "kartofel-zapechyonnyy-s-lukom"
-  },
-  {
-    "id": "home-potato-bake-tomato",
-    "title": "Картофель, запечённый с помидорами",
-    "slug": "kartofel-zapechyonnyy-s-pomidorami"
-  },
-  {
-    "id": "home-potato-bake-fish",
-    "title": "Картофель, запечённый с рыбой",
-    "slug": "kartofel-zapechyonnyy-s-ryboy"
-  },
-  {
-    "id": "simple:simple-mashed-potatoes",
-    "title": "Картофельное пюре",
-    "slug": "kartofelnoe-pyure"
-  },
-  {
-    "id": "simple:simple-potato-egg-salad",
-    "title": "Картофельный салат с яйцом",
-    "slug": "kartofelnyy-salat-s-yaytsom"
-  },
-  {
-    "id": "catalog:cn-egg-fried-rice",
-    "title": "Китайский жареный рис с яйцом",
-    "slug": "kitayskiy-zharenyy-ris-s-yaytsom"
-  },
-  {
-    "id": "home-honey-soy-chicken-wings",
-    "title": "Куриные крылья в медово-соевом соусе",
-    "slug": "kurinye-krylya-v-medovo-soevom-souse"
-  },
-  {
-    "id": "home-chicken-soup-lentil",
-    "title": "Куриный суп с чечевицей",
-    "slug": "kurinyy-sup-s-chechevitsey"
-  },
-  {
-    "id": "home-chicken-soup-buckwheat",
-    "title": "Куриный суп с гречкой",
-    "slug": "kurinyy-sup-s-grechkoy"
-  },
-  {
-    "id": "home-chicken-soup-potato",
-    "title": "Куриный суп с картофелем",
-    "slug": "kurinyy-sup-s-kartofelem"
-  },
-  {
-    "id": "home-chicken-soup-noodle",
-    "title": "Куриный суп с лапшой",
-    "slug": "kurinyy-sup-s-lapshoy"
-  },
-  {
-    "id": "home-chicken-soup-vegetables",
-    "title": "Куриный суп с овощами",
-    "slug": "kurinyy-sup-s-ovoschami"
-  },
-  {
-    "id": "home-chicken-soup-rice",
-    "title": "Куриный суп с рисом",
-    "slug": "kurinyy-sup-s-risom"
-  },
-  {
-    "id": "home-chicken-pan-pepper",
-    "title": "Курица с болгарским перцем",
-    "slug": "kuritsa-s-bolgarskim-pertsem"
-  },
-  {
-    "id": "home-chicken-pan-mushroom",
-    "title": "Курица с грибами на сковороде",
-    "slug": "kuritsa-s-gribami-na-skovorode"
-  },
-  {
-    "id": "home-chicken-pan-onion",
-    "title": "Курица с луком на сковороде",
-    "slug": "kuritsa-s-lukom-na-skovorode"
-  },
-  {
-    "id": "home-chicken-pan-tomato",
-    "title": "Курица с помидорами на сковороде",
-    "slug": "kuritsa-s-pomidorami-na-skovorode"
-  },
-  {
-    "id": "home-chicken-pan-cheese",
-    "title": "Курица с сыром на сковороде",
-    "slug": "kuritsa-s-syrom-na-skovorode"
-  },
-  {
-    "id": "home-chicken-pan-cream",
-    "title": "Курица в сливках",
-    "slug": "kuritsa-v-slivkah"
-  },
-  {
-    "id": "home-chicken-oven-cheese",
-    "title": "Курица, запечённая под сыром",
-    "slug": "kuritsa-zapechyonnaya-pod-syrom"
-  },
-  {
-    "id": "home-chicken-oven-broccoli",
-    "title": "Курица, запечённая с брокколи",
-    "slug": "kuritsa-zapechyonnaya-s-brokkoli"
-  },
-  {
-    "id": "home-chicken-oven-mushroom",
-    "title": "Курица, запечённая с грибами",
-    "slug": "kuritsa-zapechyonnaya-s-gribami"
-  },
-  {
-    "id": "home-chicken-oven-potato",
-    "title": "Курица, запечённая с картофелем",
-    "slug": "kuritsa-zapechyonnaya-s-kartofelem"
-  },
-  {
-    "id": "home-chicken-oven-onion",
-    "title": "Курица, запечённая с луком",
-    "slug": "kuritsa-zapechyonnaya-s-lukom"
-  },
-  {
-    "id": "home-chicken-oven-tomato",
-    "title": "Курица, запечённая с помидорами",
-    "slug": "kuritsa-zapechyonnaya-s-pomidorami"
-  },
-  {
-    "id": "catalog:pe-lomo-saltado",
-    "title": "Ломо сальтадо",
-    "slug": "lomo-saltado"
-  },
-  {
-    "id": "home-pasta-basic-bacon",
-    "title": "Макароны с беконом",
-    "slug": "makarony-s-bekonom"
-  },
-  {
-    "id": "home-ground-meat-pasta",
-    "title": "Макароны с фаршем",
-    "slug": "makarony-s-farshem"
-  },
-  {
-    "id": "home-pasta-basic-mushroom",
-    "title": "Макароны с грибами",
-    "slug": "makarony-s-gribami"
-  },
-  {
-    "id": "home-pasta-basic-chicken",
-    "title": "Макароны с курицей",
-    "slug": "makarony-s-kuritsey"
-  },
-  {
-    "id": "home-pasta-basic-tomato",
-    "title": "Макароны с помидорами",
-    "slug": "makarony-s-pomidorami"
-  },
-  {
-    "id": "home-pasta-basic-cheese",
-    "title": "Макароны с сыром",
-    "slug": "makarony-s-syrom"
-  },
-  {
-    "id": "home-pasta-basic-tuna",
-    "title": "Макароны с тунцом",
-    "slug": "makarony-s-tuntsom"
-  },
-  {
-    "id": "catalog:cn-mapo-tofu",
-    "title": "Мапо тофу",
-    "slug": "mapo-tofu"
-  },
-  {
-    "id": "catalog:jp-miso-soup",
-    "title": "Мисосиру",
-    "slug": "misosiru"
-  },
-  {
-    "id": "home-carrot-apple-salad",
-    "title": "Морковно-яблочный салат",
-    "slug": "morkovno-yablochnyy-salat"
-  },
-  {
-    "id": "catalog:in-mint-chutney",
-    "title": "Мятный чатни",
-    "slug": "myatnyy-chatni"
-  },
-  {
-    "id": "home-pancakes-cheese",
-    "title": "Несладкие оладьи с сыром",
-    "slug": "nesladkie-oladi-s-syrom"
-  },
-  {
-    "id": "catalog:vn-nuoc-cham",
-    "title": "Ныок-чам",
-    "slug": "nyok-cham"
-  },
-  {
-    "id": "manual:manual-yogurt-cucumber",
-    "title": "Огурцы с йогуртом",
-    "slug": "ogurtsy-s-yogurtom"
-  },
-  {
-    "id": "catalog:ru-okroshka",
-    "title": "Окрошка на квасе",
-    "slug": "okroshka-na-kvase"
-  },
-  {
-    "id": "home-pancakes-banana",
-    "title": "Оладьи с бананом",
-    "slug": "oladi-s-bananom"
-  },
-  {
-    "id": "home-pancakes-apple",
-    "title": "Оладьи с яблоком",
-    "slug": "oladi-s-yablokom"
-  },
-  {
-    "id": "home-pancakes-berries",
-    "title": "Оладьи с ягодами",
-    "slug": "oladi-s-yagodami"
-  },
-  {
-    "id": "simple:simple-omelette",
-    "title": "Омлет",
-    "slug": "omlet"
-  },
-  {
-    "id": "home-omelette-mushroom",
-    "title": "Омлет с грибами",
-    "slug": "omlet-s-gribami"
-  },
-  {
-    "id": "home-omelette-tomato",
-    "title": "Омлет с помидорами",
-    "slug": "omlet-s-pomidorami"
-  },
-  {
-    "id": "home-omelette-cheese",
-    "title": "Омлет с сыром",
-    "slug": "omlet-s-syrom"
-  },
-  {
-    "id": "home-omelette-ham",
-    "title": "Омлет с ветчиной",
-    "slug": "omlet-s-vetchinoy"
-  },
-  {
-    "id": "home-omelette-green-onion",
-    "title": "Омлет с зелёным луком",
-    "slug": "omlet-s-zelyonym-lukom"
-  },
-  {
-    "id": "home-omelette-spinach",
-    "title": "Омлет со шпинатом",
-    "slug": "omlet-so-shpinatom"
-  },
-  {
-    "id": "simple:simple-boiled-potatoes",
-    "title": "Отварной картофель",
-    "slug": "otvarnoy-kartofel"
-  },
-  {
-    "id": "home-boiled-dumplings-sourcream",
-    "title": "Отварные пельмени со сметаной",
-    "slug": "otvarnye-pelmeni-so-smetanoy"
-  },
-  {
-    "id": "home-vegetable-soup-lentil",
-    "title": "Овощной суп с чечевицей",
-    "slug": "ovoschnoy-sup-s-chechevitsey"
-  },
-  {
-    "id": "home-vegetable-soup-bean",
-    "title": "Овощной суп с фасолью",
-    "slug": "ovoschnoy-sup-s-fasolyu"
-  },
-  {
-    "id": "home-vegetable-soup-cabbage",
-    "title": "Овощной суп с капустой",
-    "slug": "ovoschnoy-sup-s-kapustoy"
-  },
-  {
-    "id": "home-oatmeal-banana",
-    "title": "Овсяная каша с бананом",
-    "slug": "ovsyanaya-kasha-s-bananom"
-  },
-  {
-    "id": "home-oatmeal-cocoa",
-    "title": "Овсяная каша с какао",
-    "slug": "ovsyanaya-kasha-s-kakao"
-  },
-  {
-    "id": "home-oatmeal-honey",
-    "title": "Овсяная каша с мёдом",
-    "slug": "ovsyanaya-kasha-s-myodom"
-  },
-  {
-    "id": "home-oatmeal-nuts",
-    "title": "Овсяная каша с орехами",
-    "slug": "ovsyanaya-kasha-s-orehami"
-  },
-  {
-    "id": "home-oatmeal-apple",
-    "title": "Овсяная каша с яблоком",
-    "slug": "ovsyanaya-kasha-s-yablokom"
-  },
-  {
-    "id": "home-oatmeal-berries",
-    "title": "Овсяная каша с ягодами",
-    "slug": "ovsyanaya-kasha-s-yagodami"
-  },
-  {
-    "id": "catalog:jp-oyakodon",
-    "title": "Оякодон",
-    "slug": "oyakodon"
-  },
-  {
-    "id": "catalog:th-pad-thai",
-    "title": "Пад-тай",
-    "slug": "pad-tay"
-  },
-  {
-    "id": "home-pasta-creamy-broccoli",
-    "title": "Паста в сливках с брокколи",
-    "slug": "pasta-v-slivkah-s-brokkoli"
-  },
-  {
-    "id": "home-pasta-creamy-mushroom",
-    "title": "Паста в сливках с грибами",
-    "slug": "pasta-v-slivkah-s-gribami"
-  },
-  {
-    "id": "home-pasta-creamy-chicken",
-    "title": "Паста в сливках с курицей",
-    "slug": "pasta-v-slivkah-s-kuritsey"
-  },
-  {
-    "id": "home-pasta-creamy-ham",
-    "title": "Паста в сливках с ветчиной",
-    "slug": "pasta-v-slivkah-s-vetchinoy"
-  },
-  {
-    "id": "home-pasta-creamy-spinach",
-    "title": "Паста в сливках со шпинатом",
-    "slug": "pasta-v-slivkah-so-shpinatom"
-  },
-  {
-    "id": "catalog:pe-aji-verde",
-    "title": "Перуанский ахи верде",
-    "slug": "peruanskiy-ahi-verde"
-  },
-  {
-    "id": "catalog:it-pesto",
-    "title": "Песто дженовезе",
-    "slug": "pesto-dzhenoveze"
-  },
-  {
-    "id": "catalog:ru-pozharsky",
-    "title": "Пожарские котлеты",
-    "slug": "pozharskie-kotlety"
-  },
-  {
-    "id": "catalog:ru-syrniki",
-    "title": "Сырники",
-    "slug": "syrniki"
-  },
-  {
-    "id": "catalog:ua-varenyky",
-    "title": "Вареники с картофелем",
-    "slug": "vareniki-s-kartofelem"
-  },
-  {
-    "id": "home-yogurt-bowl-banana",
-    "title": "Йогурт с бананом",
-    "slug": "yogurt-s-bananom"
-  },
-  {
-    "id": "home-yogurt-bowl-honey",
-    "title": "Йогурт с мёдом",
-    "slug": "yogurt-s-myodom"
-  },
-  {
-    "id": "home-yogurt-bowl-nuts",
-    "title": "Йогурт с орехами",
-    "slug": "yogurt-s-orehami"
-  },
-  {
-    "id": "home-yogurt-bowl-oats",
-    "title": "Йогурт с овсяными хлопьями",
-    "slug": "yogurt-s-ovsyanymi-hlopyami"
-  },
-  {
-    "id": "home-yogurt-bowl-apple",
-    "title": "Йогурт с яблоком",
-    "slug": "yogurt-s-yablokom"
-  },
-  {
-    "id": "home-yogurt-bowl-berries",
-    "title": "Йогурт с ягодами",
-    "slug": "yogurt-s-yagodami"
-  },
-  {
-    "id": "home-potato-bake-cheese",
-    "title": "Запечённый картофель с сыром",
-    "slug": "zapechyonnyy-kartofel-s-syrom"
-  },
-  {
-    "id": "simple:simple-fried-potatoes-onion",
-    "title": "Жареная картошка с луком",
-    "slug": "zharenaya-kartoshka-s-lukom"
-  },
-  {
-    "id": "home-potato-pan-bacon",
-    "title": "Жареный картофель с беконом",
-    "slug": "zharenyy-kartofel-s-bekonom"
-  },
-  {
-    "id": "home-potato-pan-pepper",
-    "title": "Жареный картофель с болгарским перцем",
-    "slug": "zharenyy-kartofel-s-bolgarskim-pertsem"
-  },
-  {
-    "id": "home-potato-pan-mushroom",
-    "title": "Жареный картофель с грибами",
-    "slug": "zharenyy-kartofel-s-gribami"
-  },
-  {
-    "id": "home-potato-pan-chicken",
-    "title": "Жареный картофель с курицей",
-    "slug": "zharenyy-kartofel-s-kuritsey"
-  },
-  {
-    "id": "home-potato-pan-cheese",
-    "title": "Жареный картофель с сыром",
-    "slug": "zharenyy-kartofel-s-syrom"
-  },
-  {
-    "id": "home-potato-pan-egg",
-    "title": "Жареный картофель с яйцом",
-    "slug": "zharenyy-kartofel-s-yaytsom"
-  },
-  {
-    "id": "home-fried-rice-bacon",
-    "title": "Жареный рис с беконом",
-    "slug": "zharenyy-ris-s-bekonom"
-  },
-  {
-    "id": "home-fried-rice-mushroom",
-    "title": "Жареный рис с грибами",
-    "slug": "zharenyy-ris-s-gribami"
-  },
-  {
-    "id": "home-fried-rice-chicken",
-    "title": "Жареный рис с курицей",
-    "slug": "zharenyy-ris-s-kuritsey"
-  },
-  {
-    "id": "home-fried-rice-vegetables",
-    "title": "Жареный рис с овощами",
-    "slug": "zharenyy-ris-s-ovoschami"
-  },
-  {
-    "id": "home-fried-rice-tuna",
-    "title": "Жареный рис с тунцом",
-    "slug": "zharenyy-ris-s-tuntsom"
-  },
-  {
-    "id": "home-fried-rice-egg",
-    "title": "Жареный рис с яйцом",
-    "slug": "zharenyy-ris-s-yaytsom"
-  }
+// Generated from the approved recipe illustration archive. Runtime truth is intentionally compact: id + slug only.
+const RECIPE_PHOTO_PAIRS = Object.freeze([
+  [
+    "catalog:es-alioli",
+    "alioli"
+  ],
+  [
+    "catalog:es-gazpacho",
+    "andalusskiy-gaspacho"
+  ],
+  [
+    "home-vegetable-pan-eggplant",
+    "baklazhany-s-lukom-na-skovorode"
+  ],
+  [
+    "catalog:in-butter-chicken",
+    "batter-chiken"
+  ],
+  [
+    "catalog:ru-beef-stroganoff",
+    "befstroganov"
+  ],
+  [
+    "home-vegetable-pan-pepper",
+    "bolgarskiy-perets-s-lukom-na-skovorode"
+  ],
+  [
+    "home-vegetable-pan-broccoli",
+    "brokkoli-s-lukom-na-skovorode"
+  ],
+  [
+    "catalog:vn-bun-cha",
+    "bun-cha"
+  ],
+  [
+    "catalog:in-dal-tadka",
+    "dal-tadka"
+  ],
+  [
+    "simple:simple-potato-pancakes",
+    "draniki"
+  ],
+  [
+    "manual:manual-greek-salad",
+    "grecheskiy-salat"
+  ],
+  [
+    "home-ground-meat-buckwheat",
+    "grechka-s-farshem"
+  ],
+  [
+    "home-buckwheat-beef",
+    "grechka-s-govyadinoy"
+  ],
+  [
+    "home-buckwheat-chicken",
+    "grechka-s-kuritsey"
+  ],
+  [
+    "home-buckwheat-vegetables",
+    "grechka-s-morkovyu-i-pertsem"
+  ],
+  [
+    "home-buckwheat-mushroom",
+    "grechka-s-shampinonami"
+  ],
+  [
+    "home-buckwheat-egg",
+    "grechka-s-yaytsom"
+  ],
+  [
+    "home-buckwheat-onion",
+    "grechka-s-zharenym-lukom"
+  ],
+  [
+    "catalog:mx-guacamole",
+    "guakamole"
+  ],
+  [
+    "home-vegetable-pan-zucchini",
+    "kabachki-s-lukom-na-skovorode"
+  ],
+  [
+    "catalog:it-cacio-e-pepe",
+    "kacho-e-pepe"
+  ],
+  [
+    "manual:manual-caprese",
+    "kapreze"
+  ],
+  [
+    "home-ground-meat-potato",
+    "kartofel-s-farshem-na-skovorode"
+  ],
+  [
+    "home-potato-bake-mushroom",
+    "kartofel-zapechyonnyy-s-gribami"
+  ],
+  [
+    "home-potato-bake-chicken",
+    "kartofel-zapechyonnyy-s-kuritsey"
+  ],
+  [
+    "home-potato-bake-onion",
+    "kartofel-zapechyonnyy-s-lukom"
+  ],
+  [
+    "home-potato-bake-tomato",
+    "kartofel-zapechyonnyy-s-pomidorami"
+  ],
+  [
+    "home-potato-bake-fish",
+    "kartofel-zapechyonnyy-s-ryboy"
+  ],
+  [
+    "simple:simple-mashed-potatoes",
+    "kartofelnoe-pyure"
+  ],
+  [
+    "simple:simple-potato-egg-salad",
+    "kartofelnyy-salat-s-yaytsom"
+  ],
+  [
+    "catalog:cn-egg-fried-rice",
+    "kitayskiy-zharenyy-ris-s-yaytsom"
+  ],
+  [
+    "home-honey-soy-chicken-wings",
+    "kurinye-krylya-v-medovo-soevom-souse"
+  ],
+  [
+    "home-chicken-soup-lentil",
+    "kurinyy-sup-s-chechevitsey"
+  ],
+  [
+    "home-chicken-soup-buckwheat",
+    "kurinyy-sup-s-grechkoy"
+  ],
+  [
+    "home-chicken-soup-potato",
+    "kurinyy-sup-s-kartofelem"
+  ],
+  [
+    "home-chicken-soup-noodle",
+    "kurinyy-sup-s-lapshoy"
+  ],
+  [
+    "home-chicken-soup-vegetables",
+    "kurinyy-sup-s-ovoschami"
+  ],
+  [
+    "home-chicken-soup-rice",
+    "kurinyy-sup-s-risom"
+  ],
+  [
+    "home-chicken-pan-pepper",
+    "kuritsa-s-bolgarskim-pertsem"
+  ],
+  [
+    "home-chicken-pan-mushroom",
+    "kuritsa-s-gribami-na-skovorode"
+  ],
+  [
+    "home-chicken-pan-onion",
+    "kuritsa-s-lukom-na-skovorode"
+  ],
+  [
+    "home-chicken-pan-tomato",
+    "kuritsa-s-pomidorami-na-skovorode"
+  ],
+  [
+    "home-chicken-pan-cheese",
+    "kuritsa-s-syrom-na-skovorode"
+  ],
+  [
+    "home-chicken-pan-cream",
+    "kuritsa-v-slivkah"
+  ],
+  [
+    "home-chicken-oven-cheese",
+    "kuritsa-zapechyonnaya-pod-syrom"
+  ],
+  [
+    "home-chicken-oven-broccoli",
+    "kuritsa-zapechyonnaya-s-brokkoli"
+  ],
+  [
+    "home-chicken-oven-mushroom",
+    "kuritsa-zapechyonnaya-s-gribami"
+  ],
+  [
+    "home-chicken-oven-potato",
+    "kuritsa-zapechyonnaya-s-kartofelem"
+  ],
+  [
+    "home-chicken-oven-onion",
+    "kuritsa-zapechyonnaya-s-lukom"
+  ],
+  [
+    "home-chicken-oven-tomato",
+    "kuritsa-zapechyonnaya-s-pomidorami"
+  ],
+  [
+    "catalog:pe-lomo-saltado",
+    "lomo-saltado"
+  ],
+  [
+    "home-pasta-basic-bacon",
+    "makarony-s-bekonom"
+  ],
+  [
+    "home-ground-meat-pasta",
+    "makarony-s-farshem"
+  ],
+  [
+    "home-pasta-basic-mushroom",
+    "makarony-s-gribami"
+  ],
+  [
+    "home-pasta-basic-chicken",
+    "makarony-s-kuritsey"
+  ],
+  [
+    "home-pasta-basic-tomato",
+    "makarony-s-pomidorami"
+  ],
+  [
+    "home-pasta-basic-cheese",
+    "makarony-s-syrom"
+  ],
+  [
+    "home-pasta-basic-tuna",
+    "makarony-s-tuntsom"
+  ],
+  [
+    "catalog:cn-mapo-tofu",
+    "mapo-tofu"
+  ],
+  [
+    "catalog:jp-miso-soup",
+    "misosiru"
+  ],
+  [
+    "home-carrot-apple-salad",
+    "morkovno-yablochnyy-salat"
+  ],
+  [
+    "catalog:in-mint-chutney",
+    "myatnyy-chatni"
+  ],
+  [
+    "home-pancakes-cheese",
+    "nesladkie-oladi-s-syrom"
+  ],
+  [
+    "catalog:vn-nuoc-cham",
+    "nyok-cham"
+  ],
+  [
+    "manual:manual-yogurt-cucumber",
+    "ogurtsy-s-yogurtom"
+  ],
+  [
+    "catalog:ru-okroshka",
+    "okroshka-na-kvase"
+  ],
+  [
+    "home-pancakes-banana",
+    "oladi-s-bananom"
+  ],
+  [
+    "home-pancakes-apple",
+    "oladi-s-yablokom"
+  ],
+  [
+    "home-pancakes-berries",
+    "oladi-s-yagodami"
+  ],
+  [
+    "simple:simple-omelette",
+    "omlet"
+  ],
+  [
+    "home-omelette-mushroom",
+    "omlet-s-gribami"
+  ],
+  [
+    "home-omelette-tomato",
+    "omlet-s-pomidorami"
+  ],
+  [
+    "home-omelette-cheese",
+    "omlet-s-syrom"
+  ],
+  [
+    "home-omelette-ham",
+    "omlet-s-vetchinoy"
+  ],
+  [
+    "home-omelette-green-onion",
+    "omlet-s-zelyonym-lukom"
+  ],
+  [
+    "home-omelette-spinach",
+    "omlet-so-shpinatom"
+  ],
+  [
+    "simple:simple-boiled-potatoes",
+    "otvarnoy-kartofel"
+  ],
+  [
+    "home-boiled-dumplings-sourcream",
+    "otvarnye-pelmeni-so-smetanoy"
+  ],
+  [
+    "home-vegetable-soup-lentil",
+    "ovoschnoy-sup-s-chechevitsey"
+  ],
+  [
+    "home-vegetable-soup-bean",
+    "ovoschnoy-sup-s-fasolyu"
+  ],
+  [
+    "home-vegetable-soup-cabbage",
+    "ovoschnoy-sup-s-kapustoy"
+  ],
+  [
+    "home-oatmeal-banana",
+    "ovsyanaya-kasha-s-bananom"
+  ],
+  [
+    "home-oatmeal-cocoa",
+    "ovsyanaya-kasha-s-kakao"
+  ],
+  [
+    "home-oatmeal-honey",
+    "ovsyanaya-kasha-s-myodom"
+  ],
+  [
+    "home-oatmeal-nuts",
+    "ovsyanaya-kasha-s-orehami"
+  ],
+  [
+    "home-oatmeal-apple",
+    "ovsyanaya-kasha-s-yablokom"
+  ],
+  [
+    "home-oatmeal-berries",
+    "ovsyanaya-kasha-s-yagodami"
+  ],
+  [
+    "catalog:jp-oyakodon",
+    "oyakodon"
+  ],
+  [
+    "catalog:th-pad-thai",
+    "pad-tay"
+  ],
+  [
+    "home-pasta-creamy-broccoli",
+    "pasta-v-slivkah-s-brokkoli"
+  ],
+  [
+    "home-pasta-creamy-mushroom",
+    "pasta-v-slivkah-s-gribami"
+  ],
+  [
+    "home-pasta-creamy-chicken",
+    "pasta-v-slivkah-s-kuritsey"
+  ],
+  [
+    "home-pasta-creamy-ham",
+    "pasta-v-slivkah-s-vetchinoy"
+  ],
+  [
+    "home-pasta-creamy-spinach",
+    "pasta-v-slivkah-so-shpinatom"
+  ],
+  [
+    "catalog:pe-aji-verde",
+    "peruanskiy-ahi-verde"
+  ],
+  [
+    "catalog:it-pesto",
+    "pesto-dzhenoveze"
+  ],
+  [
+    "catalog:ru-pozharsky",
+    "pozharskie-kotlety"
+  ],
+  [
+    "catalog:ru-syrniki",
+    "syrniki"
+  ],
+  [
+    "catalog:ua-varenyky",
+    "vareniki-s-kartofelem"
+  ],
+  [
+    "home-yogurt-bowl-banana",
+    "yogurt-s-bananom"
+  ],
+  [
+    "home-yogurt-bowl-honey",
+    "yogurt-s-myodom"
+  ],
+  [
+    "home-yogurt-bowl-nuts",
+    "yogurt-s-orehami"
+  ],
+  [
+    "home-yogurt-bowl-oats",
+    "yogurt-s-ovsyanymi-hlopyami"
+  ],
+  [
+    "home-yogurt-bowl-apple",
+    "yogurt-s-yablokom"
+  ],
+  [
+    "home-yogurt-bowl-berries",
+    "yogurt-s-yagodami"
+  ],
+  [
+    "home-potato-bake-cheese",
+    "zapechyonnyy-kartofel-s-syrom"
+  ],
+  [
+    "simple:simple-fried-potatoes-onion",
+    "zharenaya-kartoshka-s-lukom"
+  ],
+  [
+    "home-potato-pan-bacon",
+    "zharenyy-kartofel-s-bekonom"
+  ],
+  [
+    "home-potato-pan-pepper",
+    "zharenyy-kartofel-s-bolgarskim-pertsem"
+  ],
+  [
+    "home-potato-pan-mushroom",
+    "zharenyy-kartofel-s-gribami"
+  ],
+  [
+    "home-potato-pan-chicken",
+    "zharenyy-kartofel-s-kuritsey"
+  ],
+  [
+    "home-potato-pan-cheese",
+    "zharenyy-kartofel-s-syrom"
+  ],
+  [
+    "home-potato-pan-egg",
+    "zharenyy-kartofel-s-yaytsom"
+  ],
+  [
+    "home-fried-rice-bacon",
+    "zharenyy-ris-s-bekonom"
+  ],
+  [
+    "home-fried-rice-mushroom",
+    "zharenyy-ris-s-gribami"
+  ],
+  [
+    "home-fried-rice-chicken",
+    "zharenyy-ris-s-kuritsey"
+  ],
+  [
+    "home-fried-rice-vegetables",
+    "zharenyy-ris-s-ovoschami"
+  ],
+  [
+    "home-fried-rice-tuna",
+    "zharenyy-ris-s-tuntsom"
+  ],
+  [
+    "home-fried-rice-egg",
+    "zharenyy-ris-s-yaytsom"
+  ]
 ]);
 
-const PHOTO_SLUGS = new Set(RECIPE_PHOTO_CATALOG.map((entry) => entry.slug));
-const PHOTO_IDS = new Set(RECIPE_PHOTO_CATALOG.map((entry) => entry.id));
+export const RECIPE_PHOTO_CATALOG = Object.freeze(RECIPE_PHOTO_PAIRS.map(([id, slug]) => Object.freeze({ id, slug })));
 
-function cleanSlug(value = "") {
-  const slug = String(value || "").trim().toLowerCase();
-  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ? slug : "";
-}
+const PHOTO_IDS = new Set(RECIPE_PHOTO_PAIRS.map(([id]) => id));
+const PHOTO_SLUGS = new Set(RECIPE_PHOTO_PAIRS.map(([, slug]) => slug));
 
-export function recipeHasPhoto(recipe, slugOverride = "") {
-  const slug = cleanSlug(slugOverride || recipe?.seoSlug);
-  if (slug && PHOTO_SLUGS.has(slug)) return true;
+export function recipeHasPhoto(recipe, slug = "") {
   const id = String(recipe?.id || recipe?.source?.id || "").trim();
-  return Boolean(id && PHOTO_IDS.has(id));
+  const normalizedSlug = String(slug || recipe?.seoSlug || "").trim().toLowerCase();
+  return Boolean((id && PHOTO_IDS.has(id)) || (normalizedSlug && PHOTO_SLUGS.has(normalizedSlug)));
 }
