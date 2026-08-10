@@ -16,6 +16,7 @@ const matchingCoreV4Source = fs.readFileSync(new URL("./src/matching-core-v4.inj
 const kitchenSimplifiedSource = fs.readFileSync(new URL("./src/kitchen-simplified.inject.js", import.meta.url), "utf8");
 const kitchenSmartSuggestionsSource = fs.readFileSync(new URL("./src/kitchen-smart-suggestions.inject.js", import.meta.url), "utf8");
 const catalogDetailSource = fs.readFileSync(new URL("./src/catalog-detail.inject.js", import.meta.url), "utf8");
+const auditV7Source = fs.readFileSync(new URL("./src/audit-v7.inject.js", import.meta.url), "utf8");
 const rawFeatureSource = fs.readFileSync(new URL("./public/kutno-features.js", import.meta.url), "utf8");
 const semanticImport = `import {
   analyzeRecipe as semanticAnalyzeRecipe,
@@ -86,14 +87,14 @@ export default defineConfig({
           )
           .replace(
             "с учётом доступной техники, сложности и числа порций.",
-            "с учётом доступной техники и выбранного типа блюда.",
+            "с учётом ваших продуктов и выбранного типа блюда.",
           )
           .replace(
             "Техника, сложность, порции и избранное останутся без изменений.",
-            "Техника и избранное останутся без изменений.",
+            "Избранное останется без изменений.",
           );
         return {
-          code: `${semanticImport}\n${consistentMain}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}\n\n${catalogFacetsSource}\n\n${catalogRenderMetaSource}\n\n${catalogScrollFillSource}\n\n${swipeFullCatalogSource}\n\n${matchingCoreV4Source}\n\n${kitchenSimplifiedSource}\n\n${kitchenSmartSuggestionsSource}\n\n${catalogDetailSource}`,
+          code: `${semanticImport}\n${consistentMain}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}\n\n${catalogFacetsSource}\n\n${catalogRenderMetaSource}\n\n${catalogScrollFillSource}\n\n${swipeFullCatalogSource}\n\n${matchingCoreV4Source}\n\n${kitchenSimplifiedSource}\n\n${kitchenSmartSuggestionsSource}\n\n${catalogDetailSource}\n\n${auditV7Source}`,
           map: null,
         };
       },
