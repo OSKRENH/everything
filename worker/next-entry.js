@@ -148,7 +148,7 @@ export default {
       if (url.pathname.startsWith("/api/recipe/") && request.method === "GET") {
         return timedResponse(await serveRecipeDetail(request, requestId), "recipe", startedAt, requestId);
       }
-      if (url.pathname === "/api/feature-state") {
+      if (url.pathname === "/api/feature-state" || url.pathname.startsWith("/api/shared-recipes")) {
         await ensureFeatureStateTextSchema(env);
       }
 
