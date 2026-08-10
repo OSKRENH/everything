@@ -1,0 +1,38 @@
+name: Debug next e2e
+
+on:
+  push:
+    branches: [agent/am-mobile-batch-and-photo-tz]
+    paths: [.debug-next-trigger]
+
+permissions:
+  contents: write
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/am-mobile-batch-and-photo-tz
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: |
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium webkit
+      - name: Capture next e2e
+        run: |
+          set +e
+          npx playwright test test/e2e/next.spec.mjs > ci-next-output.txt 2>&1
+          status=$?
+          printf '\nEXIT=%s\n' "$status" >> ci-next-output.txt
+          exit 0
+      - name: Commit diagnostics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ci-next-output.txt
+          git commit -m "Capture next e2e diagnostics"
+          git push origin HEAD:agent/am-mobile-batch-and-photo-tz
