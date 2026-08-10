@@ -112,7 +112,14 @@ test("каталог получает следующую страницу тол
   expect(api.catalogRequests()).toBe(1);
   await page.waitForTimeout(900);
   expect(api.catalogRequests()).toBe(1);
+
+  const revealBatch = await page.evaluate(() => {
+    if (window.matchMedia("(max-width: 700px)").matches) return 1;
+    if (window.matchMedia("(max-width: 980px)").matches) return 2;
+    return 3;
+  });
+
   await page.getByRole("button", { name: /Показать ещё/ }).click();
   await expect.poll(() => api.catalogRequests()).toBe(2);
-  await expect(page.locator(".catalog-card")).toHaveCount(24);
+  await expect(page.locator(".catalog-card")).toHaveCount(12 + revealBatch);
 });

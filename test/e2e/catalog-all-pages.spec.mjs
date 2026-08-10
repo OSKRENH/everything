@@ -3,7 +3,8 @@ import { expect, test } from "@playwright/test";
 const cuisineSequence = [
   ["Испания", "🇪🇸"], ["Италия", "🇮🇹"], ["Испания", "🇪🇸"], ["Италия", "🇮🇹"], ["Испания", "🇪🇸"],
   ["Россия", "🇷🇺"], ["Япония", "🇯🇵"], ["Индия", "🇮🇳"], ["Мексика", "🇲🇽"], ["Франция", "🇫🇷"],
-  ["Китай", "🇨🇳"], ["Таиланд", "🇹🇭"], ["Перу", "🇵🇪"],
+  ["Китай", "🇨🇳"], ["Таиланд", "🇹🇭"], ["Перу", "🇵🇪"], ["Италия", "🇮🇹"], ["Россия", "🇷🇺"],
+  ["Япония", "🇯🇵"], ["Франция", "🇫🇷"],
 ];
 
 function recipe(index) {
@@ -29,7 +30,7 @@ function recipe(index) {
   };
 }
 
-const catalog = Array.from({ length: 13 }, (_, index) => recipe(index));
+const catalog = Array.from({ length: cuisineSequence.length }, (_, index) => recipe(index));
 const catalogIndex = catalog.map((item) => ({
   id: item.id,
   title: item.title,
@@ -48,6 +49,7 @@ const facets = { cuisines: cuisineFacets, difficulties: ["легко"], courses:
 async function installApi(page) {
   let catalogRequests = 0;
   let indexRequests = 0;
+  const catalogVersions = [];
   await page.route("https://accounts.google.com/**", (route) => route.fulfill({ status: 200, contentType: "application/javascript", body: "window.google={accounts:{id:{initialize(){},renderButton(){}}}};" }));
   await page.route("**/api/**", async (route) => {
     const request = route.request();
@@ -61,6 +63,7 @@ async function installApi(page) {
     }
     if (url.pathname === "/api/catalog") {
       catalogRequests += 1;
+      catalogVersions.push(url.searchParams.get("v") || "");
       const cursor = url.searchParams.get("cursor") || "";
       const limit = Math.max(1, Number(url.searchParams.get("limit")) || 5);
       const offset = /^page-\d+$/.test(cursor) ? Number(cursor.slice(5)) : 0;
@@ -75,7 +78,11 @@ async function installApi(page) {
     }
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
   });
-  return { requests: () => catalogRequests, indexRequests: () => indexRequests };
+  return {
+    requests: () => catalogRequests,
+    indexRequests: () => indexRequests,
+    catalogVersions: () => [...catalogVersions],
+  };
 }
 
 async function openCatalog(page) {
@@ -98,7 +105,26 @@ test("общий размер базы известен с первой стра
   await openCatalog(page);
   await expect(page.locator(".catalog-card")).toHaveCount(12);
   console.log("CATALOG_COUNT_TEXT", JSON.stringify(await page.locator(".catalog-count").textContent()));
-  await expect(page.locator(".catalog-count")).toContainText("В базе — 13");
+  await expect(page.locator(".catalog-count")).toContainText(`В базе — ${catalog.length}`);
+});
+
+test("первая страница каталога использует версию кэша", async ({ page }) => {
+  const api = await installApi(page);
+  await openCatalog(page);
+  await expect(page.locator(".catalog-card")).toHaveCount(12);
+  expect(api.catalogVersions()[0]).toBeTruthy();
+});
+
+test("на десктопе Показать ещё добавляет полный ряд из трёх карточек", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await installApi(page);
+  await openCatalog(page);
+  await expect(page.locator(".catalog-card")).toHaveCount(12);
+  await expect(page.getByRole("button", { name: /Показать ещё/ })).toContainText("3 из 5");
+
+  await page.getByRole("button", { name: /Показать ещё/ }).click();
+  await expect(page.locator(".catalog-card")).toHaveCount(15);
+  await expect(page.getByRole("button", { name: /Показать ещё/ })).toContainText("2 из 2");
 });
 
 test("все страны видны из лёгких facets без загрузки следующих карточек", async ({ page }) => {
@@ -131,11 +157,19 @@ test("выбор страны сам находит рецепт на следу
 test("кнопка Показать ещё доходит до последнего рецепта без повторов", async ({ page }) => {
   const api = await installApi(page);
   await openCatalog(page);
-  await expect(page.locator(".catalog-card")).toHaveCount(12);
+  const cards = page.locator(".catalog-card");
+  await expect(cards).toHaveCount(12);
 
-  await page.getByRole("button", { name: /Показать ещё/ }).click();
-  await expect(page.locator(".catalog-card")).toHaveCount(catalog.length);
+  let previousCount = 12;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const button = page.getByRole("button", { name: /Показать ещё/ });
+    if (await button.count() === 0) break;
+    await button.click();
+    await expect.poll(() => cards.count()).toBeGreaterThan(previousCount);
+    previousCount = await cards.count();
+  }
 
+  await expect(cards).toHaveCount(catalog.length);
   expect(api.requests()).toBe(2);
   const titles = await page.locator(".catalog-card h3").allTextContents();
   expect(titles).toHaveLength(catalog.length);

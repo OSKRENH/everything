@@ -1,4 +1,5 @@
 const DEFAULT_TIMEOUT = 15_000;
+const CATALOG_CACHE_REVISION = "2026-08-world-classics-4";
 
 export class KutnoApiError extends Error {
   constructor(message, { status = 0, code = "", data = null } = {}) {
@@ -141,16 +142,24 @@ export function installGlobalTelemetry() {
 export const kutnoApi = {
   request,
   catalogPage({ portions = 2, limit = 5, cursor = "" } = {}) {
-    const params = new URLSearchParams({ portions: String(portions), limit: String(limit) });
+    const params = new URLSearchParams({
+      portions: String(portions),
+      limit: String(limit),
+      v: CATALOG_CACHE_REVISION,
+    });
     if (cursor) params.set("cursor", cursor);
-    return request(`/api/catalog?${params}`);
+    return request(`/api/catalog?${params}`, { cache: "no-store" });
   },
   catalogIndex() {
-    return request("/api/catalog-index", { timeout: 8_000 });
+    const params = new URLSearchParams({ v: CATALOG_CACHE_REVISION });
+    return request(`/api/catalog-index?${params}`, { timeout: 8_000, cache: "no-store" });
   },
   recipeDetail(id, { portions = 2 } = {}) {
-    const params = new URLSearchParams({ portions: String(Math.max(1, Number(portions) || 2)) });
-    return request(`/api/recipe/${encodeURIComponent(String(id || ""))}?${params}`, { timeout: 8_000 });
+    const params = new URLSearchParams({
+      portions: String(Math.max(1, Number(portions) || 2)),
+      v: CATALOG_CACHE_REVISION,
+    });
+    return request(`/api/recipe/${encodeURIComponent(String(id || ""))}?${params}`, { timeout: 8_000, cache: "no-store" });
   },
   matchingSuggestions({ ingredients = [], equipment = [], baseIngredients = [] } = {}) {
     const params = new URLSearchParams();
