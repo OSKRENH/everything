@@ -5,16 +5,10 @@ import test from "node:test";
 import { serveCrawlerRules, servePublicAppPage } from "../worker/public-app-pages.js";
 import { recipeImageSet, recipeImageUrls, recipePhotoManifest, serveRecipeImage, serveRecipePhotoManifest } from "../worker/recipe-images.js";
 import { seoRecipeEntries } from "../worker/seo-pages.js";
+import { runtimeEnv } from "./runtime-assets.mjs";
 
 const indexHtml = readFileSync("index.html", "utf8");
-const env = {
-  STRICT_SEO_MARKERS: "true",
-  ASSETS: {
-    async fetch() {
-      return new Response(indexHtml, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
-    },
-  },
-};
+const env = runtimeEnv(indexHtml, { STRICT_SEO_MARKERS: "true" });
 
 test("новые публичные модули проходят синтаксическую проверку", () => {
   for (const file of ["worker/public-app-pages.js", "worker/fresh-sitemap.js", "worker/recipe-images.js", "src/public-routes.js", "public/recipe-photos.js"]) {
@@ -24,9 +18,7 @@ test("новые публичные модули проходят синтакс
 });
 
 test("app shell содержит устойчивые SEO-маркеры", () => {
-  for (const marker of ["data-seo-kicker", "data-seo-title", "data-seo-copy", "data-seo-content"]) {
-    assert.match(indexHtml, new RegExp(marker));
-  }
+  for (const marker of ["data-seo-kicker", "data-seo-title", "data-seo-copy", "data-seo-content"]) assert.match(indexHtml, new RegExp(marker));
 });
 
 test("/recipes отдаёт основной shell и видимый серверный список", async () => {
@@ -64,7 +56,7 @@ test("уникальный URL рецепта грузит shell, видимый
 });
 
 test("рецепт без hasPhoto не получает image или og:image", async () => {
-  const entry = seoRecipeEntries(2).find((item) => item.source?.recipe?.hasPhoto !== true) || seoRecipeEntries(2)[0];
+  const entry = seoRecipeEntries(2).find((item) => item.hasPhoto !== true) || seoRecipeEntries(2)[0];
   const response = await servePublicAppPage(new Request(`https://kutno.ru${entry.pathname}`), env);
   const html = await response.text();
   assert.doesNotMatch(html, /"image":\[/);
@@ -76,11 +68,7 @@ test("рецепт без hasPhoto не получает image или og:image",
 test("фото URL выводятся только при явном hasPhoto", () => {
   assert.deepEqual(recipeImageUrls({}, "syrniki"), []);
   assert.deepEqual(recipeImageUrls({ hasPhoto: false }, "syrniki"), []);
-  assert.deepEqual(recipeImageUrls({ hasPhoto: true }, "syrniki"), [
-    "https://kutno.ru/img/syrniki-1x1.webp",
-    "https://kutno.ru/img/syrniki-4x3.webp",
-    "https://kutno.ru/img/syrniki-16x9.webp",
-  ]);
+  assert.deepEqual(recipeImageUrls({ hasPhoto: true }, "syrniki"), ["https://kutno.ru/img/syrniki-1x1.webp", "https://kutno.ru/img/syrniki-4x3.webp", "https://kutno.ru/img/syrniki-16x9.webp"]);
   assert.equal(recipeImageSet({ hasPhoto: true }, "syrniki").social, "https://kutno.ru/img/syrniki-16x9.webp");
 });
 
@@ -110,9 +98,7 @@ test("robots явно разрешает OpenAI и не кэшируется н�
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(response.headers.get("cdn-cache-control"), "no-store");
   const body = await response.text();
-  for (const agent of ["OAI-SearchBot", "GPTBot", "ChatGPT-User", "OAI-AdsBot", "*"]) {
-    assert.match(body, new RegExp(`User-agent: ${agent.replace("*", "\\*")}\\nAllow: /`));
-  }
+  for (const agent of ["OAI-SearchBot", "GPTBot", "ChatGPT-User", "OAI-AdsBot", "*"]) assert.match(body, new RegExp(`User-agent: ${agent.replace("*", "\\*")}\\nAllow: /`));
   assert.match(body, /Disallow: \/api\//);
   assert.match(body, /Sitemap: https:\/\/kutno\.ru\/sitemap\.xml/);
 });
