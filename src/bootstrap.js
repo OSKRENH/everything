@@ -8,7 +8,7 @@ const STYLE_URLS = [
   "/manual-mode.css?v=1",
   "/kutno-next.css?v=1",
   "/recipe-photos.css?v=1",
-  "/mobile-recipe-ux.css?v=1",
+  "/mobile-recipe-ux.css?v=2",
 ];
 
 function setShellStatus(message, failed = false) {
