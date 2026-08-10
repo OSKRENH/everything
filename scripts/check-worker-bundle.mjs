@@ -31,5 +31,17 @@ console.log(`Worker bytes: ${entry.bytes}`);
 console.log(`Escaped Cyrillic sequences: ${entry.escapedCyrillic}`);
 console.log(`Worker budget: ${maxBytes} bytes; escaped Cyrillic budget: ${maxEscapedCyrillic}`);
 
+const metaPath = path.resolve(".worker-build/meta.json");
+if (fs.existsSync(metaPath)) {
+  const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+  const output = Object.values(meta.outputs || {}).find((item) => item.entryPoint) || Object.values(meta.outputs || {})[0];
+  const top = Object.entries(output?.inputs || {})
+    .map(([file, info]) => ({ file, bytes: Number(info.bytesInOutput) || 0 }))
+    .sort((a, b) => b.bytes - a.bytes)
+    .slice(0, 12);
+  console.log("Top Worker inputs:");
+  for (const item of top) console.log(`${String(item.bytes).padStart(8)}  ${item.file}`);
+}
+
 if (entry.bytes > maxBytes) throw new Error(`Worker bundle ${entry.bytes} bytes exceeds ${maxBytes}-byte budget`);
 if (entry.escapedCyrillic > maxEscapedCyrillic) throw new Error(`Worker bundle contains ${entry.escapedCyrillic} escaped Cyrillic sequences`);
