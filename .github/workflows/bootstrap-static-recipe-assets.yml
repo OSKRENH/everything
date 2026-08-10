@@ -71,7 +71,8 @@ jobs:
           replaced_wrangler = False
           for line in source.splitlines():
               if 'assert.doesNotMatch(routes, /serveRecipeImage|recipe-image|prefix' in line:
-                  lines.append('  assert.doesNotMatch(routes, /serveRecipeImage|recipe-image/);')
+                  lines.append('  assert.equal(routes.includes("serveRecipeImage"), false);')
+                  lines.append('  assert.equal(routes.includes(\'"recipe-image"\'), false);')
                   lines.append('  assert.equal(routes.includes(\'prefix("/img/\'), false);')
                   replaced_route = True
               elif 'assert.match(wrangler, /"\\/img\\/\\*"/);' in line:
