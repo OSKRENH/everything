@@ -150,6 +150,18 @@ const EQUIPMENT_NAMES = {
   blender: "блендер",
   microwave: "микроволновка",
   multicooker: "мультиварка",
+  сковорода: "сковорода",
+  сковородка: "сковорода",
+  сотейник: "сковорода",
+  кастрюля: "кастрюля",
+  казан: "кастрюля",
+  блендер: "блендер",
+  "погружной блендер": "блендер",
+  духовка: "духовка",
+  "духовой шкаф": "духовка",
+  микроволновка: "микроволновка",
+  "микроволновая печь": "микроволновка",
+  мультиварка: "мультиварка",
 };
 
 export function normalizeIngredient(value = "") {
@@ -224,6 +236,18 @@ export function ingredientMatch(recipeIngredient, ownedIngredient) {
   return { type: "none" };
 }
 
+export function ingredientMatchAny(item, ownedIngredient) {
+  const candidates = [item?.name, ...(Array.isArray(item?.aliases) ? item.aliases : [])].filter(Boolean);
+  const rank = { none: 0, substitute: 1, category: 2, exact: 3 };
+  let best = { type: "none" };
+  for (const candidate of candidates) {
+    const match = ingredientMatch(candidate, ownedIngredient);
+    if (rank[match.type] > rank[best.type]) best = match;
+    if (best.type === "exact") break;
+  }
+  return best;
+}
+
 function selectedBaseMatch(name, baseIngredients) {
   let best = { type: "none" };
   for (const base of baseIngredients) {
@@ -268,7 +292,7 @@ export function analyzeRecipe(recipe, context = {}) {
     const role = ingredientRole(item, recipe, index, baseIngredients);
     let best = { type: role === "base" ? "base" : "none" };
     for (const owned of ownedIngredients) {
-      const match = ingredientMatch(item?.name, owned);
+      const match = ingredientMatchAny(item, owned);
       const rank = { none: 0, substitute: 1, category: 2, exact: 3 };
       if (rank[match.type] > rank[best.type || "none"]) best = match;
       if (best.type === "exact") break;
@@ -284,7 +308,7 @@ export function analyzeRecipe(recipe, context = {}) {
   const missingEquipment = enforceEquipment
     ? requiredEquipment.filter((required) => !equipment.includes(normalizeEquipment(required)))
     : [];
-  const priorityHits = priorityIngredients.filter((priority) => ingredients.some((item) => ["exact", "category"].includes(ingredientMatch(item.name, priority).type)));
+  const priorityHits = priorityIngredients.filter((priority) => ingredients.some((item) => ["exact", "category"].includes(ingredientMatchAny(item, priority).type)));
 
   let group = "ready";
   if (missingEquipment.length || requiredMissing.length > 1) group = "more";

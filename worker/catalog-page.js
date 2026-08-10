@@ -7,7 +7,7 @@ import { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
 
 const DEFAULT_LIMIT = 5;
 const MAX_LIMIT = 12;
-const STATIC_CACHE = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
+const STATIC_CACHE = "public, max-age=300, s-maxage=3600, stale-while-revalidate=600";
 
 function json(data, status = 200, headers = {}) {
   return Response.json(data, {
@@ -28,11 +28,27 @@ function displayAmount(item, portions, baseServings) {
   if (typeof item?.amount !== "number") return String(item?.amount || "по вкусу");
   const value = item.amount * portions / Math.max(1, Number(baseServings) || portions);
   const unit = String(item.unit || "").trim();
+  const name = normalized(item?.name);
+  if (item?.pantry === true && /соль|перец|паприк|спец|приправа|зелень/.test(name)) return "по вкусу";
   let rounded = value;
   if (unit === "г" || unit === "мл") rounded = Math.max(1, Math.round(value / 5) * 5);
+  else if (/^(?:шт\.?|зубч\.?|гол\.?)$/i.test(unit)) rounded = Math.max(1, Math.ceil(value));
   else rounded = Math.max(0.25, Math.round(value * 4) / 4);
   const displayed = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(".", ",");
   return `${displayed} ${unit}`.trim();
+}
+
+function normalizePreparedIngredient(item) {
+  const next = { ...item };
+  const name = normalized(next?.name);
+  if (next?.pantry === true && /соль|перец|паприк|спец|приправа|зелень/.test(name)) {
+    next.amount = "по вкусу";
+    return next;
+  }
+  const amount = String(next?.amount || "").trim();
+  const piece = amount.match(/^(\d+(?:[.,]\d+)?)\s*(шт\.?|зубч\.?|гол\.?)$/i);
+  if (piece) next.amount = `${Math.max(1, Math.ceil(Number(piece[1].replace(",", "."))))} ${piece[2]}`;
+  return next;
 }
 
 function glossaryFor(name = "") {
@@ -103,6 +119,7 @@ function finalPreparedRecipe(recipe, portions, kind) {
     ...recipe,
     id: String(recipe.id || recipe.source?.id || `${kind}:${normalized(recipe.title)}`),
     portions: Number(recipe.portions) || portions,
+    ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map(normalizePreparedIngredient),
     match: null,
     missing: Array.isArray(recipe.missing) ? recipe.missing : [],
     uses: Array.isArray(recipe.uses) ? recipe.uses : [],
