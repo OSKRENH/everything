@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import worker from "../worker/next-entry.js";
+import { WORLD_RECIPE_CATALOG } from "../worker/recipe-catalog.js";
 import { seoRecipeEntries } from "../worker/seo-pages.js";
 
 const indexHtml = readFileSync("index.html", "utf8");
@@ -39,6 +40,7 @@ const env = {
 
 const ctx = { waitUntil() {} };
 const firstRecipe = seoRecipeEntries(2)[0];
+const liteRecipeId = `catalog:${WORLD_RECIPE_CATALOG[0].id}`;
 
 function req(method, path, body) {
   const init = { method, headers: {} };
@@ -60,7 +62,7 @@ const cases = [
   ["GET /sitemap.xml", req("GET", "/sitemap.xml"), 200, "application/xml"],
   ["GET /robots.txt", req("GET", "/robots.txt"), 200, "text/plain"],
   ["GET /lite", req("GET", "/lite"), 200, "text/html"],
-  ["GET /lite/recipe", req("GET", `/lite/recipe?id=${encodeURIComponent(firstRecipe.id)}`), 200, "text/html"],
+  ["GET /lite/recipe", req("GET", `/lite/recipe?id=${encodeURIComponent(liteRecipeId)}`), 200, "text/html"],
   ["GET /api/health", req("GET", "/api/health"), 200, "application/json"],
   ["GET /api/config", req("GET", "/api/config"), 200, "application/json"],
   ["GET /api/source-status", req("GET", "/api/source-status"), 200, "application/json"],
