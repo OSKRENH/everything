@@ -76,7 +76,7 @@ const cases = [
   ["POST /api/auth/login", req("POST", "/api/auth/login", {}), 401, "application/json"],
   ["POST /api/auth/register", req("POST", "/api/auth/register", {}), 400, "application/json"],
   ["POST /api/auth/logout", req("POST", "/api/auth/logout", {}), 200, "application/json"],
-  ["POST /api/auth/google", req("POST", "/api/auth/google", {}), 400, "application/json"],
+  ["POST /api/auth/google", req("POST", "/api/auth/google", {}), 401, "application/json"],
   ["GET /api/auth/yandex", req("GET", "/api/auth/yandex"), 302, ""],
   ["GET /api/auth/yandex/callback", req("GET", "/api/auth/yandex/callback"), 302, ""],
   ["PUT /api/kitchen", req("PUT", "/api/kitchen", {}), 401, "application/json"],
