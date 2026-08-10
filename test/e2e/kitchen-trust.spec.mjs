@@ -117,28 +117,47 @@ test("основной подбор ставит серверный рецепт
   expect(requests[0].searchMode).toBe("strict");
 });
 
-test("строгий режим расширяется только после отдельного нажатия", async ({ page }) => {
+test("близкие варианты показываются сразу тремя группами без отдельного расширения", async ({ page }) => {
   const requests = [];
   await installCommonApi(page, async (route, body) => {
     requests.push(body);
-    const expanded = body.searchMode === "plus-one";
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(expanded
-        ? { recipes: [serverRecipe({ title: "Омлет с одной покупкой" })], hasMore: false, source: "semantic-catalog", relaxation: null }
-        : {
-            recipes: [],
-            hasMore: false,
-            error: "Точных вариантов пока нет",
-            relaxation: null,
-            suggestedExpansion: {
-              code: "allow-one-purchase",
-              title: "Точных вариантов пока нет",
-              details: "Можно отдельно разрешить одну покупку.",
-              count: 4,
-            },
+      body: JSON.stringify({
+        recipes: [
+          serverRecipe({
+            id: "ready-eggs",
+            title: "Яйца прямо сейчас",
+            ingredients: [
+              { name: "яйца", amount: "1 шт." },
+              { name: "соль", amount: "по вкусу", pantry: true },
+            ],
           }),
+          serverRecipe({
+            id: "one-purchase-omelet",
+            title: "Омлет с одной покупкой",
+            ingredients: [
+              { name: "яйца", amount: "1 шт." },
+              { name: "молоко", amount: "100 мл" },
+              { name: "соль", amount: "по вкусу", pantry: true },
+            ],
+          }),
+          serverRecipe({
+            id: "almost-omelet",
+            title: "Омлет почти подходит",
+            ingredients: [
+              { name: "яйца", amount: "1 шт." },
+              { name: "молоко", amount: "100 мл" },
+              { name: "сыр", amount: "50 г" },
+              { name: "соль", amount: "по вкусу", pantry: true },
+            ],
+          }),
+        ],
+        hasMore: false,
+        source: "semantic-catalog",
+        relaxation: null,
+      }),
     });
   });
 
@@ -146,13 +165,14 @@ test("строгий режим расширяется только после �
   await addKitchenProductThroughInput(page, "яйца");
   await page.getByRole("button", { name: "Предложить блюда" }).click();
 
-  const expand = page.getByRole("button", { name: "Показать с одной покупкой · 4" });
-  await expect(expand).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Готовьте сейчас" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Купить один продукт" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Почти подходит" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Яйца прямо сейчас", exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Омлет с одной покупкой", exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Омлет почти подходит", exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /Показать с одной покупкой/ })).toHaveCount(0);
+
   expect(requests).toHaveLength(1);
   expect(requests[0].searchMode).toBe("strict");
-
-  await expand.click();
-  await expect(page.getByRole("button", { name: "Омлет с одной покупкой", exact: true }).first()).toBeVisible();
-  expect(requests).toHaveLength(2);
-  expect(requests[1].searchMode).toBe("plus-one");
 });
