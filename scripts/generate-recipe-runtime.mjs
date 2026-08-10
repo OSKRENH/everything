@@ -1,5 +1,5 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { catalogSources, fullRecipeForSource, sourceIdentity } from "../worker/catalog-page.js";
+import { catalogSources, fullRecipeForSource, sourceIdentity } from "./catalog-source.mjs";
 import { CATALOG_VERSION } from "../worker/recipe-catalog.js";
 
 const generatedDir = new URL("../worker/generated/", import.meta.url);
@@ -57,9 +57,7 @@ await writeFile(new URL("catalog-runtime.js", generatedDir), [
 for (const source of sources) {
   const id = sourceIdentity(source.kind, source.recipe);
   const variants = {};
-  for (let portions = 1; portions <= 8; portions += 1) {
-    variants[String(portions)] = fullRecipeForSource(source, portions);
-  }
+  for (let portions = 1; portions <= 8; portions += 1) variants[String(portions)] = fullRecipeForSource(source, portions);
   await writeFile(new URL(`${storageKey(id)}.json`, bodiesDir), JSON.stringify({ id, variants }));
 }
 
