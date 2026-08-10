@@ -10,8 +10,9 @@ test("runtime-миграция чинит оба строковых user id до
   assert.match(migration, /CAST\(user_id AS TEXT\)/);
   assert.match(migration, /created_by TEXT/);
   assert.match(migration, /CAST\(created_by AS TEXT\)/);
-  assert.match(migration, /PRAGMA table_info\(user_feature_state\)/);
-  assert.match(migration, /PRAGMA table_info\(shared_recipes\)/);
+  assert.match(migration, /PRAGMA table_info\(\$\{table\}\)/);
+  assert.match(migration, /tableColumns\(env, "user_feature_state"\)/);
+  assert.match(migration, /tableColumns\(env, "shared_recipes"\)/);
   assert.match(entry, /url\.pathname === "\/api\/feature-state"/);
   assert.match(entry, /url\.pathname\.startsWith\("\/api\/shared-recipes"\)/);
   assert.match(entry, /await ensureFeatureStateTextSchema\(env\)/);
