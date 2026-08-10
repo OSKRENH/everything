@@ -1,4 +1,5 @@
 import { seoRecipeEntries } from "./seo-pages.js";
+import { recipeImageSet, recipeImageUrls } from "./recipe-images.js";
 
 const SITE_ORIGIN = "https://kutno.ru";
 const HTML_CACHE = "public, max-age=300, s-maxage=1800, stale-while-revalidate=600";
@@ -41,6 +42,7 @@ function ingredientLine(item) {
 function recipeStructuredData(entry) {
   const { recipe, pathname } = entry;
   const url = canonical(pathname);
+  const images = recipeImageUrls({ hasPhoto: entry.source?.recipe?.hasPhoto === true }, entry.slug);
   const nutrition = recipe?.nutrition || {};
   const portions = Math.max(1, Number(recipe?.portions) || 2);
   const recipeData = {
@@ -63,6 +65,7 @@ function recipeStructuredData(entry) {
       url: `${url}#step-${index + 1}`,
     })).filter((step) => step.text),
   };
+  if (images.length) recipeData.image = images;
   if (Number(nutrition.calories) > 0) {
     recipeData.nutrition = {
       "@type": "NutritionInformation",
@@ -106,6 +109,10 @@ function catalogStructuredData(entries) {
 
 function replaceHeadValue(html, pattern, replacement) {
   return pattern.test(html) ? html.replace(pattern, replacement) : html.replace("</head>", `${replacement}\n</head>`);
+}
+
+function stripHeadMeta(html, pattern) {
+  return html.replace(pattern, "");
 }
 
 function routeContent(route, entries) {
@@ -163,19 +170,34 @@ function publicRouteFor(request) {
   const entries = seoRecipeEntries(2);
   if (url.pathname === "/recipes/") return { redirect: `${SITE_ORIGIN}/recipes` };
   if (url.pathname === "/recipes") return { type: "catalog", pathname: "/recipes", entries };
+  if (url.pathname === "/recipe" || url.pathname === "/recipe/") return { redirect: `${SITE_ORIGIN}/recipes` };
   if (!url.pathname.startsWith("/recipe/")) return null;
   if (url.pathname.length > "/recipe/".length && url.pathname.endsWith("/")) return { redirect: canonical(url.pathname.slice(0, -1)) };
   const slug = decodeURIComponent(url.pathname.slice("/recipe/".length));
   const entry = entries.find((item) => item.slug === slug);
-  if (!entry) return { missing: true };
+  if (!entry) return { missing: true, pathname: url.pathname };
   return { type: "recipe", ...entry, entries };
+}
+
+function missingRecipeResponse(request) {
+  const html = request.method === "HEAD" ? "" : `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,follow"><link rel="canonical" href="${SITE_ORIGIN}/recipes"><title>Рецепт не найден | Кутно</title></head><body><main><h1>Рецепт не найден</h1><p>Возможно, ссылка устарела. <a href="/recipes">Открыть все рецепты</a>.</p></main></body></html>`;
+  return new Response(html, {
+    status: 404,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "content-language": "ru",
+      "cache-control": "public, max-age=60",
+      "x-robots-tag": "noindex, follow",
+      "x-content-type-options": "nosniff",
+    },
+  });
 }
 
 export async function servePublicAppPage(request, env) {
   const route = publicRouteFor(request);
   if (!route) return null;
   if (route.redirect) return Response.redirect(route.redirect, 301);
-  if (route.missing) return null;
+  if (route.missing) return missingRecipeResponse(request);
 
   const shell = await appShell(request, env);
   if (!shell) return null;
@@ -186,8 +208,9 @@ export async function servePublicAppPage(request, env) {
     : `Полная база Кутно: ${route.entries.length} рецептов с ингредиентами, шагами, временем приготовления и КБЖУ.`;
   const canonicalUrl = canonical(route.pathname);
   const structuredData = isRecipe ? recipeStructuredData(route) : catalogStructuredData(route.entries);
+  const photo = isRecipe ? recipeImageSet({ hasPhoto: route.source?.recipe?.hasPhoto === true }, route.slug) : null;
   const clientRoute = isRecipe
-    ? { type: "recipe", id: route.id, slug: route.slug, pathname: route.pathname, title: route.recipe.title }
+    ? { type: "recipe", id: route.id, slug: route.slug, pathname: route.pathname, title: route.recipe.title, hasPhoto: Boolean(photo) }
     : { type: "catalog", pathname: "/recipes" };
   const strictSeoMarkers = env?.STRICT_SEO_MARKERS === true || env?.STRICT_SEO_MARKERS === "true";
 
@@ -195,10 +218,20 @@ export async function servePublicAppPage(request, env) {
   html = replaceHeadValue(html, /<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`);
   html = replaceHeadValue(html, /<meta\s+name="description"\s+content="[^"]*"\s*\/?\s*>/i, `<meta name="description" content="${escapeHtml(description)}" />`);
   html = replaceHeadValue(html, /<link\s+rel="canonical"\s+href="[^"]*"\s*\/?\s*>/i, `<link rel="canonical" href="${escapeHtml(canonicalUrl)}" />`);
+  html = replaceHeadValue(html, /<meta\s+property="og:type"\s+content="[^"]*"\s*\/?\s*>/i, `<meta property="og:type" content="${isRecipe ? "article" : "website"}" />`);
   html = replaceHeadValue(html, /<meta\s+property="og:title"\s+content="[^"]*"\s*\/?\s*>/i, `<meta property="og:title" content="${escapeHtml(title)}" />`);
   html = replaceHeadValue(html, /<meta\s+property="og:description"\s+content="[^"]*"\s*\/?\s*>/i, `<meta property="og:description" content="${escapeHtml(description)}" />`);
   html = replaceHeadValue(html, /<meta\s+property="og:url"\s+content="[^"]*"\s*\/?\s*>/i, `<meta property="og:url" content="${escapeHtml(canonicalUrl)}" />`);
-  html = html.replace("</head>", `<meta name="robots" content="index,follow,max-image-preview:large" />\n<script type="application/ld+json">${jsonScript(structuredData)}</script>\n<script>window.__KUTNO_PUBLIC_ROUTE__=${jsonScript(clientRoute)};</script>\n</head>`);
+  html = stripHeadMeta(html, /\s*<meta\s+property="og:image(?::(?:width|height))?"[^>]*>\s*/gi);
+  html = stripHeadMeta(html, /\s*<meta\s+name="twitter:image"[^>]*>\s*/gi);
+  html = replaceHeadValue(html, /<meta\s+name="twitter:card"\s+content="[^"]*"\s*\/?\s*>/i, `<meta name="twitter:card" content="${photo ? "summary_large_image" : "summary"}" />`);
+  const imageMeta = photo ? [
+    `<meta property="og:image" content="${escapeHtml(photo.social)}" />`,
+    `<meta property="og:image:width" content="1200" />`,
+    `<meta property="og:image:height" content="675" />`,
+    `<meta name="twitter:image" content="${escapeHtml(photo.social)}" />`,
+  ].join("\n") : "";
+  html = html.replace("</head>", `${imageMeta ? `${imageMeta}\n` : ""}<meta name="robots" content="index,follow,max-image-preview:large" />\n<script type="application/ld+json">${jsonScript(structuredData)}</script>\n<script>window.__KUTNO_PUBLIC_ROUTE__=${jsonScript(clientRoute)};</script>\n</head>`);
   html = html.replace(/<noscript>[\s\S]*?<\/noscript>/i, routeNoscript(route, route.entries));
 
   if (request.method === "HEAD") html = "";

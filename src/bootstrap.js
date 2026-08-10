@@ -7,6 +7,7 @@ const STYLE_URLS = [
   "/catalog-stability.css?v=3",
   "/manual-mode.css?v=1",
   "/kutno-next.css?v=1",
+  "/recipe-photos.css?v=1",
 ];
 
 function setShellStatus(message, failed = false) {
@@ -107,6 +108,7 @@ async function startApplication() {
 
     const loadExtras = () => Promise.allSettled([
       loadPublicModule("/kutno-features.js?v=5"),
+      loadPublicModule("/recipe-photos.js?v=1"),
       import("./kutno-next.js"),
       import("./kutno-ranking.js"),
     ]);
