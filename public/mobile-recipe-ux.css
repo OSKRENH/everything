@@ -53,6 +53,13 @@
   font-variant-emoji: text;
 }
 
+/* Большой анимированный загрузчик всегда живёт по центру своего блока. */
+.pot-loader-large {
+  margin: 24px auto 0 !important;
+  align-self: center;
+  justify-self: center;
+}
+
 @media (max-width: 700px) {
   .catalog-scroll-sentinel.catalog-show-more-wrap {
     display: flex !important;
@@ -73,6 +80,30 @@
     min-height: 52px !important;
     opacity: 1 !important;
     visibility: visible !important;
+  }
+
+  /* В AM иллюстрация идёт именно после вводного текста, целиком помещается в колонку и не спорит с карточкой. */
+  .swipe-heading {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .swipe-heading > .swipe-illustration {
+    order: 4;
+    width: min(100%, 360px);
+    margin: 24px auto 8px;
+    padding: 0;
+  }
+
+  .swipe-heading > .swipe-illustration img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 180px;
+    object-fit: contain;
+    object-position: center;
+    opacity: .5;
   }
 
   .recipe-sheet {
