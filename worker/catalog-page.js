@@ -1,6 +1,7 @@
 import { enrichRecipeSemantics } from "../src/ingredient-semantics-v3.js";
 import { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
 import { CATALOG_VERSION, RUNTIME_RECIPES } from "./generated/catalog-runtime.js";
+import { recipeImageSet } from "./recipe-images.js";
 
 const DEFAULT_LIMIT = 5;
 const MAX_LIMIT = 12;
@@ -34,6 +35,7 @@ function compactIngredient(item) {
 }
 
 function compactRecipe(recipe, context = null) {
+  const photo = recipeImageSet(recipe);
   const compact = {
     id: String(recipe.id),
     compact: true,
@@ -53,7 +55,8 @@ function compactRecipe(recipe, context = null) {
     missing: [],
     uses: [],
     why: recipe.why || "Проверенный рецепт Кутно",
-    hasPhoto: recipe.hasPhoto === true,
+    hasPhoto: Boolean(photo),
+    photo,
   };
   return context ? enrichRecipeSemantics(compact, context) : compact;
 }
@@ -73,6 +76,7 @@ export function catalogRuntimeRecipe(id) {
 function catalogIndexEntry(recipe) {
   const ingredients = (Array.isArray(recipe?.ingredients) ? recipe.ingredients : []).map((item) => String(item?.name || "").trim()).filter(Boolean);
   const cuisine = String(recipe?.cuisine || "Другая кухня");
+  const photo = recipeImageSet(recipe);
   return {
     id: String(recipe.id),
     title: String(recipe.title || ""),
@@ -84,6 +88,8 @@ function catalogIndexEntry(recipe) {
     minutes: Number(recipe.minutes) || 30,
     ingredients,
     searchable: normalized([recipe.title, cuisine, ...ingredients].join(" ")),
+    hasPhoto: Boolean(photo),
+    photo,
   };
 }
 
