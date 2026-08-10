@@ -78,7 +78,7 @@ test("/recipe/slug открывает штатный большой recipe-sheet
   await page.goto("/");
   await expect(page.locator(".recipe-sheet")).toBeVisible();
   await expect(page.locator("#recipe-title")).toHaveText("Публичный рецепт");
-  await expect(page.locator(".recipe-sheet")).toContainText("Ингредиенты");
+  await expect(page.locator(".recipe-sheet")).toContainText("Что понадобится");
   await expect(page.locator(".recipe-sheet")).toContainText("Как готовить");
   await expect(page.getByRole("button", { name: /В избранное/ })).toBeVisible();
   expect(new URL(page.url()).pathname).toBe("/recipe/publichnyi-retsept");
