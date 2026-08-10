@@ -31,8 +31,11 @@ jobs:
         run: npm test
       - name: Build
         run: npx vite build
-      - name: Worker dry run
-        run: npx wrangler deploy --dry-run
+      - name: Worker dry run and bundle budget
+        run: |
+          rm -rf .worker-dry
+          npx wrangler deploy --dry-run --outdir .worker-dry
+          node scripts/check-worker-bundle.mjs .worker-dry
       - name: Install browser QA
         run: |
           npm install --no-save @playwright/test@1.55.0
