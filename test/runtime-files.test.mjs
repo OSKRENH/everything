@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const runtimeFiles = [
-  "vite.config.js", "worker/index.js", "worker/entry.js", "worker/matching-entry.js", "worker/next-entry.js", "worker/routes.js", "worker/telemetry.js", "worker/catalog-cursor.js", "worker/catalog-page.js", "worker/lite-page.js", "worker/generated/catalog-runtime.js", "worker/feature-state-migration.js", "worker/fresh-sitemap.js", "worker/public-app-pages.js", "worker/recipe-images.js", "worker/seo-pages.js",
+  "vite.config.js", "worker/index.js", "worker/entry.js", "worker/matching-entry.js", "worker/next-entry.js", "worker/routes.js", "worker/telemetry.js", "worker/catalog-cursor.js", "worker/catalog-page.js", "worker/catalog-runtime-store.js", "worker/lite-page.js", "worker/generated/catalog-runtime.js", "worker/feature-state-migration.js", "worker/fresh-sitemap.js", "worker/public-app-pages.js", "worker/recipe-images.js", "worker/seo-pages.js",
   "src/bootstrap.js", "src/ingredient-semantics.js", "src/ingredient-semantics-v2.js", "src/ingredient-semantics-v3.js", "src/kutno-api.js", "src/kutno-store.js", "src/kutno-next.js", "src/kutno-bridge.inject.js", "src/matching-engine.inject.js", "src/fetch-reset.inject.js", "src/matching-fixes.inject.js", "src/catalog-performance.inject.js", "src/catalog-facets.inject.js", "src/catalog-render-meta.inject.js", "src/catalog-scroll-fill.inject.js", "src/swipe-full-catalog.inject.js", "src/matching-core-v4.inject.js", "src/kitchen-simplified.inject.js", "src/kitchen-smart-suggestions.inject.js", "src/catalog-detail.inject.js", "src/audit-v7.inject.js",
   "public/kutno-features.js", "public/feature-sync-throttle.js", "public/recipe-photos.js", "public/sw.js",
 ];
@@ -89,6 +89,7 @@ test("Worker использует компактный runtime-каталог и
   const nextWorker = readFileSync("worker/next-entry.js", "utf8");
   const routes = readFileSync("worker/routes.js", "utf8");
   const catalogPage = readFileSync("worker/catalog-page.js", "utf8");
+  const runtimeStore = readFileSync("worker/catalog-runtime-store.js", "utf8");
   const seo = readFileSync("worker/seo-pages.js", "utf8");
   const lite = readFileSync("worker/lite-page.js", "utf8");
   const v1 = readFileSync("src/ingredient-semantics.js", "utf8");
@@ -96,7 +97,7 @@ test("Worker использует компактный runtime-каталог и
   const wrangler = readFileSync("wrangler.jsonc", "utf8");
   const workerBuild = readFileSync("scripts/build-worker.mjs", "utf8");
 
-  assert.match(matchingWorker, /RUNTIME_RECIPES/);
+  assert.match(matchingWorker, /loadRuntimeRecipes/);
   assert.match(matchingWorker, /matchingCatalog/);
   assert.match(matchingWorker, /ingredientUnlockSuggestions/);
   assert.match(matchingWorker, /!incoming\.aiIdeas/);
@@ -111,10 +112,13 @@ test("Worker использует компактный runtime-каталог и
   assert.match(routes, /custom\("assets"/);
   assert.match(routes, /ensureFeatureStateTextSchema/);
   assert.match(catalogPage, /RUNTIME_RECIPES/);
+  assert.match(catalogPage, /loadRuntimeRecipes/);
   assert.match(catalogPage, /recipe-data/);
   assert.match(catalogPage, /RECIPE_BODIES/);
   assert.match(catalogPage, /serveCatalogIndex/);
   assert.match(catalogPage, /serveRecipeDetail/);
+  assert.match(runtimeStore, /\/recipe-data\/catalog-runtime\.json/);
+  assert.match(runtimeStore, /env\?\.ASSETS\?\.fetch/);
   assert.doesNotMatch(catalogPage, /recipe-catalog\.js|simple-recipes|home-recipes|manual-recipes/);
   assert.doesNotMatch(seo, /recipe-catalog\.js|simple-recipes|home-recipes|manual-recipes/);
   assert.doesNotMatch(lite, /recipe-catalog\.js|simple-recipes|home-recipes|manual-recipes/);
