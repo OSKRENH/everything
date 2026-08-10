@@ -22,7 +22,7 @@ function recipe(index) {
   };
 }
 
-const catalog = Array.from({ length: 11 }, (_, index) => recipe(index));
+const catalog = Array.from({ length: 25 }, (_, index) => recipe(index));
 
 async function installApi(page) {
   let catalogRequests = 0;
@@ -104,13 +104,15 @@ test("запасы предупреждают о нехватке и обрат�
   expect(feedback.some((item) => item.reason === "too-long")).toBeTruthy();
 });
 
-test("каталог получает вторую страницу только у конца списка", async ({ page }) => {
+test("каталог получает следующую страницу только после кнопки Показать ещё", async ({ page }) => {
   const api = await installApi(page);
   await page.goto("/");
   await page.getByRole("button", { name: "База", exact: true }).click();
-  await expect(page.locator(".catalog-card")).toHaveCount(5);
+  await expect(page.locator(".catalog-card")).toHaveCount(12);
   expect(api.catalogRequests()).toBe(1);
-  await page.locator("[data-catalog-scroll-sentinel]").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(900);
+  expect(api.catalogRequests()).toBe(1);
+  await page.getByRole("button", { name: /Показать ещё/ }).click();
   await expect.poll(() => api.catalogRequests()).toBe(2);
-  await expect.poll(() => page.locator(".catalog-card").count()).toBeGreaterThanOrEqual(6);
+  await expect(page.locator(".catalog-card")).toHaveCount(24);
 });
