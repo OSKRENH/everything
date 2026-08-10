@@ -52,8 +52,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sed -i '0,/\${SITE_ORIGIN}/s//\\${SITE_ORIGIN}/' /tmp/bootstrap-static-recipe-assets.mjs
-          sed -i 's/\${directory}/\\${directory}/g' /tmp/bootstrap-static-recipe-assets.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path('/tmp/bootstrap-static-recipe-assets.mjs')
+          source = path.read_text()
+          nested = r'(?:SITE_ORIGIN|directory|entry\.name|entry\.pathname|photo\.slug|fourcc|slugs\.size)'
+          source = re.sub(rf'(?<!\\)\$\{{({nested})\}}', lambda m: '\\' + m.group(0), source)
+          path.write_text(source)
+          PY
           node /tmp/bootstrap-static-recipe-assets.mjs
 
       - name: Install dependencies
