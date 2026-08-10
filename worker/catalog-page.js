@@ -38,6 +38,19 @@ function displayAmount(item, portions, baseServings) {
   return `${displayed} ${unit}`.trim();
 }
 
+function normalizePreparedIngredient(item) {
+  const next = { ...item };
+  const name = normalized(next?.name);
+  if (next?.pantry === true && /соль|перец|паприк|спец|приправа|зелень/.test(name)) {
+    next.amount = "по вкусу";
+    return next;
+  }
+  const amount = String(next?.amount || "").trim();
+  const piece = amount.match(/^(\d+(?:[.,]\d+)?)\s*(шт\.?|зубч\.?|гол\.?)$/i);
+  if (piece) next.amount = `${Math.max(1, Math.ceil(Number(piece[1].replace(",", "."))))} ${piece[2]}`;
+  return next;
+}
+
 function glossaryFor(name = "") {
   const signature = normalized(name);
   return Object.entries(INGREDIENT_GLOSSARY).find(([key]) => {
@@ -106,6 +119,7 @@ function finalPreparedRecipe(recipe, portions, kind) {
     ...recipe,
     id: String(recipe.id || recipe.source?.id || `${kind}:${normalized(recipe.title)}`),
     portions: Number(recipe.portions) || portions,
+    ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map(normalizePreparedIngredient),
     match: null,
     missing: Array.isArray(recipe.missing) ? recipe.missing : [],
     uses: Array.isArray(recipe.uses) ? recipe.uses : [],
