@@ -27,6 +27,8 @@ jobs:
         run: |
           npm install --no-save @playwright/test@1.55.0
           npx playwright install --with-deps chromium webkit
+      - name: QA public recipe routes
+        run: npx playwright test test/e2e/public-routes.spec.mjs
       - name: QA catalog first twelve
         run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "первые двенадцать карточек"
       - name: QA catalog total

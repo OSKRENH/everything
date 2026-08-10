@@ -101,6 +101,7 @@ async function startApplication() {
 
   try {
     await import("./main.js");
+    await import("./public-routes.js");
     document.documentElement.dataset.kutnoReady = "true";
     window.dispatchEvent(new CustomEvent("kutno:ready"));
 
