@@ -1,6 +1,7 @@
 import safeWorker from "./safe-entry.js";
 import { serveCatalogIndex, serveCatalogPage, serveRecipeDetail } from "./catalog-page.js";
 import { serveLitePage } from "./lite-page.js";
+import { serveCrawlerRules, servePublicAppPage } from "./public-app-pages.js";
 import { serveSeoRequest } from "./seo-pages.js";
 export { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
 
@@ -117,6 +118,12 @@ export default {
         url.hostname = "kutno.ru";
         return Response.redirect(url.toString(), 308);
       }
+
+      const crawlerResponse = serveCrawlerRules(request);
+      if (crawlerResponse) return timedResponse(crawlerResponse, "robots", startedAt, requestId);
+
+      const publicAppResponse = await servePublicAppPage(request, env);
+      if (publicAppResponse) return timedResponse(publicAppResponse, "public-app", startedAt, requestId);
 
       const seoResponse = serveSeoRequest(request);
       if (seoResponse) {
