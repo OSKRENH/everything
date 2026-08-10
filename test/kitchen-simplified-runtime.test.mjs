@@ -55,8 +55,9 @@ test("Worker не обрезает выдачу до трёх и использ�
   assert.match(worker, /MATCHING_PAGE_SIZE = 20/);
   assert.match(worker, /total: recipes\.length/);
   assert.match(worker, /offset \+ page\.length < recipes\.length/);
-  assert.match(worker, /catalogSources/);
+  assert.match(worker, /RUNTIME_RECIPES/);
   assert.match(worker, /matchingCatalog/);
+  assert.doesNotMatch(worker, /catalogSources/);
   assert.doesNotMatch(worker, /recipes\.slice\(0, 3\)/);
   assert.match(worker, /body\.maxMinutes > 0/);
   assert.match(worker, /difficultyRank/);
@@ -64,9 +65,7 @@ test("Worker не обрезает выдачу до трёх и использ�
 
 test("финальная выдача всегда делится на три понятные группы", () => {
   const audit = readFileSync("src/audit-v7.inject.js", "utf8");
-  for (const title of ["Готовьте сейчас", "Купить один продукт", "Почти подходит"]) {
-    assert.match(audit, new RegExp(title));
-  }
+  for (const title of ["Готовьте сейчас", "Купить один продукт", "Почти подходит"]) assert.match(audit, new RegExp(title));
   assert.match(audit, /analysis\.requiredMissing\.length === 1/);
   assert.match(audit, /analysis\.requiredMissing\.length >= 2/);
 });
