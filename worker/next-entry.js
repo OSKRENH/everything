@@ -2,9 +2,9 @@ import matchingWorker from "./matching-entry.js";
 import { serveCatalogIndex, serveCatalogPage, serveRecipeDetail } from "./catalog-page.js";
 import { serveLitePage } from "./lite-page.js";
 import { serveCrawlerRules, servePublicAppPage } from "./public-app-pages.js";
-import { serveSeoRequest } from "./seo-pages.js";
 import { ensureFeatureStateTextSchema } from "./feature-state-migration.js";
 import { serveFreshSitemap } from "./fresh-sitemap.js";
+import { serveRecipeImage, serveRecipePhotoManifest } from "./recipe-images.js";
 export { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
 
 const MAX_TELEMETRY_EVENTS = 20;
@@ -127,11 +127,14 @@ export default {
       const sitemapResponse = serveFreshSitemap(request);
       if (sitemapResponse) return timedResponse(sitemapResponse, "sitemap", startedAt, requestId);
 
+      const imageResponse = await serveRecipeImage(request, env);
+      if (imageResponse) return timedResponse(imageResponse, "recipe-image", startedAt, requestId);
+
+      const photoManifestResponse = serveRecipePhotoManifest(request);
+      if (photoManifestResponse) return timedResponse(photoManifestResponse, "photo-manifest", startedAt, requestId);
+
       const publicAppResponse = await servePublicAppPage(request, env);
       if (publicAppResponse) return timedResponse(publicAppResponse, "public-app", startedAt, requestId);
-
-      const seoResponse = serveSeoRequest(request);
-      if (seoResponse) return timedResponse(seoResponse, "seo", startedAt, requestId);
 
       if ((url.pathname === "/lite" || url.pathname === "/lite/recipe") && request.method === "GET") {
         return timedResponse(serveLitePage(request), "lite", startedAt, requestId);
