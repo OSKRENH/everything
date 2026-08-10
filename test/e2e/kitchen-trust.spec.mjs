@@ -165,9 +165,9 @@ test("близкие варианты показываются сразу тре
   await addKitchenProductThroughInput(page, "яйца");
   await page.getByRole("button", { name: "Предложить блюда" }).click();
 
-  await expect(page.getByRole("heading", { name: "Готовьте сейчас" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Купить один продукт" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Почти подходит" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Готовьте сейчас", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Купить один продукт", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Почти подходит", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Яйца прямо сейчас", exact: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Омлет с одной покупкой", exact: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Омлет почти подходит", exact: true }).first()).toBeVisible();
