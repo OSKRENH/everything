@@ -1,0 +1,2766 @@
+
+> kutno@1.0.0 test
+> node --test test/*.test.mjs
+
+TAP version 13
+# Subtest: по умолчанию базовыми считаются соль, вода, растительное масло и сахар
+ok 1 - по умолчанию базовыми считаются соль, вода, растительное масло и сахар
+  ---
+  duration_ms: 2.140289
+  type: 'test'
+  ...
+# Subtest: сахар по умолчанию не блокирует рецепт
+ok 2 - сахар по умолчанию не блокирует рецепт
+  ---
+  duration_ms: 10.589607
+  type: 'test'
+  ...
+# Subtest: оливковое масло не считается базовым и использует растительное только как замену
+ok 3 - оливковое масло не считается базовым и использует растительное только как замену
+  ---
+  duration_ms: 5.906499
+  type: 'test'
+  ...
+# Subtest: чёрный перец без подтверждения остаётся необязательным
+ok 4 - чёрный перец без подтверждения остаётся необязательным
+  ---
+  duration_ms: 9.236122
+  type: 'test'
+  ...
+# Subtest: расширенную бакалею можно включить вручную
+ok 5 - расширенную бакалею можно включить вручную
+  ---
+  duration_ms: 0.256808
+  type: 'test'
+  ...
+# Subtest: первая страница содержит пять лёгких карточек и полные фильтры
+ok 6 - первая страница содержит пять лёгких карточек и полные фильтры
+  ---
+  duration_ms: 120.694888
+  type: 'test'
+  ...
+# Subtest: индекс загружается отдельно и содержит всю базу
+ok 7 - индекс загружается отдельно и содержит всю базу
+  ---
+  duration_ms: 11.997539
+  type: 'test'
+  ...
+# Subtest: полный рецепт приходит только по id
+ok 8 - полный рецепт приходит только по id
+  ---
+  duration_ms: 24.460994
+  type: 'test'
+  ...
+# Subtest: все страницы проходят каталог без повторов и пропусков
+ok 9 - все страницы проходят каталог без повторов и пропусков
+  ---
+  duration_ms: 721.987696
+  type: 'test'
+  ...
+# Subtest: повреждённый курсор безопасно открывает первую страницу
+ok 10 - повреждённый курсор безопасно открывает первую страницу
+  ---
+  duration_ms: 12.722856
+  type: 'test'
+  ...
+# Subtest: обычный подбор работает без AI binding и возвращает лёгкие карточки
+ok 11 - обычный подбор работает без AI binding и возвращает лёгкие карточки
+  ---
+  duration_ms: 2046.307924
+  type: 'test'
+  ...
+# Subtest: одно яйцо не считается достаточным для омлета на четыре яйца
+ok 12 - одно яйцо не считается достаточным для омлета на четыре яйца
+  ---
+  duration_ms: 1592.517134
+  type: 'test'
+  ...
+# Subtest: подсказки показывают продукт, который открывает новые блюда
+ok 13 - подсказки показывают продукт, который открывает новые блюда
+  ---
+  duration_ms: 689.406959
+  type: 'test'
+  ...
+# Subtest: первая страница каталога остаётся меньше 16 КБ
+ok 14 - первая страница каталога остаётся меньше 16 КБ
+  ---
+  duration_ms: 13.254028
+  type: 'test'
+  ...
+# Subtest: яблочные оладьи попадают в топ-3 поверх одноингредиентных яиц
+ok 15 - яблочные оладьи попадают в топ-3 поверх одноингредиентных яиц
+  ---
+  duration_ms: 2272.423111
+  type: 'test'
+  ...
+# Subtest: яйца, молоко и мука дают оладьи в топ-3, а не три блюда из одних яиц
+ok 16 - яйца, молоко и мука дают оладьи в топ-3, а не три блюда из одних яиц
+  ---
+  duration_ms: 2200.82401
+  type: 'test'
+  ...
+# Subtest: сырники остаются первыми
+ok 17 - сырники остаются первыми
+  ---
+  duration_ms: 2013.648581
+  type: 'test'
+  ...
+# Subtest: драники остаются первыми
+ok 18 - драники остаются первыми
+  ---
+  duration_ms: 1790.249964
+  type: 'test'
+  ...
+# Subtest: капуста, морковь, лук и картофель: топ-3 задействует минимум три продукта
+ok 19 - капуста, морковь, лук и картофель: топ-3 задействует минимум три продукта
+  ---
+  duration_ms: 2178.244552
+  type: 'test'
+  ...
+# Subtest: 25 бытовых сочетаний имеют рецепт минимум с двумя продуктами пользователя
+ok 20 - 25 бытовых сочетаний имеют рецепт минимум с двумя продуктами пользователя
+  ---
+  duration_ms: 36542.34165
+  type: 'test'
+  ...
+# Subtest: семь новых бытовых рецептов входят в домашний каталог
+not ok 21 - семь новых бытовых рецептов входят в домашний каталог
+  ---
+  duration_ms: 1.346781
+  type: 'test'
+  location: '/home/runner/work/everything/everything/test/final-audit.test.mjs:66:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + undefined
+    - 'kutno-home-catalog'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'kutno-home-catalog'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/runner/work/everything/everything/test/final-audit.test.mjs:75:12)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: SEO stale-кэш в живых обработчиках ограничен десятью минутами и purge остаётся в deploy workflow
+ok 22 - SEO stale-кэш в живых обработчиках ограничен десятью минутами и purge остаётся в deploy workflow
+  ---
+  duration_ms: 6.388424
+  type: 'test'
+  ...
+# Subtest: D1 имеет версионированную миграцию TEXT id и привязку к production database id
+ok 23 - D1 имеет версионированную миграцию TEXT id и привязку к production database id
+  ---
+  duration_ms: 2.568748
+  type: 'test'
+  ...
+# Subtest: generate на 6 порций не показывает дробные яйца и другие штучные ингредиенты
+ok 24 - generate на 6 порций не показывает дробные яйца и другие штучные ингредиенты
+  ---
+  duration_ms: 2382.585916
+  type: 'test'
+  ...
+# Subtest: общее масло считается растительным или подсолнечным
+ok 25 - общее масло считается растительным или подсолнечным
+  ---
+  duration_ms: 1.316237
+  type: 'test'
+  ...
+# Subtest: сливочное и оливковое масло остаются отдельными продуктами
+ok 26 - сливочное и оливковое масло остаются отдельными продуктами
+  ---
+  duration_ms: 0.815439
+  type: 'test'
+  ...
+# Subtest: яичница с общим маслом доступна при базовом растительном масле
+ok 27 - яичница с общим маслом доступна при базовом растительном масле
+  ---
+  duration_ms: 3.66401
+  type: 'test'
+  ...
+# Subtest: главная явно сообщает поисковикам бренд Кутно
+ok 28 - главная явно сообщает поисковикам бренд Кутно
+  ---
+  duration_ms: 0.808038
+  type: 'test'
+  ...
+# Subtest: загрузочный текст не должен становиться поисковым сниппетом
+ok 29 - загрузочный текст не должен становиться поисковым сниппетом
+  ---
+  duration_ms: 0.259321
+  type: 'test'
+  ...
+# Subtest: поисковый favicon использует стабильный квадратный PNG
+ok 30 - поисковый favicon использует стабильный квадратный PNG
+  ---
+  duration_ms: 0.14971
+  type: 'test'
+  ...
+# Subtest: базовый набор по умолчанию остаётся консервативным
+ok 31 - базовый набор по умолчанию остаётся консервативным
+  ---
+  duration_ms: 1.632672
+  type: 'test'
+  ...
+# Subtest: синонимы считаются точным совпадением
+ok 32 - синонимы считаются точным совпадением
+  ---
+  duration_ms: 0.753939
+  type: 'test'
+  ...
+# Subtest: репчатый и зелёный лук не считаются одним продуктом
+ok 33 - репчатый и зелёный лук не считаются одним продуктом
+  ---
+  duration_ms: 0.552352
+  type: 'test'
+  ...
+# Subtest: кокосовое и обычное молоко не считаются одним продуктом
+ok 34 - кокосовое и обычное молоко не считаются одним продуктом
+  ---
+  duration_ms: 0.222668
+  type: 'test'
+  ...
+# Subtest: частный вид подходит общей категории, а обратное считается заменой
+ok 35 - частный вид подходит общей категории, а обратное считается заменой
+  ---
+  duration_ms: 0.328473
+  type: 'test'
+  ...
+# Subtest: базовые продукты не блокируют рецепт
+ok 36 - базовые продукты не блокируют рецепт
+  ---
+  duration_ms: 4.09231
+  type: 'test'
+  ...
+# Subtest: пустой список техники не фильтрует бытовые рецепты
+ok 37 - пустой список техники не фильтрует бытовые рецепты
+  ---
+  duration_ms: 1.078847
+  type: 'test'
+  ...
+# Subtest: технику можно включить как явный строгий фильтр
+ok 38 - технику можно включить как явный строгий фильтр
+  ---
+  duration_ms: 1.704878
+  type: 'test'
+  ...
+# Subtest: необязательная зелень не переводит рецепт в покупки
+ok 39 - необязательная зелень не переводит рецепт в покупки
+  ---
+  duration_ms: 4.451018
+  type: 'test'
+  ...
+# Subtest: один отсутствующий главный продукт попадает в отдельную группу
+ok 40 - один отсутствующий главный продукт попадает в отдельную группу
+  ---
+  duration_ms: 4.814653
+  type: 'test'
+  ...
+# Subtest: приоритетный продукт заметно повышает рейтинг
+ok 41 - приоритетный продукт заметно повышает рейтинг
+  ---
+  duration_ms: 4.915591
+  type: 'test'
+  ...
+# Subtest: основная форма остаётся простой, а Worker не затирает дополнительные параметры
+ok 42 - основная форма остаётся простой, а Worker не затирает дополнительные параметры
+  ---
+  duration_ms: 1.951281
+  type: 'test'
+  ...
+# Subtest: результаты содержат сортировки и постепенное раскрытие
+ok 43 - результаты содержат сортировки и постепенное раскрытие
+  ---
+  duration_ms: 0.402161
+  type: 'test'
+  ...
+# Subtest: Worker не обрезает выдачу до трёх и использует честную пагинацию
+not ok 44 - Worker не обрезает выдачу до трёх и использует честную пагинацию
+  ---
+  duration_ms: 2.759899
+  type: 'test'
+  location: '/home/runner/work/everything/everything/test/kitchen-simplified-runtime.test.mjs:50:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /RUNTIME_RECIPES/. Input:
+    
+    'import featureWorker from "./entry.js";\n' +
+      'import { analyzeRecipe, enrichRecipeSemantics } from "../src/ingredient-semantics-v3.js";\n' +
+      'import { applyMatchingUserContext, matchingPayloadFromContext } from "../src/matching-user-context.js";\n' +
+      'import { loadRuntimeRecipes } from "./catalog-runtime-store.js";\n' +
+      '\n' +
+      'const MATCHING_PAGE_SIZE = 20;\n' +
+      'const RUNTIME_BASE_PORTIONS = 2;\n' +
+      '\n' +
+      'function json(data, status = 200, headers = {}) {\n' +
+      '  return Response.json(data, { status, headers: { "cache-control": "no-store", "x-content-type-options": "nosniff", ...headers } });\n' +
+      '}\n' +
+      '\n' +
+      'function requestWithJson(request, body) {\n' +
+      '  const headers = new Headers(request.headers);\n' +
+      '  headers.delete("content-length");\n' +
+      '  headers.set("content-type", "application/json");\n' +
+      '  return new Request(request.url, { method: request.method, headers, body: JSON.stringify(body) });\n' +
+      '}\n' +
+      '\n' +
+      'function clampNumber(value, fallback, min, max) {\n' +
+      '  const number = Number(value);\n' +
+      '  if (!Number.isFinite(number)) return fallback;\n' +
+      '  return Math.min(max, Math.max(min, number));\n' +
+      '}\n' +
+      '\n' +
+      'function matchingContext(body = {}) {\n' +
+      '  const user = matchingPayloadFromContext(body);\n' +
+      '  return {\n' +
+      '    ingredients: Array.isArray(body.ingredients) ? body.ingredients : [],\n' +
+      '    priorityIngredients: Array.isArray(body.priorityIngredients) ? body.priorityIngredients : [],\n' +
+      '    equipment: body.enforceEquipment === true && Array.isArray(body.equipment) ? body.equipment : [],\n' +
+      '    enforceEquipment: body.enforceEquipment === true,\n' +
+      '    baseIngredients: Array.isArray(body.baseIngredients) ? body.baseIngredients : undefined,\n' +
+      '    pantry: user.pantry,\n' +
+      '    feedback: user.feedback,\n' +
+      '  };\n' +
+      '}\n' +
+      '\n' +
+      'function normalizedTitle(value = "") {\n' +
+      '  return String(value).toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/[^а-яa-z0-9]+/giu, " ").trim();\n' +
+      '}\n' +
+      '\n' +
+      'function mergeRecipes(...groups) {\n' +
+      '  const result = [];\n' +
+      '  const seen = new Set();\n' +
+      '  for (const recipe of groups.flat()) {\n' +
+      '    if (!recipe?.title) continue;\n' +
+      '    const key = String(recipe.id || recipe.source?.id || normalizedTitle(recipe.title));\n' +
+      '    const title = normalizedTitle(recipe.title);\n' +
+      '    if (seen.has(key) || result.some((item) => normalizedTitle(item.title) === title)) continue;\n' +
+      '    seen.add(key);\n' +
+      '    result.push(recipe);\n' +
+      '  }\n' +
+      '  return result;\n' +
+      '}\n' +
+      '\n' +
+      'function scaleAmount(amount, portions) {\n' +
+      '  const text = String(amount || "").trim();\n' +
+      '  if (!text || /по вкусу/i.test(text) || portions === RUNTIME_BASE_PORTIONS) return text;\n' +
+      '  const match = text.match(/^(\\d+(?:[.,]\\d+)?)\\s*(.*)$/u);\n' +
+      '  if (!match) return text;\n' +
+      '  const factor = portions / RUNTIME_BASE_PORTIONS;\n' +
+      '  const unit = String(match[2] || "").trim();\n' +
+      '  const raw = Number(match[1].replace(",", ".")) * factor;\n' +
+      '  let value = raw;\n' +
+      '  if (/^(г|мл)$/iu.test(unit)) value = Math.max(1, Math.round(raw / 5) * 5);\n' +
+      '  else if (/^(?:шт\\.?|зубч\\.?|гол\\.?)$/iu.test(unit)) value = Math.max(1, Math.ceil(raw));\n' +
+      '  else value = Math.max(0.25, Math.round(raw * 4) / 4);\n' +
+      '  const displayed = Number.isInteger(value) ? String(value) : String(value).replace(".", ",");\n' +
+      '  return `${displayed}${unit ? ` ${unit}` : ""}`;\n' +
+      '}\n' +
+      '\n' +
+      'function matchingRecipeFromRuntime(recipe, portions) {\n' +
+      '  const factor = portions / RUNTIME_BASE_PORTIONS;\n' +
+      '  return {\n' +
+      '    id: String(recipe.id),\n' +
+      '    compact: true,\n' +
+      '    title: String(recipe.title || ""),\n' +
+      '    subtitle: String(recipe.subtitle || ""),\n' +
+      '    cuisine: String(recipe.cuisine || "Другая кухня"),\n' +
+      '    flag: String(recipe.flag || "🌍"),\n' +
+      '    course: String(recipe.course || "основное"),\n' +
+      '    protein: String(recipe.protein || "без мяса"),\n' +
+      '    minutes: Number(recipe.minutes) || 30,\n' +
+      '    difficulty: String(recipe.difficulty || "легко"),\n' +
+      '    portions,\n' +
+      '    equipment: Array.isArray(recipe.equipment) ? recipe.equipment.map(String) : [],\n' +
+      '    ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item) => ({\n' +
+      '      name: String(item?.name || ""),\n' +
+      '      amount: scaleAmount(item?.amount, portions),\n' +
+      '      aliases: Array.isArray(item?.aliases) ? item.aliases.map(String).filter(Boolean) : [],\n' +
+      '      pantry: item?.pantry === true,\n' +
+      '      ...(item?.role ? { role: String(item.role) } : {}),\n' +
+      '    })),\n' +
+      '    nutrition: { calories: Math.max(0, Math.round((Number(recipe.nutrition?.calories) || 0) * factor)) },\n' +
+      '    source: recipe.source || {},\n' +
+      '    missing: [],\n' +
+      '    uses: [],\n' +
+      '    why: recipe.why || "Проверенный рецепт Кутно",\n' +
+      '    hasPhoto: recipe.hasPhoto === true,\n' +
+      '  };\n' +
+      '}\n' +
+      '\n' +
+      'async function matchingCatalog(request, env, portions = 2) {\n' +
+      '  const runtime = await loadRuntimeRecipes(request, env);\n' +
+      '  return runtime.map((recipe) => matchingRecipeFromRuntime(recipe, portions));\n' +
+      '}\n' +
+      '\n' +
+      'function difficultyRank(value = "") {\n' +
+      '  const text = String(value).toLocaleLowerCase("ru-RU");\n' +
+      '  if (/очень\\s*прост/.test(text)) return 0;\n' +
+      '  if (/легк|прост/.test(text)) return 1;\n' +
+      '  if (/обыч|сред/.test(text)) return 2;\n' +
+      '  if (/слож|труд/.test(text)) return 3;\n' +
+      '  return 2;\n' +
+      '}\n' +
+      '\n' +
+      'function recipePassesFilters(recipe, body) {\n' +
+      '  if (body.course && body.course !== "все" && recipe.course !== body.course && !(body.course === "перекус" && ["закуска", "салат"].includes(recipe.course))) return false;\n' +
+      '  if (body.maxMinutes > 0 && Number(recipe.minutes) > body.maxMinutes) return false;\n' +
+      '  if (body.difficulty) {\n' +
+      '    const requested = difficultyRank(body.difficulty);\n' +
+      '    if (difficultyRank(recipe.difficulty) > requested) return false;\n' +
+      '  }\n' +
+      '  const excluded = Array.isArray(body.excludeTitles) ? body.excludeTitles.map(normalizedTitle) : [];\n' +
+      '  return !excluded.includes(normalizedTitle(recipe.title));\n' +
+      '}\n' +
+      '\n' +
+      'function groupAllowed(analysis) {\n' +
+      '  return (analysis.requiredMissing?.length || 0) <= 3;\n' +
+      '}\n' +
+      '\n' +
+      'function analyzeWithContext(recipe, context) {\n' +
+      '  return applyMatchingUserContext(recipe, analyzeRecipe(recipe, context), context);\n' +
+      '}\n' +
+      '\n' +
+      'function enrichedWithContext(recipe, context, analysis = analyzeWithContext(recipe, context)) {\n' +
+      '  const enriched = enrichRecipeSemantics(recipe, context);\n' +
+      '  const userOwned = new Set((context.ingredients || []).map(normalizedTitle));\n' +
+      '  const uses = [...new Set(\n' +
+      '    analysis.exactAvailable\n' +
+      '      .filter((item) => item.role !== "base" && item.match?.owned && userOwned.has(normalizedTitle(item.match.owned)))\n' +
+      '      .map((item) => item.match.owned),\n' +
+      '  )];\n' +
+      '  const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;\n' +
+      '  const requiredTotal = analysis.ingredients.filter((item) => item.role === "required").length;\n' +
+      '  return {\n' +
+      '    ...enriched,\n' +
+      '    uses,\n' +
+      '    usedCount: uses.length,\n' +
+      '    coverage: exactRequired / Math.max(1, requiredTotal),\n' +
+      '    matching: {\n' +
+      '      ...(enriched.matching || {}),\n' +
+      '      group: analysis.group,\n' +
+      '      score: analysis.score,\n' +
+      '      reasons: analysis.reasons,\n' +
+      '      missingRequired: analysis.requiredMissing.map((item) => item.name),\n' +
+      '      missingOptional: analysis.optionalMissing.map((item) => item.name),\n' +
+      '      substitutions: analysis.substitutions.map((item) => ({ ingredient: item.name, owned: item.match?.owned || "" })),\n' +
+      '      missingEquipment: analysis.missingEquipment,\n' +
+      '      quantityShortages: analysis.quantityShortages.map((item) => ({ name: item.name, have: `${item.have.quantity} ${item.have.unit}`.trim(), need: item.need })),\n' +
+      '      preferencePenalty: analysis.preferencePenalty,\n' +
+      '    },\n' +
+      '  };\n' +
+      '}\n' +
+      '\n' +
+      'function rankingScore(item) {\n' +
+      '  return item.usedCount * 10 - item.missingCount * 7 - item.optionalMissing - item.substitutions * 2;\n' +
+      '}\n' +
+      '\n' +
+      'function rankRecipes(catalog, body) {\n' +
+      '  const context = matchingContext(body);\n' +
+      '  return catalog\n' +
+      '    .map((recipe) => {\n' +
+      '      const analysis = analyzeWithContext(recipe, context);\n' +
+      '      const enriched = enrichedWithContext(recipe, context, analysis);\n' +
+      '      const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;\n' +
+      '      return {\n' +
+      '        recipe: enriched,\n' +
+      '        analysis,\n' +
+      '        missingCount: analysis.requiredMissing.length,\n' +
+      '        usedCount: enriched.usedCount,\n' +
+      '        exactRequired,\n' +
+      '        substitutions: analysis.substitutions.length,\n' +
+      '        optionalMissing: analysis.optionalMissing.length,\n' +
+      '      };\n' +
+      '    })\n' +
+      '    .filter(({ recipe, analysis }) => recipePassesFilters(recipe, body)\n' +
+      '      && groupAllowed(analysis)\n' +
+      '      && recipe.usedCount >= 1\n' +
+      '      && (!context.enforceEquipment || analysis.missingEquipment.length === 0))\n' +
+      '    .sort((a, b) => rankingScore(b) - rankingScore(a)\n' +
+      '      || a.missingCount - b.missingCount\n' +
+      '      || b.usedCount - a.usedCount\n' +
+      '      || b.exactRequired - a.exactRequired\n' +
+      '      || a.substitutions - b.substitutions\n' +
+      '      || a.optionalMissing - b.optionalMissing\n' +
+      '      || Number(a.recipe.minutes) - Number(b.recipe.minutes)\n' +
+      '      || a.recipe.title.localeCompare(b.recipe.title, "ru"));\n' +
+      '}\n' +
+      '\n' +
+      'function compactMatchedRecipe(recipe) {\n' +
+      '  const missingRequired = Array.isArray(recipe.matching?.missingRequired) ? recipe.matching.missingRequired : [];\n' +
+      '  return {\n' +
+      '    id: recipe.id,\n' +
+      '    compact: true,\n' +
+      '    title: recipe.title,\n' +
+      '    subtitle: recipe.subtitle,\n' +
+      '    cuisine: recipe.cuisine,\n' +
+      '    flag: recipe.flag,\n' +
+      '    course: recipe.course,\n' +
+      '    protein: recipe.protein,\n' +
+      '    minutes: recipe.minutes,\n' +
+      '    difficulty: recipe.difficulty,\n' +
+      '    portions: Number(recipe.portions) || 2,\n' +
+      '    equipment: recipe.equipment || [],\n' +
+      '    ingredients: (recipe.ingredients || []).map((item) => ({ name: item.name, amount: item.amount || "", aliases: item.aliases || [], pantry: item.pantry === true, ...(item.role ? { role: item.role } : {}) })),\n' +
+      '    nutrition: { calories: Number(recipe.nutrition?.calories) || 0 },\n' +
+      '    source: recipe.source,\n' +
+      '    matching: recipe.matching,\n' +
+      '    missing: missingRequired.length ? missingRequired : Array.isArray(recipe.missing) ? recipe.missing : [],\n' +
+      '    uses: Array.isArray(recipe.uses) ? recipe.uses : [],\n' +
+      '    usedCount: Number(recipe.usedCount) || 0,\n' +
+      '    coverage: Number(recipe.coverage) || 0,\n' +
+      '    why: recipe.why,\n' +
+      '  };\n' +
+      '}\n' +
+      '\n' +
+      'function ingredientUnlockSuggestions(catalog, body, limit = 6) {\n' +
+      '  const context = matchingContext(body);\n' +
+      '  const owned = new Set(context.ingredients.map(normalizedTitle));\n' +
+      '  const counts = new Map();\n' +
+      '  for (const recipe of catalog) {\n' +
+      '    if (!recipePassesFilters(recipe, { ...body, course: "все", excludeTitles: [] })) continue;\n' +
+      '    const analysis = analyzeWithContext(recipe, co'... 5645 more characters
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    import featureWorker from "./entry.js";
+    import { analyzeRecipe, enrichRecipeSemantics } from "../src/ingredient-semantics-v3.js";
+    import { applyMatchingUserContext, matchingPayloadFromContext } from "../src/matching-user-context.js";
+    import { loadRuntimeRecipes } from "./catalog-runtime-store.js";
+    
+    const MATCHING_PAGE_SIZE = 20;
+    const RUNTIME_BASE_PORTIONS = 2;
+    
+    function json(data, status = 200, headers = {}) {
+      return Response.json(data, { status, headers: { "cache-control": "no-store", "x-content-type-options": "nosniff", ...headers } });
+    }
+    
+    function requestWithJson(request, body) {
+      const headers = new Headers(request.headers);
+      headers.delete("content-length");
+      headers.set("content-type", "application/json");
+      return new Request(request.url, { method: request.method, headers, body: JSON.stringify(body) });
+    }
+    
+    function clampNumber(value, fallback, min, max) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return fallback;
+      return Math.min(max, Math.max(min, number));
+    }
+    
+    function matchingContext(body = {}) {
+      const user = matchingPayloadFromContext(body);
+      return {
+        ingredients: Array.isArray(body.ingredients) ? body.ingredients : [],
+        priorityIngredients: Array.isArray(body.priorityIngredients) ? body.priorityIngredients : [],
+        equipment: body.enforceEquipment === true && Array.isArray(body.equipment) ? body.equipment : [],
+        enforceEquipment: body.enforceEquipment === true,
+        baseIngredients: Array.isArray(body.baseIngredients) ? body.baseIngredients : undefined,
+        pantry: user.pantry,
+        feedback: user.feedback,
+      };
+    }
+    
+    function normalizedTitle(value = "") {
+      return String(value).toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/[^а-яa-z0-9]+/giu, " ").trim();
+    }
+    
+    function mergeRecipes(...groups) {
+      const result = [];
+      const seen = new Set();
+      for (const recipe of groups.flat()) {
+        if (!recipe?.title) continue;
+        const key = String(recipe.id || recipe.source?.id || normalizedTitle(recipe.title));
+        const title = normalizedTitle(recipe.title);
+        if (seen.has(key) || result.some((item) => normalizedTitle(item.title) === title)) continue;
+        seen.add(key);
+        result.push(recipe);
+      }
+      return result;
+    }
+    
+    function scaleAmount(amount, portions) {
+      const text = String(amount || "").trim();
+      if (!text || /по вкусу/i.test(text) || portions === RUNTIME_BASE_PORTIONS) return text;
+      const match = text.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/u);
+      if (!match) return text;
+      const factor = portions / RUNTIME_BASE_PORTIONS;
+      const unit = String(match[2] || "").trim();
+      const raw = Number(match[1].replace(",", ".")) * factor;
+      let value = raw;
+      if (/^(г|мл)$/iu.test(unit)) value = Math.max(1, Math.round(raw / 5) * 5);
+      else if (/^(?:шт\.?|зубч\.?|гол\.?)$/iu.test(unit)) value = Math.max(1, Math.ceil(raw));
+      else value = Math.max(0.25, Math.round(raw * 4) / 4);
+      const displayed = Number.isInteger(value) ? String(value) : String(value).replace(".", ",");
+      return `${displayed}${unit ? ` ${unit}` : ""}`;
+    }
+    
+    function matchingRecipeFromRuntime(recipe, portions) {
+      const factor = portions / RUNTIME_BASE_PORTIONS;
+      return {
+        id: String(recipe.id),
+        compact: true,
+        title: String(recipe.title || ""),
+        subtitle: String(recipe.subtitle || ""),
+        cuisine: String(recipe.cuisine || "Другая кухня"),
+        flag: String(recipe.flag || "🌍"),
+        course: String(recipe.course || "основное"),
+        protein: String(recipe.protein || "без мяса"),
+        minutes: Number(recipe.minutes) || 30,
+        difficulty: String(recipe.difficulty || "легко"),
+        portions,
+        equipment: Array.isArray(recipe.equipment) ? recipe.equipment.map(String) : [],
+        ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item) => ({
+          name: String(item?.name || ""),
+          amount: scaleAmount(item?.amount, portions),
+          aliases: Array.isArray(item?.aliases) ? item.aliases.map(String).filter(Boolean) : [],
+          pantry: item?.pantry === true,
+          ...(item?.role ? { role: String(item.role) } : {}),
+        })),
+        nutrition: { calories: Math.max(0, Math.round((Number(recipe.nutrition?.calories) || 0) * factor)) },
+        source: recipe.source || {},
+        missing: [],
+        uses: [],
+        why: recipe.why || "Проверенный рецепт Кутно",
+        hasPhoto: recipe.hasPhoto === true,
+      };
+    }
+    
+    async function matchingCatalog(request, env, portions = 2) {
+      const runtime = await loadRuntimeRecipes(request, env);
+      return runtime.map((recipe) => matchingRecipeFromRuntime(recipe, portions));
+    }
+    
+    function difficultyRank(value = "") {
+      const text = String(value).toLocaleLowerCase("ru-RU");
+      if (/очень\s*прост/.test(text)) return 0;
+      if (/легк|прост/.test(text)) return 1;
+      if (/обыч|сред/.test(text)) return 2;
+      if (/слож|труд/.test(text)) return 3;
+      return 2;
+    }
+    
+    function recipePassesFilters(recipe, body) {
+      if (body.course && body.course !== "все" && recipe.course !== body.course && !(body.course === "перекус" && ["закуска", "салат"].includes(recipe.course))) return false;
+      if (body.maxMinutes > 0 && Number(recipe.minutes) > body.maxMinutes) return false;
+      if (body.difficulty) {
+        const requested = difficultyRank(body.difficulty);
+        if (difficultyRank(recipe.difficulty) > requested) return false;
+      }
+      const excluded = Array.isArray(body.excludeTitles) ? body.excludeTitles.map(normalizedTitle) : [];
+      return !excluded.includes(normalizedTitle(recipe.title));
+    }
+    
+    function groupAllowed(analysis) {
+      return (analysis.requiredMissing?.length || 0) <= 3;
+    }
+    
+    function analyzeWithContext(recipe, context) {
+      return applyMatchingUserContext(recipe, analyzeRecipe(recipe, context), context);
+    }
+    
+    function enrichedWithContext(recipe, context, analysis = analyzeWithContext(recipe, context)) {
+      const enriched = enrichRecipeSemantics(recipe, context);
+      const userOwned = new Set((context.ingredients || []).map(normalizedTitle));
+      const uses = [...new Set(
+        analysis.exactAvailable
+          .filter((item) => item.role !== "base" && item.match?.owned && userOwned.has(normalizedTitle(item.match.owned)))
+          .map((item) => item.match.owned),
+      )];
+      const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;
+      const requiredTotal = analysis.ingredients.filter((item) => item.role === "required").length;
+      return {
+        ...enriched,
+        uses,
+        usedCount: uses.length,
+        coverage: exactRequired / Math.max(1, requiredTotal),
+        matching: {
+          ...(enriched.matching || {}),
+          group: analysis.group,
+          score: analysis.score,
+          reasons: analysis.reasons,
+          missingRequired: analysis.requiredMissing.map((item) => item.name),
+          missingOptional: analysis.optionalMissing.map((item) => item.name),
+          substitutions: analysis.substitutions.map((item) => ({ ingredient: item.name, owned: item.match?.owned || "" })),
+          missingEquipment: analysis.missingEquipment,
+          quantityShortages: analysis.quantityShortages.map((item) => ({ name: item.name, have: `${item.have.quantity} ${item.have.unit}`.trim(), need: item.need })),
+          preferencePenalty: analysis.preferencePenalty,
+        },
+      };
+    }
+    
+    function rankingScore(item) {
+      return item.usedCount * 10 - item.missingCount * 7 - item.optionalMissing - item.substitutions * 2;
+    }
+    
+    function rankRecipes(catalog, body) {
+      const context = matchingContext(body);
+      return catalog
+        .map((recipe) => {
+          const analysis = analyzeWithContext(recipe, context);
+          const enriched = enrichedWithContext(recipe, context, analysis);
+          const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;
+          return {
+            recipe: enriched,
+            analysis,
+            missingCount: analysis.requiredMissing.length,
+            usedCount: enriched.usedCount,
+            exactRequired,
+            substitutions: analysis.substitutions.length,
+            optionalMissing: analysis.optionalMissing.length,
+          };
+        })
+        .filter(({ recipe, analysis }) => recipePassesFilters(recipe, body)
+          && groupAllowed(analysis)
+          && recipe.usedCount >= 1
+          && (!context.enforceEquipment || analysis.missingEquipment.length === 0))
+        .sort((a, b) => rankingScore(b) - rankingScore(a)
+          || a.missingCount - b.missingCount
+          || b.usedCount - a.usedCount
+          || b.exactRequired - a.exactRequired
+          || a.substitutions - b.substitutions
+          || a.optionalMissing - b.optionalMissing
+          || Number(a.recipe.minutes) - Number(b.recipe.minutes)
+          || a.recipe.title.localeCompare(b.recipe.title, "ru"));
+    }
+    
+    function compactMatchedRecipe(recipe) {
+      const missingRequired = Array.isArray(recipe.matching?.missingRequired) ? recipe.matching.missingRequired : [];
+      return {
+        id: recipe.id,
+        compact: true,
+        title: recipe.title,
+        subtitle: recipe.subtitle,
+        cuisine: recipe.cuisine,
+        flag: recipe.flag,
+        course: recipe.course,
+        protein: recipe.protein,
+        minutes: recipe.minutes,
+        difficulty: recipe.difficulty,
+        portions: Number(recipe.portions) || 2,
+        equipment: recipe.equipment || [],
+        ingredients: (recipe.ingredients || []).map((item) => ({ name: item.name, amount: item.amount || "", aliases: item.aliases || [], pantry: item.pantry === true, ...(item.role ? { role: item.role } : {}) })),
+        nutrition: { calories: Number(recipe.nutrition?.calories) || 0 },
+        source: recipe.source,
+        matching: recipe.matching,
+        missing: missingRequired.length ? missingRequired : Array.isArray(recipe.missing) ? recipe.missing : [],
+        uses: Array.isArray(recipe.uses) ? recipe.uses : [],
+        usedCount: Number(recipe.usedCount) || 0,
+        coverage: Number(recipe.coverage) || 0,
+        why: recipe.why,
+      };
+    }
+    
+    function ingredientUnlockSuggestions(catalog, body, limit = 6) {
+      const context = matchingContext(body);
+      const owned = new Set(context.ingredients.map(normalizedTitle));
+      const counts = new Map();
+      for (const recipe of catalog) {
+        if (!recipePassesFilters(recipe, { ...body, course: "все", excludeTitles: [] })) continue;
+        const analysis = analyzeWithContext(recipe, context);
+        if (analysis.requiredMissing?.length !== 1) continue;
+        const name = String(analysis.requiredMissing[0]?.name || "").trim();
+        const key = normalizedTitle(name);
+        if (!name || !key || owned.has(key)) continue;
+        const current = counts.get(key) || { name, count: 0 };
+        current.count += 1;
+        if (name.length < current.name.length) current.name = name;
+        counts.set(key, current);
+      }
+      return [...counts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ru")).slice(0, limit);
+    }
+    
+    async function runAiIdeas(body, request, env, ctx) {
+      const generationBody = { ...body, equipment: body.enforceEquipment ? body.equipment : [], portions: body.portions };
+      const response = await featureWorker.fetch(requestWithJson(request, generationBody), env, ctx);
+      const data = await response.clone().json().catch(() => null);
+      if (!data) return { response, data: null, recipes: [] };
+      const recipes = Array.isArray(data.recipes) ? rankRecipes(data.recipes, body).map((item) => compactMatchedRecipe(item.recipe)) : [];
+      return { response, data, recipes };
+    }
+    
+    function resultResponse(recipes, body, { source = "deterministic-catalog", suggestions = [], extra = {}, hasMore = false } = {}) {
+      return json({
+        ...extra,
+        recipes,
+        suggestions,
+        hasMore,
+        source,
+        relaxation: null,
+        originalFilters: {
+          searchMode: body.searchMode,
+          course: body.course,
+          portions: body.portions,
+          maxMinutes: body.maxMinutes,
+          difficulty: body.difficulty || "",
+        },
+      });
+    }
+    
+    function pagedResultResponse(recipes, body, options = {}) {
+      const offset = Math.max(0, Number(body.offset) || 0);
+      const page = recipes.slice(offset, offset + MATCHING_PAGE_SIZE);
+      return resultResponse(page, body, {
+        ...options,
+        extra: { ...(options.extra || {}), total: recipes.length, offset },
+        hasMore: offset + page.length < recipes.length,
+      });
+    }
+    
+    function normalizedBody(body = {}) {
+      const difficulty = typeof body.difficulty === "string" && body.difficulty.trim() ? body.difficulty.trim() : undefined;
+      return {
+        ...body,
+        maxMinutes: Math.round(clampNumber(body.maxMinutes, 0, 0, 1440)),
+        portions: Math.round(clampNumber(body.portions, 2, 1, 24)),
+        offset: Math.floor(clampNumber(body.offset, 0, 0, 10000)),
+        priorityIngredients: Array.isArray(body.priorityIngredients) ? body.priorityIngredients.filter(Boolean) : [],
+        difficulty,
+        searchMode: body.searchMode === "plus-one" ? "plus-one" : "strict",
+        course: ["все", "завтрак", "суп", "основное", "перекус", "салат", "закуска", "соус"].includes(body.course) ? body.course : "все",
+        enforceEquipment: body.enforceEquipment === true,
+      };
+    }
+    
+    async function smartGenerate(request, env, ctx) {
+      const incoming = await request.clone().json().catch(() => ({}));
+      const ingredients = Array.isArray(incoming.ingredients) ? incoming.ingredients.filter((item) => String(item || "").trim()) : [];
+      if (!ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
+      const body = normalizedBody({ ...incoming, ingredients });
+      const catalog = await matchingCatalog(request, env, body.portions);
+      const suggestions = ingredientUnlockSuggestions(catalog, body);
+      const catalogRanked = rankRecipes(catalog, body).map(({ recipe }) => compactMatchedRecipe(recipe));
+    
+      if (catalogRanked.length && !incoming.aiIdeas) return pagedResultResponse(catalogRanked, body, { suggestions });
+      if (catalogRanked.length && incoming.aiIdeas) {
+        const generated = await runAiIdeas(body, request, env, ctx);
+        const combined = mergeRecipes(catalogRanked, generated.recipes);
+        return pagedResultResponse(combined, body, { source: generated.recipes.length ? "deterministic-plus-ai" : "deterministic-catalog", suggestions, extra: generated.data || {} });
+      }
+    
+      if (!incoming.aiIdeas) return pagedResultResponse([], body, { suggestions, extra: { error: suggestions.length ? "Добавьте один из предложенных продуктов — появятся новые варианты" : "Для этого набора пока нет близкого рецепта" } });
+      const generated = await runAiIdeas(body, request, env, ctx);
+      if (generated.recipes.length) return pagedResultResponse(generated.recipes, body, { source: "workers-ai", suggestions, extra: generated.data || {} });
+      if (!generated.data && !generated.response.ok) return generated.response;
+      return pagedResultResponse([], body, { suggestions, extra: { error: suggestions.length ? "Добавьте один из предложенных продуктов" : "Попробуйте другой набор продуктов" } });
+    }
+    
+    async function matchingSuggestions(request, env) {
+      const url = new URL(request.url);
+      const body = normalizedBody({
+        ingredients: url.searchParams.getAll("ingredient"),
+        equipment: url.searchParams.getAll("equipment"),
+        baseIngredients: url.searchParams.getAll("base"),
+        portions: url.searchParams.get("portions") || 2,
+        enforceEquipment: url.searchParams.get("enforceEquipment") === "true",
+        course: "все",
+        searchMode: "strict",
+      });
+      if (!body.ingredients.length) return json({ suggestions: [] });
+      const catalog = await matchingCatalog(request, env, body.portions);
+      return json({ suggestions: ingredientUnlockSuggestions(catalog, body) }, 200, { "cache-control": "public, max-age=60, s-maxage=300" });
+    }
+    
+    export default {
+      async fetch(request, env, ctx) {
+        const url = new URL(request.url);
+        if (url.pathname === "/api/generate" && request.method === "POST") return smartGenerate(request, env, ctx);
+        if (url.pathname === "/api/matching-suggestions" && request.method === "GET") return matchingSuggestions(request, env);
+        return featureWorker.fetch(request, env, ctx);
+      },
+    };
+    
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///home/runner/work/everything/everything/test/kitchen-simplified-runtime.test.mjs:58:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: финальная выдача всегда делится на три понятные группы
+ok 45 - финальная выдача всегда делится на три понятные группы
+  ---
+  duration_ms: 0.320983
+  type: 'test'
+  ...
+# Subtest: ручные инструменты доступны даже при пустом выборе техники
+ok 46 - ручные инструменты доступны даже при пустом выборе техники
+  ---
+  duration_ms: 7.6886
+  type: 'test'
+  ...
+# Subtest: пустой выбор техники не запрещает плиту или духовку
+ok 47 - пустой выбор техники не запрещает плиту или духовку
+  ---
+  duration_ms: 2.11435
+  type: 'test'
+  ...
+# Subtest: явный фильтр техники может запрещать отсутствующую сковороду
+ok 48 - явный фильтр техники может запрещать отсутствующую сковороду
+  ---
+  duration_ms: 2.762854
+  type: 'test'
+  ...
+# Subtest: ручные инструменты остаются доступными при явном фильтре техники
+ok 49 - ручные инструменты остаются доступными при явном фильтре техники
+  ---
+  duration_ms: 1.732589
+  type: 'test'
+  ...
+# Subtest: ручной каталог содержит салаты и сэндвичи
+ok 50 - ручной каталог содержит салаты и сэндвичи
+  ---
+  duration_ms: 1.20344
+  type: 'test'
+  ...
+# Subtest: количество понимает массу, объём, штуки и дроби
+ok 51 - количество понимает массу, объём, штуки и дроби
+  ---
+  duration_ms: 1.926324
+  type: 'test'
+  ...
+# Subtest: одно яйцо не считается достаточным для рецепта на четыре
+ok 52 - одно яйцо не считается достаточным для рецепта на четыре
+  ---
+  duration_ms: 7.685486
+  type: 'test'
+  ...
+# Subtest: достаточный запас оставляет рецепт готовым
+ok 53 - достаточный запас оставляет рецепт готовым
+  ---
+  duration_ms: 4.573117
+  type: 'test'
+  ...
+# Subtest: отказ от продукта штрафует рецепт в основном рейтинге
+ok 54 - отказ от продукта штрафует рецепт в основном рейтинге
+  ---
+  duration_ms: 4.890033
+  type: 'test'
+  ...
+# Subtest: похожее чаще поднимает блюда той же кухни и категории
+ok 55 - похожее чаще поднимает блюда той же кухни и категории
+  ---
+  duration_ms: 0.53039
+  type: 'test'
+  ...
+# Subtest: бытовые формулировки и распространённые варианты совпадают
+ok 56 - бытовые формулировки и распространённые варианты совпадают
+  ---
+  duration_ms: 0.25832
+  type: 'test'
+  ...
+# Subtest: мобильный UX загружается до отложенных фото и функций
+ok 57 - мобильный UX загружается до отложенных фото и функций
+  ---
+  duration_ms: 0.797133
+  type: 'test'
+  ...
+# Subtest: открыватели рецептов превращаются в настоящие ссылки
+ok 58 - открыватели рецептов превращаются в настоящие ссылки
+  ---
+  duration_ms: 1.001333
+  type: 'test'
+  ...
+# Subtest: стрелка Поделиться принудительно остаётся текстовым символом
+ok 59 - стрелка Поделиться принудительно остаётся текстовым символом
+  ---
+  duration_ms: 0.211742
+  type: 'test'
+  ...
+# Subtest: открытый рецепт размывает фон, блокирует фон существующим no-scroll и держит close в viewport
+ok 60 - открытый рецепт размывает фон, блокирует фон существующим no-scroll и держит close в viewport
+  ---
+  duration_ms: 0.458735
+  type: 'test'
+  ...
+# Subtest: большой загрузчик центрирован, а AM-иллюстрация на мобильном идёт под текстом и приглушена
+ok 61 - большой загрузчик центрирован, а AM-иллюстрация на мобильном идёт под текстом и приглушена
+  ---
+  duration_ms: 0.247064
+  type: 'test'
+  ...
+# Subtest: мобильная кнопка продолжения каталога принудительно видима
+ok 62 - мобильная кнопка продолжения каталога принудительно видима
+  ---
+  duration_ms: 0.190531
+  type: 'test'
+  ...
+# Subtest: на мобильном каталог раскрывается по пять карточек с плавной пакетной анимацией
+ok 63 - на мобильном каталог раскрывается по пять карточек с плавной пакетной анимацией
+  ---
+  duration_ms: 0.27873
+  type: 'test'
+  ...
+# Subtest: курсор каталога безопасно хранит смещение
+ok 64 - курсор каталога безопасно хранит смещение
+  ---
+  duration_ms: 0.891662
+  type: 'test'
+  ...
+# Subtest: телеметрия обрезает опасные и слишком длинные поля
+ok 65 - телеметрия обрезает опасные и слишком длинные поля
+  ---
+  duration_ms: 0.329735
+  type: 'test'
+  ...
+# Subtest: catalog-index отдаёт ровно 119 рецептов с рабочим photo set
+ok 66 - catalog-index отдаёт ровно 119 рецептов с рабочим photo set
+  ---
+  duration_ms: 35.418477
+  type: 'test'
+  ...
+# Subtest: все страницы /api/catalog совпадают с photo-manifest
+ok 67 - все страницы /api/catalog совпадают с photo-manifest
+  ---
+  duration_ms: 694.058251
+  type: 'test'
+  ...
+# Subtest: /api/generate возвращает photo set для найденного рецепта с иллюстрацией
+ok 68 - /api/generate возвращает photo set для найденного рецепта с иллюстрацией
+  ---
+  duration_ms: 2009.85514
+  type: 'test'
+  ...
+# Subtest: штучные ингредиенты runtime-каталога не становятся дробными
+not ok 69 - штучные ингредиенты runtime-каталога не становятся дробными
+  ---
+  duration_ms: 37.629916
+  type: 'test'
+  location: '/home/runner/work/everything/everything/test/portion-formatting.test.mjs:9:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'forEach')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///home/runner/work/everything/everything/test/portion-formatting.test.mjs:14:24)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: соль из pantry показывается как по вкусу
+not ok 70 - соль из pantry показывается как по вкусу
+  ---
+  duration_ms: 1.432507
+  type: 'test'
+  location: '/home/runner/work/everything/everything/test/portion-formatting.test.mjs:25:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'flatMap')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///home/runner/work/everything/everything/test/portion-formatting.test.mjs:28:44)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: новые публичные модули проходят синтаксическую проверку
+ok 71 - новые публичные модули проходят синтаксическую проверку
+  ---
+  duration_ms: 216.484725
+  type: 'test'
+  ...
+# Subtest: app shell содержит устойчивые SEO-маркеры
+ok 72 - app shell содержит устойчивые SEO-маркеры
+  ---
+  duration_ms: 0.368452
+  type: 'test'
+  ...
+# Subtest: /recipes отдаёт основной shell и видимый серверный список
+ok 73 - /recipes отдаёт основной shell и видимый серверный список
+  ---
+  duration_ms: 49.973698
+  type: 'test'
+  ...
+# Subtest: уникальный URL рецепта грузит shell, видимый рецепт и JSON-LD с датами
+ok 74 - уникальный URL рецепта грузит shell, видимый рецепт и JSON-LD с датами
+  ---
+  duration_ms: 20.36937
+  type: 'test'
+  ...
+# Subtest: рецепт с иллюстрацией получает 16:9 OG/Twitter и три URL в Recipe JSON-LD
+ok 75 - рецепт с иллюстрацией получает 16:9 OG/Twitter и три URL в Recipe JSON-LD
+  ---
+  duration_ms: 12.955117
+  type: 'test'
+  ...
+# Subtest: рецепт без записи в фотокаталоге не получает image или og:image
+ok 76 - рецепт без записи в фотокаталоге не получает image или og:image
+  ---
+  duration_ms: 14.975139
+  type: 'test'
+  ...
+# Subtest: фото URL строятся только для slug из фотокаталога
+ok 77 - фото URL строятся только для slug из фотокаталога
+  ---
+  duration_ms: 1.330667
+  type: 'test'
+  ...
+# Subtest: фото-манифест возвращает ровно 119 подключённых рецептов
+ok 78 - фото-манифест возвращает ровно 119 подключённых рецептов
+  ---
+  duration_ms: 7.618047
+  type: 'test'
+  ...
+# Subtest: /img полностью исключён из Worker/R2 и остаётся Static Assets маршрутом
+ok 79 - /img полностью исключён из Worker/R2 и остаётся Static Assets маршрутом
+  ---
+  duration_ms: 0.724766
+  type: 'test'
+  ...
+# Subtest: несуществующий рецепт возвращает 404 и noindex в единственном обработчике
+ok 80 - несуществующий рецепт возвращает 404 и noindex в единственном обработчике
+  ---
+  duration_ms: 4.223432
+  type: 'test'
+  ...
+# Subtest: robots явно разрешает OpenAI и не кэшируется на edge
+ok 81 - robots явно разрешает OpenAI и не кэшируется на edge
+  ---
+  duration_ms: 0.729554
+  type: 'test'
+  ...
+# Subtest: клиентский маршрут открывает Базу и штатный recipe overlay
+ok 82 - клиентский маршрут открывает Базу и штатный recipe overlay
+  ---
+  duration_ms: 0.535438
+  type: 'test'
+  ...
+# catalog_search_failed Database binding is unavailable
+# catalog_search_failed Database binding is unavailable
+# recipe_quality_retry {"attempt":1,"retryFeedback":"Жареный сыр: пропущено помещение продукта в посуду или среду приготовления перед нагревом"}
+# catalog_search_failed Database binding is unavailable
+# recipe_quality_retry {"attempt":1,"retryFeedback":"Жареный сыр: количества в шагах не совпадают со списком ингредиентов: 200 г"}
+# catalog_search_failed Database binding is unavailable
+# recipe_quality_retry {"attempt":1,"retryFeedback":"Жареный сыр: в шагах не использованы ингредиенты: сыр; пропущено помещение продукта в посуду или среду приготовления перед нагревом; для нагрева нужно указать время или понятный признак готовности; в шагах не использован ни один продукт пользователя"}
+# recipe_quality_retry {"attempt":2,"retryFeedback":"Жареный сыр: в шагах не использованы ингредиенты: сыр; пропущено помещение продукта в посуду или среду приготовления перед нагревом; для нагрева нужно указать время или понятный признак готовности; в шагах не использован ни один продукт пользователя"}
+# catalog_search_failed Database binding is unavailable
+# primary_ai_failed {"model":"@cf/openai/gpt-oss-120b","fallbackModel":"@cf/openai/gpt-oss-20b","message":"model capacity exceeded"}
+# catalog_search_failed Database binding is unavailable
+# primary_ai_failed {"model":"@cf/openai/gpt-oss-120b","fallbackModel":"@cf/openai/gpt-oss-20b","message":"daily limit exceeded"}
+# recipe_generation_failed daily limit exceeded
+# Subtest: считает варианты одного блюда дублями, даже если добавлено описание кухни
+ok 83 - считает варианты одного блюда дублями, даже если добавлено описание кухни
+  ---
+  duration_ms: 2.036906
+  type: 'test'
+  ...
+# Subtest: пересчитывает калории, если они расходятся с БЖУ
+ok 84 - пересчитывает калории, если они расходятся с БЖУ
+  ---
+  duration_ms: 0.33297
+  type: 'test'
+  ...
+# Subtest: разрешает ровно один отсутствующий продукт в режиме покупки
+ok 85 - разрешает ровно один отсутствующий продукт в режиме покупки
+  ---
+  duration_ms: 14.184977
+  type: 'test'
+  ...
+# Subtest: повторяет генерацию, если продукт не помещён в посуду перед нагревом
+ok 86 - повторяет генерацию, если продукт не помещён в посуду перед нагревом
+  ---
+  duration_ms: 3.839678
+  type: 'test'
+  ...
+# Subtest: повторяет генерацию, если количество в шагах расходится со списком ингредиентов
+ok 87 - повторяет генерацию, если количество в шагах расходится со списком ингредиентов
+  ---
+  duration_ms: 2.756395
+  type: 'test'
+  ...
+# Subtest: принимает обычные повелительные действия в связном рецепте
+ok 88 - принимает обычные повелительные действия в связном рецепте
+  ---
+  duration_ms: 0.351116
+  type: 'test'
+  ...
+# Subtest: использует третью попытку, если первые два ответа не прошли проверку
+ok 89 - использует третью попытку, если первые два ответа не прошли проверку
+  ---
+  duration_ms: 3.383297
+  type: 'test'
+  ...
+# Subtest: переключается на лёгкую модель, если основная недоступна
+ok 90 - переключается на лёгкую модель, если основная недоступна
+  ---
+  duration_ms: 3.117906
+  type: 'test'
+  ...
+# Subtest: возвращает проверенные новые варианты при недоступности обеих моделей
+ok 91 - возвращает проверенные новые варианты при недоступности обеих моделей
+  ---
+  duration_ms: 24.713845
+  type: 'test'
+  ...
+# Subtest: семантический матчинг учитывает aliases
+ok 92 - семантический матчинг учитывает aliases
+  ---
+  duration_ms: 4.853429
+  type: 'test'
+  ...
+# Subtest: родственные названия яйца не создают ложный missing
+ok 93 - родственные названия яйца не создают ложный missing
+  ---
+  duration_ms: 0.817022
+  type: 'test'
+  ...
+# Subtest: generate возвращает uses, coverage и ранжирует по продуктам пользователя
+ok 94 - generate возвращает uses, coverage и ранжирует по продуктам пользователя
+  ---
+  duration_ms: 1875.869401
+  type: 'test'
+  ...
+# Subtest: сырники с алиасами входят в топ-3 без missing
+ok 95 - сырники с алиасами входят в топ-3 без missing
+  ---
+  duration_ms: 2031.644232
+  type: 'test'
+  ...
+# Subtest: generate отдаёт не больше 20 рецептов и честную пагинацию
+ok 96 - generate отдаёт не больше 20 рецептов и честную пагинацию
+  ---
+  duration_ms: 3089.050045
+  type: 'test'
+  ...
+# Subtest: мусорный ввод не возвращает нерелевантные блюда
+ok 97 - мусорный ввод не возвращает нерелевантные блюда
+  ---
+  duration_ms: 1333.883667
+  type: 'test'
+  ...
+# Subtest: пустой ввод получает честный 400
+ok 98 - пустой ввод получает честный 400
+  ---
+  duration_ms: 1.229218
+  type: 'test'
+  ...
+# Subtest: maxMinutes реально ограничивает выдачу
+ok 99 - maxMinutes реально ограничивает выдачу
+  ---
+  duration_ms: 970.952611
+  type: 'test'
+  ...
+# Subtest: enforceEquipment работает только по явному opt-in
+ok 100 - enforceEquipment работает только по явному opt-in
+  ---
+  duration_ms: 3985.622897
+  type: 'test'
+  ...
+# Subtest: matching-suggestions использует ту же логику подсказок
+ok 101 - matching-suggestions использует ту же логику подсказок
+  ---
+  duration_ms: 386.264878
+  type: 'test'
+  ...
+# Subtest: 18 контрольных наборов остаются непустыми
+ok 102 - 18 контрольных наборов остаются непустыми
+  ---
+  duration_ms: 25028.714935
+  type: 'test'
+  ...
+# Subtest: src/bootstrap.js проходит синтаксическую проверку
+ok 103 - src/bootstrap.js проходит синтаксическую проверку
+  ---
+  duration_ms: 27.651046
+  type: 'test'
+  ...
+# Subtest: worker/lite-page.js проходит синтаксическую проверку
+ok 104 - worker/lite-page.js проходит синтаксическую проверку
+  ---
+  duration_ms: 24.939988
+  type: 'test'
+  ...
+# Subtest: public/sw.js проходит синтаксическую проверку
+ok 105 - public/sw.js проходит синтаксическую проверку
+  ---
+  duration_ms: 25.602352
+  type: 'test'
+  ...
+# Subtest: worker/routes.js проходит синтаксическую проверку
+ok 106 - worker/routes.js проходит синтаксическую проверку
+  ---
+  duration_ms: 26.813343
+  type: 'test'
+  ...
+# Subtest: index содержит самостоятельный первый экран без внешних картинок и CSS
+ok 107 - index содержит самостоятельный первый экран без внешних картинок и CSS
+  ---
+  duration_ms: 0.505384
+  type: 'test'
+  ...
+# Subtest: Service Worker включается только на защищённом production-домене
+ok 108 - Service Worker включается только на защищённом production-домене
+  ---
+  duration_ms: 0.318078
+  type: 'test'
+  ...
+# Subtest: лёгкая страница работает без JavaScript и остаётся компактной
+ok 109 - лёгкая страница работает без JavaScript и остаётся компактной
+  ---
+  duration_ms: 27.26631
+  type: 'test'
+  ...
+# Subtest: страница отдельного рецепта формируется Worker-ом
+ok 110 - страница отдельного рецепта формируется Worker-ом
+  ---
+  duration_ms: 17.270495
+  type: 'test'
+  ...
+# Subtest: /lite имеет явный приоритет в единой таблице маршрутов
+ok 111 - /lite имеет явный приоритет в единой таблице маршрутов
+  ---
+  duration_ms: 0.738687
+  type: 'test'
+  ...
+# Subtest: порядок Worker-маршрутов задан одним явным списком
+ok 112 - порядок Worker-маршрутов задан одним явным списком
+  ---
+  duration_ms: 1.262317
+  type: 'test'
+  ...
+# Subtest: ключевые запросы выбирают ровно один ожидаемый обработчик
+ok 113 - ключевые запросы выбирают ровно один ожидаемый обработчик
+  ---
+  duration_ms: 3.613155
+  type: 'test'
+  ...
+# Subtest: entrypoint больше не содержит вложенной цепочки Worker-ов
+ok 114 - entrypoint больше не содержит вложенной цепочки Worker-ов
+  ---
+  duration_ms: 0.498634
+  type: 'test'
+  ...
+# Subtest: preview-конфиг включает строгие SEO-маркеры без включения их в production vars
+ok 115 - preview-конфиг включает строгие SEO-маркеры без включения их в production vars
+  ---
+  duration_ms: 0.310437
+  type: 'test'
+  ...
+# Subtest: runtime-файлы Кутно проходят синтаксическую проверку
+ok 116 - runtime-файлы Кутно проходят синтаксическую проверку
+  ---
+  duration_ms: 1393.818189
+  type: 'test'
+  ...
+# Subtest: клиент быстро открывает каталог, индекс и детали грузит отдельно
+ok 117 - клиент быстро открывает каталог, индекс и детали грузит отдельно
+  ---
+  duration_ms: 1.078307
+  type: 'test'
+  ...
+# Subtest: Worker использует компактный runtime-каталог и один явный диспетчер маршрутов
+not ok 118 - Worker использует компактный runtime-каталог и один явный диспетчер маршрутов
+  ---
+  duration_ms: 2.334184
+  type: 'test'
+  location: '/home/runner/work/everything/everything/test/runtime-files.test.mjs:87:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /RUNTIME_RECIPES/. Input:
+    
+    'import featureWorker from "./entry.js";\n' +
+      'import { analyzeRecipe, enrichRecipeSemantics } from "../src/ingredient-semantics-v3.js";\n' +
+      'import { applyMatchingUserContext, matchingPayloadFromContext } from "../src/matching-user-context.js";\n' +
+      'import { loadRuntimeRecipes } from "./catalog-runtime-store.js";\n' +
+      '\n' +
+      'const MATCHING_PAGE_SIZE = 20;\n' +
+      'const RUNTIME_BASE_PORTIONS = 2;\n' +
+      '\n' +
+      'function json(data, status = 200, headers = {}) {\n' +
+      '  return Response.json(data, { status, headers: { "cache-control": "no-store", "x-content-type-options": "nosniff", ...headers } });\n' +
+      '}\n' +
+      '\n' +
+      'function requestWithJson(request, body) {\n' +
+      '  const headers = new Headers(request.headers);\n' +
+      '  headers.delete("content-length");\n' +
+      '  headers.set("content-type", "application/json");\n' +
+      '  return new Request(request.url, { method: request.method, headers, body: JSON.stringify(body) });\n' +
+      '}\n' +
+      '\n' +
+      'function clampNumber(value, fallback, min, max) {\n' +
+      '  const number = Number(value);\n' +
+      '  if (!Number.isFinite(number)) return fallback;\n' +
+      '  return Math.min(max, Math.max(min, number));\n' +
+      '}\n' +
+      '\n' +
+      'function matchingContext(body = {}) {\n' +
+      '  const user = matchingPayloadFromContext(body);\n' +
+      '  return {\n' +
+      '    ingredients: Array.isArray(body.ingredients) ? body.ingredients : [],\n' +
+      '    priorityIngredients: Array.isArray(body.priorityIngredients) ? body.priorityIngredients : [],\n' +
+      '    equipment: body.enforceEquipment === true && Array.isArray(body.equipment) ? body.equipment : [],\n' +
+      '    enforceEquipment: body.enforceEquipment === true,\n' +
+      '    baseIngredients: Array.isArray(body.baseIngredients) ? body.baseIngredients : undefined,\n' +
+      '    pantry: user.pantry,\n' +
+      '    feedback: user.feedback,\n' +
+      '  };\n' +
+      '}\n' +
+      '\n' +
+      'function normalizedTitle(value = "") {\n' +
+      '  return String(value).toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/[^а-яa-z0-9]+/giu, " ").trim();\n' +
+      '}\n' +
+      '\n' +
+      'function mergeRecipes(...groups) {\n' +
+      '  const result = [];\n' +
+      '  const seen = new Set();\n' +
+      '  for (const recipe of groups.flat()) {\n' +
+      '    if (!recipe?.title) continue;\n' +
+      '    const key = String(recipe.id || recipe.source?.id || normalizedTitle(recipe.title));\n' +
+      '    const title = normalizedTitle(recipe.title);\n' +
+      '    if (seen.has(key) || result.some((item) => normalizedTitle(item.title) === title)) continue;\n' +
+      '    seen.add(key);\n' +
+      '    result.push(recipe);\n' +
+      '  }\n' +
+      '  return result;\n' +
+      '}\n' +
+      '\n' +
+      'function scaleAmount(amount, portions) {\n' +
+      '  const text = String(amount || "").trim();\n' +
+      '  if (!text || /по вкусу/i.test(text) || portions === RUNTIME_BASE_PORTIONS) return text;\n' +
+      '  const match = text.match(/^(\\d+(?:[.,]\\d+)?)\\s*(.*)$/u);\n' +
+      '  if (!match) return text;\n' +
+      '  const factor = portions / RUNTIME_BASE_PORTIONS;\n' +
+      '  const unit = String(match[2] || "").trim();\n' +
+      '  const raw = Number(match[1].replace(",", ".")) * factor;\n' +
+      '  let value = raw;\n' +
+      '  if (/^(г|мл)$/iu.test(unit)) value = Math.max(1, Math.round(raw / 5) * 5);\n' +
+      '  else if (/^(?:шт\\.?|зубч\\.?|гол\\.?)$/iu.test(unit)) value = Math.max(1, Math.ceil(raw));\n' +
+      '  else value = Math.max(0.25, Math.round(raw * 4) / 4);\n' +
+      '  const displayed = Number.isInteger(value) ? String(value) : String(value).replace(".", ",");\n' +
+      '  return `${displayed}${unit ? ` ${unit}` : ""}`;\n' +
+      '}\n' +
+      '\n' +
+      'function matchingRecipeFromRuntime(recipe, portions) {\n' +
+      '  const factor = portions / RUNTIME_BASE_PORTIONS;\n' +
+      '  return {\n' +
+      '    id: String(recipe.id),\n' +
+      '    compact: true,\n' +
+      '    title: String(recipe.title || ""),\n' +
+      '    subtitle: String(recipe.subtitle || ""),\n' +
+      '    cuisine: String(recipe.cuisine || "Другая кухня"),\n' +
+      '    flag: String(recipe.flag || "🌍"),\n' +
+      '    course: String(recipe.course || "основное"),\n' +
+      '    protein: String(recipe.protein || "без мяса"),\n' +
+      '    minutes: Number(recipe.minutes) || 30,\n' +
+      '    difficulty: String(recipe.difficulty || "легко"),\n' +
+      '    portions,\n' +
+      '    equipment: Array.isArray(recipe.equipment) ? recipe.equipment.map(String) : [],\n' +
+      '    ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item) => ({\n' +
+      '      name: String(item?.name || ""),\n' +
+      '      amount: scaleAmount(item?.amount, portions),\n' +
+      '      aliases: Array.isArray(item?.aliases) ? item.aliases.map(String).filter(Boolean) : [],\n' +
+      '      pantry: item?.pantry === true,\n' +
+      '      ...(item?.role ? { role: String(item.role) } : {}),\n' +
+      '    })),\n' +
+      '    nutrition: { calories: Math.max(0, Math.round((Number(recipe.nutrition?.calories) || 0) * factor)) },\n' +
+      '    source: recipe.source || {},\n' +
+      '    missing: [],\n' +
+      '    uses: [],\n' +
+      '    why: recipe.why || "Проверенный рецепт Кутно",\n' +
+      '    hasPhoto: recipe.hasPhoto === true,\n' +
+      '  };\n' +
+      '}\n' +
+      '\n' +
+      'async function matchingCatalog(request, env, portions = 2) {\n' +
+      '  const runtime = await loadRuntimeRecipes(request, env);\n' +
+      '  return runtime.map((recipe) => matchingRecipeFromRuntime(recipe, portions));\n' +
+      '}\n' +
+      '\n' +
+      'function difficultyRank(value = "") {\n' +
+      '  const text = String(value).toLocaleLowerCase("ru-RU");\n' +
+      '  if (/очень\\s*прост/.test(text)) return 0;\n' +
+      '  if (/легк|прост/.test(text)) return 1;\n' +
+      '  if (/обыч|сред/.test(text)) return 2;\n' +
+      '  if (/слож|труд/.test(text)) return 3;\n' +
+      '  return 2;\n' +
+      '}\n' +
+      '\n' +
+      'function recipePassesFilters(recipe, body) {\n' +
+      '  if (body.course && body.course !== "все" && recipe.course !== body.course && !(body.course === "перекус" && ["закуска", "салат"].includes(recipe.course))) return false;\n' +
+      '  if (body.maxMinutes > 0 && Number(recipe.minutes) > body.maxMinutes) return false;\n' +
+      '  if (body.difficulty) {\n' +
+      '    const requested = difficultyRank(body.difficulty);\n' +
+      '    if (difficultyRank(recipe.difficulty) > requested) return false;\n' +
+      '  }\n' +
+      '  const excluded = Array.isArray(body.excludeTitles) ? body.excludeTitles.map(normalizedTitle) : [];\n' +
+      '  return !excluded.includes(normalizedTitle(recipe.title));\n' +
+      '}\n' +
+      '\n' +
+      'function groupAllowed(analysis) {\n' +
+      '  return (analysis.requiredMissing?.length || 0) <= 3;\n' +
+      '}\n' +
+      '\n' +
+      'function analyzeWithContext(recipe, context) {\n' +
+      '  return applyMatchingUserContext(recipe, analyzeRecipe(recipe, context), context);\n' +
+      '}\n' +
+      '\n' +
+      'function enrichedWithContext(recipe, context, analysis = analyzeWithContext(recipe, context)) {\n' +
+      '  const enriched = enrichRecipeSemantics(recipe, context);\n' +
+      '  const userOwned = new Set((context.ingredients || []).map(normalizedTitle));\n' +
+      '  const uses = [...new Set(\n' +
+      '    analysis.exactAvailable\n' +
+      '      .filter((item) => item.role !== "base" && item.match?.owned && userOwned.has(normalizedTitle(item.match.owned)))\n' +
+      '      .map((item) => item.match.owned),\n' +
+      '  )];\n' +
+      '  const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;\n' +
+      '  const requiredTotal = analysis.ingredients.filter((item) => item.role === "required").length;\n' +
+      '  return {\n' +
+      '    ...enriched,\n' +
+      '    uses,\n' +
+      '    usedCount: uses.length,\n' +
+      '    coverage: exactRequired / Math.max(1, requiredTotal),\n' +
+      '    matching: {\n' +
+      '      ...(enriched.matching || {}),\n' +
+      '      group: analysis.group,\n' +
+      '      score: analysis.score,\n' +
+      '      reasons: analysis.reasons,\n' +
+      '      missingRequired: analysis.requiredMissing.map((item) => item.name),\n' +
+      '      missingOptional: analysis.optionalMissing.map((item) => item.name),\n' +
+      '      substitutions: analysis.substitutions.map((item) => ({ ingredient: item.name, owned: item.match?.owned || "" })),\n' +
+      '      missingEquipment: analysis.missingEquipment,\n' +
+      '      quantityShortages: analysis.quantityShortages.map((item) => ({ name: item.name, have: `${item.have.quantity} ${item.have.unit}`.trim(), need: item.need })),\n' +
+      '      preferencePenalty: analysis.preferencePenalty,\n' +
+      '    },\n' +
+      '  };\n' +
+      '}\n' +
+      '\n' +
+      'function rankingScore(item) {\n' +
+      '  return item.usedCount * 10 - item.missingCount * 7 - item.optionalMissing - item.substitutions * 2;\n' +
+      '}\n' +
+      '\n' +
+      'function rankRecipes(catalog, body) {\n' +
+      '  const context = matchingContext(body);\n' +
+      '  return catalog\n' +
+      '    .map((recipe) => {\n' +
+      '      const analysis = analyzeWithContext(recipe, context);\n' +
+      '      const enriched = enrichedWithContext(recipe, context, analysis);\n' +
+      '      const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;\n' +
+      '      return {\n' +
+      '        recipe: enriched,\n' +
+      '        analysis,\n' +
+      '        missingCount: analysis.requiredMissing.length,\n' +
+      '        usedCount: enriched.usedCount,\n' +
+      '        exactRequired,\n' +
+      '        substitutions: analysis.substitutions.length,\n' +
+      '        optionalMissing: analysis.optionalMissing.length,\n' +
+      '      };\n' +
+      '    })\n' +
+      '    .filter(({ recipe, analysis }) => recipePassesFilters(recipe, body)\n' +
+      '      && groupAllowed(analysis)\n' +
+      '      && recipe.usedCount >= 1\n' +
+      '      && (!context.enforceEquipment || analysis.missingEquipment.length === 0))\n' +
+      '    .sort((a, b) => rankingScore(b) - rankingScore(a)\n' +
+      '      || a.missingCount - b.missingCount\n' +
+      '      || b.usedCount - a.usedCount\n' +
+      '      || b.exactRequired - a.exactRequired\n' +
+      '      || a.substitutions - b.substitutions\n' +
+      '      || a.optionalMissing - b.optionalMissing\n' +
+      '      || Number(a.recipe.minutes) - Number(b.recipe.minutes)\n' +
+      '      || a.recipe.title.localeCompare(b.recipe.title, "ru"));\n' +
+      '}\n' +
+      '\n' +
+      'function compactMatchedRecipe(recipe) {\n' +
+      '  const missingRequired = Array.isArray(recipe.matching?.missingRequired) ? recipe.matching.missingRequired : [];\n' +
+      '  return {\n' +
+      '    id: recipe.id,\n' +
+      '    compact: true,\n' +
+      '    title: recipe.title,\n' +
+      '    subtitle: recipe.subtitle,\n' +
+      '    cuisine: recipe.cuisine,\n' +
+      '    flag: recipe.flag,\n' +
+      '    course: recipe.course,\n' +
+      '    protein: recipe.protein,\n' +
+      '    minutes: recipe.minutes,\n' +
+      '    difficulty: recipe.difficulty,\n' +
+      '    portions: Number(recipe.portions) || 2,\n' +
+      '    equipment: recipe.equipment || [],\n' +
+      '    ingredients: (recipe.ingredients || []).map((item) => ({ name: item.name, amount: item.amount || "", aliases: item.aliases || [], pantry: item.pantry === true, ...(item.role ? { role: item.role } : {}) })),\n' +
+      '    nutrition: { calories: Number(recipe.nutrition?.calories) || 0 },\n' +
+      '    source: recipe.source,\n' +
+      '    matching: recipe.matching,\n' +
+      '    missing: missingRequired.length ? missingRequired : Array.isArray(recipe.missing) ? recipe.missing : [],\n' +
+      '    uses: Array.isArray(recipe.uses) ? recipe.uses : [],\n' +
+      '    usedCount: Number(recipe.usedCount) || 0,\n' +
+      '    coverage: Number(recipe.coverage) || 0,\n' +
+      '    why: recipe.why,\n' +
+      '  };\n' +
+      '}\n' +
+      '\n' +
+      'function ingredientUnlockSuggestions(catalog, body, limit = 6) {\n' +
+      '  const context = matchingContext(body);\n' +
+      '  const owned = new Set(context.ingredients.map(normalizedTitle));\n' +
+      '  const counts = new Map();\n' +
+      '  for (const recipe of catalog) {\n' +
+      '    if (!recipePassesFilters(recipe, { ...body, course: "все", excludeTitles: [] })) continue;\n' +
+      '    const analysis = analyzeWithContext(recipe, co'... 5645 more characters
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    import featureWorker from "./entry.js";
+    import { analyzeRecipe, enrichRecipeSemantics } from "../src/ingredient-semantics-v3.js";
+    import { applyMatchingUserContext, matchingPayloadFromContext } from "../src/matching-user-context.js";
+    import { loadRuntimeRecipes } from "./catalog-runtime-store.js";
+    
+    const MATCHING_PAGE_SIZE = 20;
+    const RUNTIME_BASE_PORTIONS = 2;
+    
+    function json(data, status = 200, headers = {}) {
+      return Response.json(data, { status, headers: { "cache-control": "no-store", "x-content-type-options": "nosniff", ...headers } });
+    }
+    
+    function requestWithJson(request, body) {
+      const headers = new Headers(request.headers);
+      headers.delete("content-length");
+      headers.set("content-type", "application/json");
+      return new Request(request.url, { method: request.method, headers, body: JSON.stringify(body) });
+    }
+    
+    function clampNumber(value, fallback, min, max) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return fallback;
+      return Math.min(max, Math.max(min, number));
+    }
+    
+    function matchingContext(body = {}) {
+      const user = matchingPayloadFromContext(body);
+      return {
+        ingredients: Array.isArray(body.ingredients) ? body.ingredients : [],
+        priorityIngredients: Array.isArray(body.priorityIngredients) ? body.priorityIngredients : [],
+        equipment: body.enforceEquipment === true && Array.isArray(body.equipment) ? body.equipment : [],
+        enforceEquipment: body.enforceEquipment === true,
+        baseIngredients: Array.isArray(body.baseIngredients) ? body.baseIngredients : undefined,
+        pantry: user.pantry,
+        feedback: user.feedback,
+      };
+    }
+    
+    function normalizedTitle(value = "") {
+      return String(value).toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/[^а-яa-z0-9]+/giu, " ").trim();
+    }
+    
+    function mergeRecipes(...groups) {
+      const result = [];
+      const seen = new Set();
+      for (const recipe of groups.flat()) {
+        if (!recipe?.title) continue;
+        const key = String(recipe.id || recipe.source?.id || normalizedTitle(recipe.title));
+        const title = normalizedTitle(recipe.title);
+        if (seen.has(key) || result.some((item) => normalizedTitle(item.title) === title)) continue;
+        seen.add(key);
+        result.push(recipe);
+      }
+      return result;
+    }
+    
+    function scaleAmount(amount, portions) {
+      const text = String(amount || "").trim();
+      if (!text || /по вкусу/i.test(text) || portions === RUNTIME_BASE_PORTIONS) return text;
+      const match = text.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/u);
+      if (!match) return text;
+      const factor = portions / RUNTIME_BASE_PORTIONS;
+      const unit = String(match[2] || "").trim();
+      const raw = Number(match[1].replace(",", ".")) * factor;
+      let value = raw;
+      if (/^(г|мл)$/iu.test(unit)) value = Math.max(1, Math.round(raw / 5) * 5);
+      else if (/^(?:шт\.?|зубч\.?|гол\.?)$/iu.test(unit)) value = Math.max(1, Math.ceil(raw));
+      else value = Math.max(0.25, Math.round(raw * 4) / 4);
+      const displayed = Number.isInteger(value) ? String(value) : String(value).replace(".", ",");
+      return `${displayed}${unit ? ` ${unit}` : ""}`;
+    }
+    
+    function matchingRecipeFromRuntime(recipe, portions) {
+      const factor = portions / RUNTIME_BASE_PORTIONS;
+      return {
+        id: String(recipe.id),
+        compact: true,
+        title: String(recipe.title || ""),
+        subtitle: String(recipe.subtitle || ""),
+        cuisine: String(recipe.cuisine || "Другая кухня"),
+        flag: String(recipe.flag || "🌍"),
+        course: String(recipe.course || "основное"),
+        protein: String(recipe.protein || "без мяса"),
+        minutes: Number(recipe.minutes) || 30,
+        difficulty: String(recipe.difficulty || "легко"),
+        portions,
+        equipment: Array.isArray(recipe.equipment) ? recipe.equipment.map(String) : [],
+        ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item) => ({
+          name: String(item?.name || ""),
+          amount: scaleAmount(item?.amount, portions),
+          aliases: Array.isArray(item?.aliases) ? item.aliases.map(String).filter(Boolean) : [],
+          pantry: item?.pantry === true,
+          ...(item?.role ? { role: String(item.role) } : {}),
+        })),
+        nutrition: { calories: Math.max(0, Math.round((Number(recipe.nutrition?.calories) || 0) * factor)) },
+        source: recipe.source || {},
+        missing: [],
+        uses: [],
+        why: recipe.why || "Проверенный рецепт Кутно",
+        hasPhoto: recipe.hasPhoto === true,
+      };
+    }
+    
+    async function matchingCatalog(request, env, portions = 2) {
+      const runtime = await loadRuntimeRecipes(request, env);
+      return runtime.map((recipe) => matchingRecipeFromRuntime(recipe, portions));
+    }
+    
+    function difficultyRank(value = "") {
+      const text = String(value).toLocaleLowerCase("ru-RU");
+      if (/очень\s*прост/.test(text)) return 0;
+      if (/легк|прост/.test(text)) return 1;
+      if (/обыч|сред/.test(text)) return 2;
+      if (/слож|труд/.test(text)) return 3;
+      return 2;
+    }
+    
+    function recipePassesFilters(recipe, body) {
+      if (body.course && body.course !== "все" && recipe.course !== body.course && !(body.course === "перекус" && ["закуска", "салат"].includes(recipe.course))) return false;
+      if (body.maxMinutes > 0 && Number(recipe.minutes) > body.maxMinutes) return false;
+      if (body.difficulty) {
+        const requested = difficultyRank(body.difficulty);
+        if (difficultyRank(recipe.difficulty) > requested) return false;
+      }
+      const excluded = Array.isArray(body.excludeTitles) ? body.excludeTitles.map(normalizedTitle) : [];
+      return !excluded.includes(normalizedTitle(recipe.title));
+    }
+    
+    function groupAllowed(analysis) {
+      return (analysis.requiredMissing?.length || 0) <= 3;
+    }
+    
+    function analyzeWithContext(recipe, context) {
+      return applyMatchingUserContext(recipe, analyzeRecipe(recipe, context), context);
+    }
+    
+    function enrichedWithContext(recipe, context, analysis = analyzeWithContext(recipe, context)) {
+      const enriched = enrichRecipeSemantics(recipe, context);
+      const userOwned = new Set((context.ingredients || []).map(normalizedTitle));
+      const uses = [...new Set(
+        analysis.exactAvailable
+          .filter((item) => item.role !== "base" && item.match?.owned && userOwned.has(normalizedTitle(item.match.owned)))
+          .map((item) => item.match.owned),
+      )];
+      const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;
+      const requiredTotal = analysis.ingredients.filter((item) => item.role === "required").length;
+      return {
+        ...enriched,
+        uses,
+        usedCount: uses.length,
+        coverage: exactRequired / Math.max(1, requiredTotal),
+        matching: {
+          ...(enriched.matching || {}),
+          group: analysis.group,
+          score: analysis.score,
+          reasons: analysis.reasons,
+          missingRequired: analysis.requiredMissing.map((item) => item.name),
+          missingOptional: analysis.optionalMissing.map((item) => item.name),
+          substitutions: analysis.substitutions.map((item) => ({ ingredient: item.name, owned: item.match?.owned || "" })),
+          missingEquipment: analysis.missingEquipment,
+          quantityShortages: analysis.quantityShortages.map((item) => ({ name: item.name, have: `${item.have.quantity} ${item.have.unit}`.trim(), need: item.need })),
+          preferencePenalty: analysis.preferencePenalty,
+        },
+      };
+    }
+    
+    function rankingScore(item) {
+      return item.usedCount * 10 - item.missingCount * 7 - item.optionalMissing - item.substitutions * 2;
+    }
+    
+    function rankRecipes(catalog, body) {
+      const context = matchingContext(body);
+      return catalog
+        .map((recipe) => {
+          const analysis = analyzeWithContext(recipe, context);
+          const enriched = enrichedWithContext(recipe, context, analysis);
+          const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;
+          return {
+            recipe: enriched,
+            analysis,
+            missingCount: analysis.requiredMissing.length,
+            usedCount: enriched.usedCount,
+            exactRequired,
+            substitutions: analysis.substitutions.length,
+            optionalMissing: analysis.optionalMissing.length,
+          };
+        })
+        .filter(({ recipe, analysis }) => recipePassesFilters(recipe, body)
+          && groupAllowed(analysis)
+          && recipe.usedCount >= 1
+          && (!context.enforceEquipment || analysis.missingEquipment.length === 0))
+        .sort((a, b) => rankingScore(b) - rankingScore(a)
+          || a.missingCount - b.missingCount
+          || b.usedCount - a.usedCount
+          || b.exactRequired - a.exactRequired
+          || a.substitutions - b.substitutions
+          || a.optionalMissing - b.optionalMissing
+          || Number(a.recipe.minutes) - Number(b.recipe.minutes)
+          || a.recipe.title.localeCompare(b.recipe.title, "ru"));
+    }
+    
+    function compactMatchedRecipe(recipe) {
+      const missingRequired = Array.isArray(recipe.matching?.missingRequired) ? recipe.matching.missingRequired : [];
+      return {
+        id: recipe.id,
+        compact: true,
+        title: recipe.title,
+        subtitle: recipe.subtitle,
+        cuisine: recipe.cuisine,
+        flag: recipe.flag,
+        course: recipe.course,
+        protein: recipe.protein,
+        minutes: recipe.minutes,
+        difficulty: recipe.difficulty,
+        portions: Number(recipe.portions) || 2,
+        equipment: recipe.equipment || [],
+        ingredients: (recipe.ingredients || []).map((item) => ({ name: item.name, amount: item.amount || "", aliases: item.aliases || [], pantry: item.pantry === true, ...(item.role ? { role: item.role } : {}) })),
+        nutrition: { calories: Number(recipe.nutrition?.calories) || 0 },
+        source: recipe.source,
+        matching: recipe.matching,
+        missing: missingRequired.length ? missingRequired : Array.isArray(recipe.missing) ? recipe.missing : [],
+        uses: Array.isArray(recipe.uses) ? recipe.uses : [],
+        usedCount: Number(recipe.usedCount) || 0,
+        coverage: Number(recipe.coverage) || 0,
+        why: recipe.why,
+      };
+    }
+    
+    function ingredientUnlockSuggestions(catalog, body, limit = 6) {
+      const context = matchingContext(body);
+      const owned = new Set(context.ingredients.map(normalizedTitle));
+      const counts = new Map();
+      for (const recipe of catalog) {
+        if (!recipePassesFilters(recipe, { ...body, course: "все", excludeTitles: [] })) continue;
+        const analysis = analyzeWithContext(recipe, context);
+        if (analysis.requiredMissing?.length !== 1) continue;
+        const name = String(analysis.requiredMissing[0]?.name || "").trim();
+        const key = normalizedTitle(name);
+        if (!name || !key || owned.has(key)) continue;
+        const current = counts.get(key) || { name, count: 0 };
+        current.count += 1;
+        if (name.length < current.name.length) current.name = name;
+        counts.set(key, current);
+      }
+      return [...counts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ru")).slice(0, limit);
+    }
+    
+    async function runAiIdeas(body, request, env, ctx) {
+      const generationBody = { ...body, equipment: body.enforceEquipment ? body.equipment : [], portions: body.portions };
+      const response = await featureWorker.fetch(requestWithJson(request, generationBody), env, ctx);
+      const data = await response.clone().json().catch(() => null);
+      if (!data) return { response, data: null, recipes: [] };
+      const recipes = Array.isArray(data.recipes) ? rankRecipes(data.recipes, body).map((item) => compactMatchedRecipe(item.recipe)) : [];
+      return { response, data, recipes };
+    }
+    
+    function resultResponse(recipes, body, { source = "deterministic-catalog", suggestions = [], extra = {}, hasMore = false } = {}) {
+      return json({
+        ...extra,
+        recipes,
+        suggestions,
+        hasMore,
+        source,
+        relaxation: null,
+        originalFilters: {
+          searchMode: body.searchMode,
+          course: body.course,
+          portions: body.portions,
+          maxMinutes: body.maxMinutes,
+          difficulty: body.difficulty || "",
+        },
+      });
+    }
+    
+    function pagedResultResponse(recipes, body, options = {}) {
+      const offset = Math.max(0, Number(body.offset) || 0);
+      const page = recipes.slice(offset, offset + MATCHING_PAGE_SIZE);
+      return resultResponse(page, body, {
+        ...options,
+        extra: { ...(options.extra || {}), total: recipes.length, offset },
+        hasMore: offset + page.length < recipes.length,
+      });
+    }
+    
+    function normalizedBody(body = {}) {
+      const difficulty = typeof body.difficulty === "string" && body.difficulty.trim() ? body.difficulty.trim() : undefined;
+      return {
+        ...body,
+        maxMinutes: Math.round(clampNumber(body.maxMinutes, 0, 0, 1440)),
+        portions: Math.round(clampNumber(body.portions, 2, 1, 24)),
+        offset: Math.floor(clampNumber(body.offset, 0, 0, 10000)),
+        priorityIngredients: Array.isArray(body.priorityIngredients) ? body.priorityIngredients.filter(Boolean) : [],
+        difficulty,
+        searchMode: body.searchMode === "plus-one" ? "plus-one" : "strict",
+        course: ["все", "завтрак", "суп", "основное", "перекус", "салат", "закуска", "соус"].includes(body.course) ? body.course : "все",
+        enforceEquipment: body.enforceEquipment === true,
+      };
+    }
+    
+    async function smartGenerate(request, env, ctx) {
+      const incoming = await request.clone().json().catch(() => ({}));
+      const ingredients = Array.isArray(incoming.ingredients) ? incoming.ingredients.filter((item) => String(item || "").trim()) : [];
+      if (!ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
+      const body = normalizedBody({ ...incoming, ingredients });
+      const catalog = await matchingCatalog(request, env, body.portions);
+      const suggestions = ingredientUnlockSuggestions(catalog, body);
+      const catalogRanked = rankRecipes(catalog, body).map(({ recipe }) => compactMatchedRecipe(recipe));
+    
+      if (catalogRanked.length && !incoming.aiIdeas) return pagedResultResponse(catalogRanked, body, { suggestions });
+      if (catalogRanked.length && incoming.aiIdeas) {
+        const generated = await runAiIdeas(body, request, env, ctx);
+        const combined = mergeRecipes(catalogRanked, generated.recipes);
+        return pagedResultResponse(combined, body, { source: generated.recipes.length ? "deterministic-plus-ai" : "deterministic-catalog", suggestions, extra: generated.data || {} });
+      }
+    
+      if (!incoming.aiIdeas) return pagedResultResponse([], body, { suggestions, extra: { error: suggestions.length ? "Добавьте один из предложенных продуктов — появятся новые варианты" : "Для этого набора пока нет близкого рецепта" } });
+      const generated = await runAiIdeas(body, request, env, ctx);
+      if (generated.recipes.length) return pagedResultResponse(generated.recipes, body, { source: "workers-ai", suggestions, extra: generated.data || {} });
+      if (!generated.data && !generated.response.ok) return generated.response;
+      return pagedResultResponse([], body, { suggestions, extra: { error: suggestions.length ? "Добавьте один из предложенных продуктов" : "Попробуйте другой набор продуктов" } });
+    }
+    
+    async function matchingSuggestions(request, env) {
+      const url = new URL(request.url);
+      const body = normalizedBody({
+        ingredients: url.searchParams.getAll("ingredient"),
+        equipment: url.searchParams.getAll("equipment"),
+        baseIngredients: url.searchParams.getAll("base"),
+        portions: url.searchParams.get("portions") || 2,
+        enforceEquipment: url.searchParams.get("enforceEquipment") === "true",
+        course: "все",
+        searchMode: "strict",
+      });
+      if (!body.ingredients.length) return json({ suggestions: [] });
+      const catalog = await matchingCatalog(request, env, body.portions);
+      return json({ suggestions: ingredientUnlockSuggestions(catalog, body) }, 200, { "cache-control": "public, max-age=60, s-maxage=300" });
+    }
+    
+    export default {
+      async fetch(request, env, ctx) {
+        const url = new URL(request.url);
+        if (url.pathname === "/api/generate" && request.method === "POST") return smartGenerate(request, env, ctx);
+        if (url.pathname === "/api/matching-suggestions" && request.method === "GET") return matchingSuggestions(request, env);
+        return featureWorker.fetch(request, env, ctx);
+      },
+    };
+    
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///home/runner/work/everything/everything/test/runtime-files.test.mjs:99:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: тяжёлые источники рецептов остаются только build-time, а Worker читает generated runtime
+not ok 119 - тяжёлые источники рецептов остаются только build-time, а Worker читает generated runtime
+  ---
+  duration_ms: 4.757589
+  type: 'test'
+  location: '/home/runner/work/everything/everything/test/runtime-generation.test.mjs:5:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /generated\/catalog-runtime\.js/. Input:
+    
+    'import featureWorker from "./entry.js";\n' +
+      'import { analyzeRecipe, enrichRecipeSemantics } from "../src/ingredient-semantics-v3.js";\n' +
+      'import { applyMatchingUserContext, matchingPayloadFromContext } from "../src/matching-user-context.js";\n' +
+      'import { loadRuntimeRecipes } from "./catalog-runtime-store.js";\n' +
+      '\n' +
+      'const MATCHING_PAGE_SIZE = 20;\n' +
+      'const RUNTIME_BASE_PORTIONS = 2;\n' +
+      '\n' +
+      'function json(data, status = 200, headers = {}) {\n' +
+      '  return Response.json(data, { status, headers: { "cache-control": "no-store", "x-content-type-options": "nosniff", ...headers } });\n' +
+      '}\n' +
+      '\n' +
+      'function requestWithJson(request, body) {\n' +
+      '  const headers = new Headers(request.headers);\n' +
+      '  headers.delete("content-length");\n' +
+      '  headers.set("content-type", "application/json");\n' +
+      '  return new Request(request.url, { method: request.method, headers, body: JSON.stringify(body) });\n' +
+      '}\n' +
+      '\n' +
+      'function clampNumber(value, fallback, min, max) {\n' +
+      '  const number = Number(value);\n' +
+      '  if (!Number.isFinite(number)) return fallback;\n' +
+      '  return Math.min(max, Math.max(min, number));\n' +
+      '}\n' +
+      '\n' +
+      'function matchingContext(body = {}) {\n' +
+      '  const user = matchingPayloadFromContext(body);\n' +
+      '  return {\n' +
+      '    ingredients: Array.isArray(body.ingredients) ? body.ingredients : [],\n' +
+      '    priorityIngredients: Array.isArray(body.priorityIngredients) ? body.priorityIngredients : [],\n' +
+      '    equipment: body.enforceEquipment === true && Array.isArray(body.equipment) ? body.equipment : [],\n' +
+      '    enforceEquipment: body.enforceEquipment === true,\n' +
+      '    baseIngredients: Array.isArray(body.baseIngredients) ? body.baseIngredients : undefined,\n' +
+      '    pantry: user.pantry,\n' +
+      '    feedback: user.feedback,\n' +
+      '  };\n' +
+      '}\n' +
+      '\n' +
+      'function normalizedTitle(value = "") {\n' +
+      '  return String(value).toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/[^а-яa-z0-9]+/giu, " ").trim();\n' +
+      '}\n' +
+      '\n' +
+      'function mergeRecipes(...groups) {\n' +
+      '  const result = [];\n' +
+      '  const seen = new Set();\n' +
+      '  for (const recipe of groups.flat()) {\n' +
+      '    if (!recipe?.title) continue;\n' +
+      '    const key = String(recipe.id || recipe.source?.id || normalizedTitle(recipe.title));\n' +
+      '    const title = normalizedTitle(recipe.title);\n' +
+      '    if (seen.has(key) || result.some((item) => normalizedTitle(item.title) === title)) continue;\n' +
+      '    seen.add(key);\n' +
+      '    result.push(recipe);\n' +
+      '  }\n' +
+      '  return result;\n' +
+      '}\n' +
+      '\n' +
+      'function scaleAmount(amount, portions) {\n' +
+      '  const text = String(amount || "").trim();\n' +
+      '  if (!text || /по вкусу/i.test(text) || portions === RUNTIME_BASE_PORTIONS) return text;\n' +
+      '  const match = text.match(/^(\\d+(?:[.,]\\d+)?)\\s*(.*)$/u);\n' +
+      '  if (!match) return text;\n' +
+      '  const factor = portions / RUNTIME_BASE_PORTIONS;\n' +
+      '  const unit = String(match[2] || "").trim();\n' +
+      '  const raw = Number(match[1].replace(",", ".")) * factor;\n' +
+      '  let value = raw;\n' +
+      '  if (/^(г|мл)$/iu.test(unit)) value = Math.max(1, Math.round(raw / 5) * 5);\n' +
+      '  else if (/^(?:шт\\.?|зубч\\.?|гол\\.?)$/iu.test(unit)) value = Math.max(1, Math.ceil(raw));\n' +
+      '  else value = Math.max(0.25, Math.round(raw * 4) / 4);\n' +
+      '  const displayed = Number.isInteger(value) ? String(value) : String(value).replace(".", ",");\n' +
+      '  return `${displayed}${unit ? ` ${unit}` : ""}`;\n' +
+      '}\n' +
+      '\n' +
+      'function matchingRecipeFromRuntime(recipe, portions) {\n' +
+      '  const factor = portions / RUNTIME_BASE_PORTIONS;\n' +
+      '  return {\n' +
+      '    id: String(recipe.id),\n' +
+      '    compact: true,\n' +
+      '    title: String(recipe.title || ""),\n' +
+      '    subtitle: String(recipe.subtitle || ""),\n' +
+      '    cuisine: String(recipe.cuisine || "Другая кухня"),\n' +
+      '    flag: String(recipe.flag || "🌍"),\n' +
+      '    course: String(recipe.course || "основное"),\n' +
+      '    protein: String(recipe.protein || "без мяса"),\n' +
+      '    minutes: Number(recipe.minutes) || 30,\n' +
+      '    difficulty: String(recipe.difficulty || "легко"),\n' +
+      '    portions,\n' +
+      '    equipment: Array.isArray(recipe.equipment) ? recipe.equipment.map(String) : [],\n' +
+      '    ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item) => ({\n' +
+      '      name: String(item?.name || ""),\n' +
+      '      amount: scaleAmount(item?.amount, portions),\n' +
+      '      aliases: Array.isArray(item?.aliases) ? item.aliases.map(String).filter(Boolean) : [],\n' +
+      '      pantry: item?.pantry === true,\n' +
+      '      ...(item?.role ? { role: String(item.role) } : {}),\n' +
+      '    })),\n' +
+      '    nutrition: { calories: Math.max(0, Math.round((Number(recipe.nutrition?.calories) || 0) * factor)) },\n' +
+      '    source: recipe.source || {},\n' +
+      '    missing: [],\n' +
+      '    uses: [],\n' +
+      '    why: recipe.why || "Проверенный рецепт Кутно",\n' +
+      '    hasPhoto: recipe.hasPhoto === true,\n' +
+      '  };\n' +
+      '}\n' +
+      '\n' +
+      'async function matchingCatalog(request, env, portions = 2) {\n' +
+      '  const runtime = await loadRuntimeRecipes(request, env);\n' +
+      '  return runtime.map((recipe) => matchingRecipeFromRuntime(recipe, portions));\n' +
+      '}\n' +
+      '\n' +
+      'function difficultyRank(value = "") {\n' +
+      '  const text = String(value).toLocaleLowerCase("ru-RU");\n' +
+      '  if (/очень\\s*прост/.test(text)) return 0;\n' +
+      '  if (/легк|прост/.test(text)) return 1;\n' +
+      '  if (/обыч|сред/.test(text)) return 2;\n' +
+      '  if (/слож|труд/.test(text)) return 3;\n' +
+      '  return 2;\n' +
+      '}\n' +
+      '\n' +
+      'function recipePassesFilters(recipe, body) {\n' +
+      '  if (body.course && body.course !== "все" && recipe.course !== body.course && !(body.course === "перекус" && ["закуска", "салат"].includes(recipe.course))) return false;\n' +
+      '  if (body.maxMinutes > 0 && Number(recipe.minutes) > body.maxMinutes) return false;\n' +
+      '  if (body.difficulty) {\n' +
+      '    const requested = difficultyRank(body.difficulty);\n' +
+      '    if (difficultyRank(recipe.difficulty) > requested) return false;\n' +
+      '  }\n' +
+      '  const excluded = Array.isArray(body.excludeTitles) ? body.excludeTitles.map(normalizedTitle) : [];\n' +
+      '  return !excluded.includes(normalizedTitle(recipe.title));\n' +
+      '}\n' +
+      '\n' +
+      'function groupAllowed(analysis) {\n' +
+      '  return (analysis.requiredMissing?.length || 0) <= 3;\n' +
+      '}\n' +
+      '\n' +
+      'function analyzeWithContext(recipe, context) {\n' +
+      '  return applyMatchingUserContext(recipe, analyzeRecipe(recipe, context), context);\n' +
+      '}\n' +
+      '\n' +
+      'function enrichedWithContext(recipe, context, analysis = analyzeWithContext(recipe, context)) {\n' +
+      '  const enriched = enrichRecipeSemantics(recipe, context);\n' +
+      '  const userOwned = new Set((context.ingredients || []).map(normalizedTitle));\n' +
+      '  const uses = [...new Set(\n' +
+      '    analysis.exactAvailable\n' +
+      '      .filter((item) => item.role !== "base" && item.match?.owned && userOwned.has(normalizedTitle(item.match.owned)))\n' +
+      '      .map((item) => item.match.owned),\n' +
+      '  )];\n' +
+      '  const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;\n' +
+      '  const requiredTotal = analysis.ingredients.filter((item) => item.role === "required").length;\n' +
+      '  return {\n' +
+      '    ...enriched,\n' +
+      '    uses,\n' +
+      '    usedCount: uses.length,\n' +
+      '    coverage: exactRequired / Math.max(1, requiredTotal),\n' +
+      '    matching: {\n' +
+      '      ...(enriched.matching || {}),\n' +
+      '      group: analysis.group,\n' +
+      '      score: analysis.score,\n' +
+      '      reasons: analysis.reasons,\n' +
+      '      missingRequired: analysis.requiredMissing.map((item) => item.name),\n' +
+      '      missingOptional: analysis.optionalMissing.map((item) => item.name),\n' +
+      '      substitutions: analysis.substitutions.map((item) => ({ ingredient: item.name, owned: item.match?.owned || "" })),\n' +
+      '      missingEquipment: analysis.missingEquipment,\n' +
+      '      quantityShortages: analysis.quantityShortages.map((item) => ({ name: item.name, have: `${item.have.quantity} ${item.have.unit}`.trim(), need: item.need })),\n' +
+      '      preferencePenalty: analysis.preferencePenalty,\n' +
+      '    },\n' +
+      '  };\n' +
+      '}\n' +
+      '\n' +
+      'function rankingScore(item) {\n' +
+      '  return item.usedCount * 10 - item.missingCount * 7 - item.optionalMissing - item.substitutions * 2;\n' +
+      '}\n' +
+      '\n' +
+      'function rankRecipes(catalog, body) {\n' +
+      '  const context = matchingContext(body);\n' +
+      '  return catalog\n' +
+      '    .map((recipe) => {\n' +
+      '      const analysis = analyzeWithContext(recipe, context);\n' +
+      '      const enriched = enrichedWithContext(recipe, context, analysis);\n' +
+      '      const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;\n' +
+      '      return {\n' +
+      '        recipe: enriched,\n' +
+      '        analysis,\n' +
+      '        missingCount: analysis.requiredMissing.length,\n' +
+      '        usedCount: enriched.usedCount,\n' +
+      '        exactRequired,\n' +
+      '        substitutions: analysis.substitutions.length,\n' +
+      '        optionalMissing: analysis.optionalMissing.length,\n' +
+      '      };\n' +
+      '    })\n' +
+      '    .filter(({ recipe, analysis }) => recipePassesFilters(recipe, body)\n' +
+      '      && groupAllowed(analysis)\n' +
+      '      && recipe.usedCount >= 1\n' +
+      '      && (!context.enforceEquipment || analysis.missingEquipment.length === 0))\n' +
+      '    .sort((a, b) => rankingScore(b) - rankingScore(a)\n' +
+      '      || a.missingCount - b.missingCount\n' +
+      '      || b.usedCount - a.usedCount\n' +
+      '      || b.exactRequired - a.exactRequired\n' +
+      '      || a.substitutions - b.substitutions\n' +
+      '      || a.optionalMissing - b.optionalMissing\n' +
+      '      || Number(a.recipe.minutes) - Number(b.recipe.minutes)\n' +
+      '      || a.recipe.title.localeCompare(b.recipe.title, "ru"));\n' +
+      '}\n' +
+      '\n' +
+      'function compactMatchedRecipe(recipe) {\n' +
+      '  const missingRequired = Array.isArray(recipe.matching?.missingRequired) ? recipe.matching.missingRequired : [];\n' +
+      '  return {\n' +
+      '    id: recipe.id,\n' +
+      '    compact: true,\n' +
+      '    title: recipe.title,\n' +
+      '    subtitle: recipe.subtitle,\n' +
+      '    cuisine: recipe.cuisine,\n' +
+      '    flag: recipe.flag,\n' +
+      '    course: recipe.course,\n' +
+      '    protein: recipe.protein,\n' +
+      '    minutes: recipe.minutes,\n' +
+      '    difficulty: recipe.difficulty,\n' +
+      '    portions: Number(recipe.portions) || 2,\n' +
+      '    equipment: recipe.equipment || [],\n' +
+      '    ingredients: (recipe.ingredients || []).map((item) => ({ name: item.name, amount: item.amount || "", aliases: item.aliases || [], pantry: item.pantry === true, ...(item.role ? { role: item.role } : {}) })),\n' +
+      '    nutrition: { calories: Number(recipe.nutrition?.calories) || 0 },\n' +
+      '    source: recipe.source,\n' +
+      '    matching: recipe.matching,\n' +
+      '    missing: missingRequired.length ? missingRequired : Array.isArray(recipe.missing) ? recipe.missing : [],\n' +
+      '    uses: Array.isArray(recipe.uses) ? recipe.uses : [],\n' +
+      '    usedCount: Number(recipe.usedCount) || 0,\n' +
+      '    coverage: Number(recipe.coverage) || 0,\n' +
+      '    why: recipe.why,\n' +
+      '  };\n' +
+      '}\n' +
+      '\n' +
+      'function ingredientUnlockSuggestions(catalog, body, limit = 6) {\n' +
+      '  const context = matchingContext(body);\n' +
+      '  const owned = new Set(context.ingredients.map(normalizedTitle));\n' +
+      '  const counts = new Map();\n' +
+      '  for (const recipe of catalog) {\n' +
+      '    if (!recipePassesFilters(recipe, { ...body, course: "все", excludeTitles: [] })) continue;\n' +
+      '    const analysis = analyzeWithContext(recipe, co'... 5645 more characters
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    import featureWorker from "./entry.js";
+    import { analyzeRecipe, enrichRecipeSemantics } from "../src/ingredient-semantics-v3.js";
+    import { applyMatchingUserContext, matchingPayloadFromContext } from "../src/matching-user-context.js";
+    import { loadRuntimeRecipes } from "./catalog-runtime-store.js";
+    
+    const MATCHING_PAGE_SIZE = 20;
+    const RUNTIME_BASE_PORTIONS = 2;
+    
+    function json(data, status = 200, headers = {}) {
+      return Response.json(data, { status, headers: { "cache-control": "no-store", "x-content-type-options": "nosniff", ...headers } });
+    }
+    
+    function requestWithJson(request, body) {
+      const headers = new Headers(request.headers);
+      headers.delete("content-length");
+      headers.set("content-type", "application/json");
+      return new Request(request.url, { method: request.method, headers, body: JSON.stringify(body) });
+    }
+    
+    function clampNumber(value, fallback, min, max) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return fallback;
+      return Math.min(max, Math.max(min, number));
+    }
+    
+    function matchingContext(body = {}) {
+      const user = matchingPayloadFromContext(body);
+      return {
+        ingredients: Array.isArray(body.ingredients) ? body.ingredients : [],
+        priorityIngredients: Array.isArray(body.priorityIngredients) ? body.priorityIngredients : [],
+        equipment: body.enforceEquipment === true && Array.isArray(body.equipment) ? body.equipment : [],
+        enforceEquipment: body.enforceEquipment === true,
+        baseIngredients: Array.isArray(body.baseIngredients) ? body.baseIngredients : undefined,
+        pantry: user.pantry,
+        feedback: user.feedback,
+      };
+    }
+    
+    function normalizedTitle(value = "") {
+      return String(value).toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/[^а-яa-z0-9]+/giu, " ").trim();
+    }
+    
+    function mergeRecipes(...groups) {
+      const result = [];
+      const seen = new Set();
+      for (const recipe of groups.flat()) {
+        if (!recipe?.title) continue;
+        const key = String(recipe.id || recipe.source?.id || normalizedTitle(recipe.title));
+        const title = normalizedTitle(recipe.title);
+        if (seen.has(key) || result.some((item) => normalizedTitle(item.title) === title)) continue;
+        seen.add(key);
+        result.push(recipe);
+      }
+      return result;
+    }
+    
+    function scaleAmount(amount, portions) {
+      const text = String(amount || "").trim();
+      if (!text || /по вкусу/i.test(text) || portions === RUNTIME_BASE_PORTIONS) return text;
+      const match = text.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/u);
+      if (!match) return text;
+      const factor = portions / RUNTIME_BASE_PORTIONS;
+      const unit = String(match[2] || "").trim();
+      const raw = Number(match[1].replace(",", ".")) * factor;
+      let value = raw;
+      if (/^(г|мл)$/iu.test(unit)) value = Math.max(1, Math.round(raw / 5) * 5);
+      else if (/^(?:шт\.?|зубч\.?|гол\.?)$/iu.test(unit)) value = Math.max(1, Math.ceil(raw));
+      else value = Math.max(0.25, Math.round(raw * 4) / 4);
+      const displayed = Number.isInteger(value) ? String(value) : String(value).replace(".", ",");
+      return `${displayed}${unit ? ` ${unit}` : ""}`;
+    }
+    
+    function matchingRecipeFromRuntime(recipe, portions) {
+      const factor = portions / RUNTIME_BASE_PORTIONS;
+      return {
+        id: String(recipe.id),
+        compact: true,
+        title: String(recipe.title || ""),
+        subtitle: String(recipe.subtitle || ""),
+        cuisine: String(recipe.cuisine || "Другая кухня"),
+        flag: String(recipe.flag || "🌍"),
+        course: String(recipe.course || "основное"),
+        protein: String(recipe.protein || "без мяса"),
+        minutes: Number(recipe.minutes) || 30,
+        difficulty: String(recipe.difficulty || "легко"),
+        portions,
+        equipment: Array.isArray(recipe.equipment) ? recipe.equipment.map(String) : [],
+        ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item) => ({
+          name: String(item?.name || ""),
+          amount: scaleAmount(item?.amount, portions),
+          aliases: Array.isArray(item?.aliases) ? item.aliases.map(String).filter(Boolean) : [],
+          pantry: item?.pantry === true,
+          ...(item?.role ? { role: String(item.role) } : {}),
+        })),
+        nutrition: { calories: Math.max(0, Math.round((Number(recipe.nutrition?.calories) || 0) * factor)) },
+        source: recipe.source || {},
+        missing: [],
+        uses: [],
+        why: recipe.why || "Проверенный рецепт Кутно",
+        hasPhoto: recipe.hasPhoto === true,
+      };
+    }
+    
+    async function matchingCatalog(request, env, portions = 2) {
+      const runtime = await loadRuntimeRecipes(request, env);
+      return runtime.map((recipe) => matchingRecipeFromRuntime(recipe, portions));
+    }
+    
+    function difficultyRank(value = "") {
+      const text = String(value).toLocaleLowerCase("ru-RU");
+      if (/очень\s*прост/.test(text)) return 0;
+      if (/легк|прост/.test(text)) return 1;
+      if (/обыч|сред/.test(text)) return 2;
+      if (/слож|труд/.test(text)) return 3;
+      return 2;
+    }
+    
+    function recipePassesFilters(recipe, body) {
+      if (body.course && body.course !== "все" && recipe.course !== body.course && !(body.course === "перекус" && ["закуска", "салат"].includes(recipe.course))) return false;
+      if (body.maxMinutes > 0 && Number(recipe.minutes) > body.maxMinutes) return false;
+      if (body.difficulty) {
+        const requested = difficultyRank(body.difficulty);
+        if (difficultyRank(recipe.difficulty) > requested) return false;
+      }
+      const excluded = Array.isArray(body.excludeTitles) ? body.excludeTitles.map(normalizedTitle) : [];
+      return !excluded.includes(normalizedTitle(recipe.title));
+    }
+    
+    function groupAllowed(analysis) {
+      return (analysis.requiredMissing?.length || 0) <= 3;
+    }
+    
+    function analyzeWithContext(recipe, context) {
+      return applyMatchingUserContext(recipe, analyzeRecipe(recipe, context), context);
+    }
+    
+    function enrichedWithContext(recipe, context, analysis = analyzeWithContext(recipe, context)) {
+      const enriched = enrichRecipeSemantics(recipe, context);
+      const userOwned = new Set((context.ingredients || []).map(normalizedTitle));
+      const uses = [...new Set(
+        analysis.exactAvailable
+          .filter((item) => item.role !== "base" && item.match?.owned && userOwned.has(normalizedTitle(item.match.owned)))
+          .map((item) => item.match.owned),
+      )];
+      const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;
+      const requiredTotal = analysis.ingredients.filter((item) => item.role === "required").length;
+      return {
+        ...enriched,
+        uses,
+        usedCount: uses.length,
+        coverage: exactRequired / Math.max(1, requiredTotal),
+        matching: {
+          ...(enriched.matching || {}),
+          group: analysis.group,
+          score: analysis.score,
+          reasons: analysis.reasons,
+          missingRequired: analysis.requiredMissing.map((item) => item.name),
+          missingOptional: analysis.optionalMissing.map((item) => item.name),
+          substitutions: analysis.substitutions.map((item) => ({ ingredient: item.name, owned: item.match?.owned || "" })),
+          missingEquipment: analysis.missingEquipment,
+          quantityShortages: analysis.quantityShortages.map((item) => ({ name: item.name, have: `${item.have.quantity} ${item.have.unit}`.trim(), need: item.need })),
+          preferencePenalty: analysis.preferencePenalty,
+        },
+      };
+    }
+    
+    function rankingScore(item) {
+      return item.usedCount * 10 - item.missingCount * 7 - item.optionalMissing - item.substitutions * 2;
+    }
+    
+    function rankRecipes(catalog, body) {
+      const context = matchingContext(body);
+      return catalog
+        .map((recipe) => {
+          const analysis = analyzeWithContext(recipe, context);
+          const enriched = enrichedWithContext(recipe, context, analysis);
+          const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;
+          return {
+            recipe: enriched,
+            analysis,
+            missingCount: analysis.requiredMissing.length,
+            usedCount: enriched.usedCount,
+            exactRequired,
+            substitutions: analysis.substitutions.length,
+            optionalMissing: analysis.optionalMissing.length,
+          };
+        })
+        .filter(({ recipe, analysis }) => recipePassesFilters(recipe, body)
+          && groupAllowed(analysis)
+          && recipe.usedCount >= 1
+          && (!context.enforceEquipment || analysis.missingEquipment.length === 0))
+        .sort((a, b) => rankingScore(b) - rankingScore(a)
+          || a.missingCount - b.missingCount
+          || b.usedCount - a.usedCount
+          || b.exactRequired - a.exactRequired
+          || a.substitutions - b.substitutions
+          || a.optionalMissing - b.optionalMissing
+          || Number(a.recipe.minutes) - Number(b.recipe.minutes)
+          || a.recipe.title.localeCompare(b.recipe.title, "ru"));
+    }
+    
+    function compactMatchedRecipe(recipe) {
+      const missingRequired = Array.isArray(recipe.matching?.missingRequired) ? recipe.matching.missingRequired : [];
+      return {
+        id: recipe.id,
+        compact: true,
+        title: recipe.title,
+        subtitle: recipe.subtitle,
+        cuisine: recipe.cuisine,
+        flag: recipe.flag,
+        course: recipe.course,
+        protein: recipe.protein,
+        minutes: recipe.minutes,
+        difficulty: recipe.difficulty,
+        portions: Number(recipe.portions) || 2,
+        equipment: recipe.equipment || [],
+        ingredients: (recipe.ingredients || []).map((item) => ({ name: item.name, amount: item.amount || "", aliases: item.aliases || [], pantry: item.pantry === true, ...(item.role ? { role: item.role } : {}) })),
+        nutrition: { calories: Number(recipe.nutrition?.calories) || 0 },
+        source: recipe.source,
+        matching: recipe.matching,
+        missing: missingRequired.length ? missingRequired : Array.isArray(recipe.missing) ? recipe.missing : [],
+        uses: Array.isArray(recipe.uses) ? recipe.uses : [],
+        usedCount: Number(recipe.usedCount) || 0,
+        coverage: Number(recipe.coverage) || 0,
+        why: recipe.why,
+      };
+    }
+    
+    function ingredientUnlockSuggestions(catalog, body, limit = 6) {
+      const context = matchingContext(body);
+      const owned = new Set(context.ingredients.map(normalizedTitle));
+      const counts = new Map();
+      for (const recipe of catalog) {
+        if (!recipePassesFilters(recipe, { ...body, course: "все", excludeTitles: [] })) continue;
+        const analysis = analyzeWithContext(recipe, context);
+        if (analysis.requiredMissing?.length !== 1) continue;
+        const name = String(analysis.requiredMissing[0]?.name || "").trim();
+        const key = normalizedTitle(name);
+        if (!name || !key || owned.has(key)) continue;
+        const current = counts.get(key) || { name, count: 0 };
+        current.count += 1;
+        if (name.length < current.name.length) current.name = name;
+        counts.set(key, current);
+      }
+      return [...counts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ru")).slice(0, limit);
+    }
+    
+    async function runAiIdeas(body, request, env, ctx) {
+      const generationBody = { ...body, equipment: body.enforceEquipment ? body.equipment : [], portions: body.portions };
+      const response = await featureWorker.fetch(requestWithJson(request, generationBody), env, ctx);
+      const data = await response.clone().json().catch(() => null);
+      if (!data) return { response, data: null, recipes: [] };
+      const recipes = Array.isArray(data.recipes) ? rankRecipes(data.recipes, body).map((item) => compactMatchedRecipe(item.recipe)) : [];
+      return { response, data, recipes };
+    }
+    
+    function resultResponse(recipes, body, { source = "deterministic-catalog", suggestions = [], extra = {}, hasMore = false } = {}) {
+      return json({
+        ...extra,
+        recipes,
+        suggestions,
+        hasMore,
+        source,
+        relaxation: null,
+        originalFilters: {
+          searchMode: body.searchMode,
+          course: body.course,
+          portions: body.portions,
+          maxMinutes: body.maxMinutes,
+          difficulty: body.difficulty || "",
+        },
+      });
+    }
+    
+    function pagedResultResponse(recipes, body, options = {}) {
+      const offset = Math.max(0, Number(body.offset) || 0);
+      const page = recipes.slice(offset, offset + MATCHING_PAGE_SIZE);
+      return resultResponse(page, body, {
+        ...options,
+        extra: { ...(options.extra || {}), total: recipes.length, offset },
+        hasMore: offset + page.length < recipes.length,
+      });
+    }
+    
+    function normalizedBody(body = {}) {
+      const difficulty = typeof body.difficulty === "string" && body.difficulty.trim() ? body.difficulty.trim() : undefined;
+      return {
+        ...body,
+        maxMinutes: Math.round(clampNumber(body.maxMinutes, 0, 0, 1440)),
+        portions: Math.round(clampNumber(body.portions, 2, 1, 24)),
+        offset: Math.floor(clampNumber(body.offset, 0, 0, 10000)),
+        priorityIngredients: Array.isArray(body.priorityIngredients) ? body.priorityIngredients.filter(Boolean) : [],
+        difficulty,
+        searchMode: body.searchMode === "plus-one" ? "plus-one" : "strict",
+        course: ["все", "завтрак", "суп", "основное", "перекус", "салат", "закуска", "соус"].includes(body.course) ? body.course : "все",
+        enforceEquipment: body.enforceEquipment === true,
+      };
+    }
+    
+    async function smartGenerate(request, env, ctx) {
+      const incoming = await request.clone().json().catch(() => ({}));
+      const ingredients = Array.isArray(incoming.ingredients) ? incoming.ingredients.filter((item) => String(item || "").trim()) : [];
+      if (!ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
+      const body = normalizedBody({ ...incoming, ingredients });
+      const catalog = await matchingCatalog(request, env, body.portions);
+      const suggestions = ingredientUnlockSuggestions(catalog, body);
+      const catalogRanked = rankRecipes(catalog, body).map(({ recipe }) => compactMatchedRecipe(recipe));
+    
+      if (catalogRanked.length && !incoming.aiIdeas) return pagedResultResponse(catalogRanked, body, { suggestions });
+      if (catalogRanked.length && incoming.aiIdeas) {
+        const generated = await runAiIdeas(body, request, env, ctx);
+        const combined = mergeRecipes(catalogRanked, generated.recipes);
+        return pagedResultResponse(combined, body, { source: generated.recipes.length ? "deterministic-plus-ai" : "deterministic-catalog", suggestions, extra: generated.data || {} });
+      }
+    
+      if (!incoming.aiIdeas) return pagedResultResponse([], body, { suggestions, extra: { error: suggestions.length ? "Добавьте один из предложенных продуктов — появятся новые варианты" : "Для этого набора пока нет близкого рецепта" } });
+      const generated = await runAiIdeas(body, request, env, ctx);
+      if (generated.recipes.length) return pagedResultResponse(generated.recipes, body, { source: "workers-ai", suggestions, extra: generated.data || {} });
+      if (!generated.data && !generated.response.ok) return generated.response;
+      return pagedResultResponse([], body, { suggestions, extra: { error: suggestions.length ? "Добавьте один из предложенных продуктов" : "Попробуйте другой набор продуктов" } });
+    }
+    
+    async function matchingSuggestions(request, env) {
+      const url = new URL(request.url);
+      const body = normalizedBody({
+        ingredients: url.searchParams.getAll("ingredient"),
+        equipment: url.searchParams.getAll("equipment"),
+        baseIngredients: url.searchParams.getAll("base"),
+        portions: url.searchParams.get("portions") || 2,
+        enforceEquipment: url.searchParams.get("enforceEquipment") === "true",
+        course: "все",
+        searchMode: "strict",
+      });
+      if (!body.ingredients.length) return json({ suggestions: [] });
+      const catalog = await matchingCatalog(request, env, body.portions);
+      return json({ suggestions: ingredientUnlockSuggestions(catalog, body) }, 200, { "cache-control": "public, max-age=60, s-maxage=300" });
+    }
+    
+    export default {
+      async fetch(request, env, ctx) {
+        const url = new URL(request.url);
+        if (url.pathname === "/api/generate" && request.method === "POST") return smartGenerate(request, env, ctx);
+        if (url.pathname === "/api/matching-suggestions" && request.method === "GET") return matchingSuggestions(request, env);
+        return featureWorker.fetch(request, env, ctx);
+      },
+    };
+    
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///home/runner/work/everything/everything/test/runtime-generation.test.mjs:18:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: runtime-миграция чинит оба строковых user id до обращения к данным
+ok 120 - runtime-миграция чинит оба строковых user id до обращения к данным
+  ---
+  duration_ms: 0.939823
+  type: 'test'
+  ...
+# Subtest: SEO slug стабилен и пригоден для URL
+ok 121 - SEO slug стабилен и пригоден для URL
+  ---
+  duration_ms: 1.138165
+  type: 'test'
+  ...
+# Subtest: у каждого рецепта есть уникальная индексируемая ссылка
+ok 122 - у каждого рецепта есть уникальная индексируемая ссылка
+  ---
+  duration_ms: 2.592754
+  type: 'test'
+  ...
+# Subtest: страница всех рецептов отдаётся рабочим app shell и ItemList
+ok 123 - страница всех рецептов отдаётся рабочим app shell и ItemList
+  ---
+  duration_ms: 35.081066
+  type: 'test'
+  ...
+# Subtest: страница рецепта содержит canonical, Recipe JSON-LD, ингредиенты и шаги
+ok 124 - страница рецепта содержит canonical, Recipe JSON-LD, ингредиенты и шаги
+  ---
+  duration_ms: 14.068525
+  type: 'test'
+  ...
+# Subtest: несуществующий рецепт возвращает настоящий 404 и noindex
+ok 125 - несуществующий рецепт возвращает настоящий 404 и noindex
+  ---
+  duration_ms: 3.183362
+  type: 'test'
+  ...
+# Subtest: sitemap содержит каталог и все страницы рецептов
+ok 126 - sitemap содержит каталог и все страницы рецептов
+  ---
+  duration_ms: 6.853301
+  type: 'test'
+  ...
+# Subtest: robots открывает публичные страницы и указывает sitemap
+ok 127 - robots открывает публичные страницы и указывает sitemap
+  ---
+  duration_ms: 0.695393
+  type: 'test'
+  ...
+# Subtest: канонические URL не размножаются завершающим слешем
+ok 128 - канонические URL не размножаются завершающим слешем
+  ---
+  duration_ms: 8.772565
+  type: 'test'
+  ...
+# Subtest: /recipe без slug ведёт в базу
+ok 129 - /recipe без slug ведёт в базу
+  ---
+  duration_ms: 2.976619
+  type: 'test'
+  ...
+# seo_marker_missing data-seo-kicker
+# seo_marker_missing data-seo-title
+# seo_marker_missing data-seo-copy
+# seo_marker_missing data-seo-content
+# Subtest: прод не превращает отсутствие SEO-маркера в 500
+ok 130 - прод не превращает отсутствие SEO-маркера в 500
+  ---
+  duration_ms: 35.692705
+  type: 'test'
+  ...
+# Subtest: строгий режим ловит отсутствие SEO-маркера до прода
+ok 131 - строгий режим ловит отсутствие SEO-маркера до прода
+  ---
+  duration_ms: 3.606445
+  type: 'test'
+  ...
+# Subtest: HTML больше не может сутки висеть stale
+ok 132 - HTML больше не может сутки висеть stale
+  ---
+  duration_ms: 6.59365
+  type: 'test'
+  ...
+# Subtest: серверный HTML рецепта содержит 4:3 hero до ингредиентов без lazy
+ok 133 - серверный HTML рецепта содержит 4:3 hero до ингредиентов без lazy
+  ---
+  duration_ms: 42.482033
+  type: 'test'
+  ...
+# Subtest: серверный /recipes содержит квадратные lazy-превью
+ok 134 - серверный /recipes содержит квадратные lazy-превью
+  ---
+  duration_ms: 12.750486
+  type: 'test'
+  ...
+# Subtest: рецепт без фото не получает серверный img
+ok 135 - рецепт без фото не получает серверный img
+  ---
+  duration_ms: 10.36019
+  type: 'test'
+  ...
+# Subtest: картофель, лук и яйца дают ожидаемые простые блюда
+ok 136 - картофель, лук и яйца дают ожидаемые простые блюда
+  ---
+  duration_ms: 39.20982
+  type: 'test'
+  ...
+# Subtest: простые рецепты масштабируются по числу порций
+ok 137 - простые рецепты масштабируются по числу порций
+  ---
+  duration_ms: 0.448259
+  type: 'test'
+  ...
+# Subtest: public/img содержит ровно 119 полных троек валидных WebP
+ok 138 - public/img содержит ровно 119 полных троек валидных WebP
+  ---
+  duration_ms: 42.570583
+  type: 'test'
+  ...
+# Subtest: фотокаталог содержит ровно 119 существующих рецептов и slug
+ok 139 - фотокаталог содержит ровно 119 существующих рецептов и slug
+  ---
+  duration_ms: 5.799271
+  type: 'test'
+  ...
+# Subtest: manifest содержит те же 119 рецептов, а рецепты без фото не получают URL
+ok 140 - manifest содержит те же 119 рецептов, а рецепты без фото не получают URL
+  ---
+  duration_ms: 8.182186
+  type: 'test'
+  ...
+# Subtest: логика полной колоды АМ проходит синтаксическую проверку
+ok 141 - логика полной колоды АМ проходит синтаксическую проверку
+  ---
+  duration_ms: 36.922234
+  type: 'test'
+  ...
+# Subtest: АМ догружает страницы каталога и не использует фильтр продуктов
+ok 142 - АМ догружает страницы каталога и не использует фильтр продуктов
+  ---
+  duration_ms: 0.387009
+  type: 'test'
+  ...
+# Subtest: Vite подключает полную колоду после каталога
+ok 143 - Vite подключает полную колоду после каталога
+  ---
+  duration_ms: 0.287012
+  type: 'test'
+  ...
+# Subtest: клиент и Worker используют одно ядро запасов
+ok 144 - клиент и Worker используют одно ядро запасов
+  ---
+  duration_ms: 1.772798
+  type: 'test'
+  ...
+# Subtest: близкие варианты показываются сразу вместо скрытого режима расширения
+ok 145 - близкие варианты показываются сразу вместо скрытого режима расширения
+  ---
+  duration_ms: 1.424796
+  type: 'test'
+  ...
+# Subtest: локальный каталог используется только при ошибке запроса
+ok 146 - локальный каталог используется только при ошибке запроса
+  ---
+  duration_ms: 0.378196
+  type: 'test'
+  ...
+# google_auth_failed Invalid Google credential
+# Subtest: golden routes сохраняют внешний контракт после разгрузки Worker
+ok 147 - golden routes сохраняют внешний контракт после разгрузки Worker
+  ---
+  duration_ms: 3022.719239
+  type: 'test'
+  ...
+# Subtest: golden routes фиксируют ключевые заголовки SEO и API
+ok 148 - golden routes фиксируют ключевые заголовки SEO и API
+  ---
+  duration_ms: 21.450916
+  type: 'test'
+  ...
+1..148
+# tests 148
+# suites 0
+# pass 142
+# fail 6
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 47346.317329
+
+EXIT=1
