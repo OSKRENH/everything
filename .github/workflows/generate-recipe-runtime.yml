@@ -23,7 +23,7 @@ jobs:
       - run: node scripts/generate-recipe-runtime.mjs
       - name: Commit generated runtime data
         run: |
-          if git diff --quiet -- worker/generated public/recipe-data; then
+          if [ -z "$(git status --porcelain -- worker/generated public/recipe-data)" ]; then
             echo "Generated data is already current."
             exit 0
           fi
