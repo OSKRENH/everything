@@ -2,21 +2,23 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("форма кухни удаляет время, сложность, порции и приоритет продуктов", () => {
+test("основная форма остаётся простой, а Worker не затирает дополнительные параметры", () => {
   const source = readFileSync("src/kitchen-simplified.inject.js", "utf8");
+  const audit = readFileSync("src/audit-v7.inject.js", "utf8");
+  const worker = readFileSync("worker/matching-entry.js", "utf8");
   const vite = readFileSync("vite.config.js", "utf8");
 
   assert.match(source, /indexOf\("<legend>Время<\/legend>"\)/);
-  assert.match(source, /indexOf\("<legend>Что приготовить<\/legend>"/);
   assert.match(source, /priorityStart/);
-  assert.match(source, /quickRowStart/);
   assert.match(source, /\.priority-products, \.preferences-section/);
-  assert.match(source, /state\.priorityIngredients = \[\]/);
-  assert.match(source, /state\.maxMinutes = 0/);
-  assert.match(source, /state\.portions = 2/);
-  assert.doesNotMatch(source, /priorityIngredients: state\.priorityIngredients/);
+  assert.match(audit, /stripEquipmentSectionV7/);
+  assert.match(audit, /state\.equipment = \[\]/);
+  assert.match(worker, /maxMinutes: Math\.round\(clampNumber\(body\.maxMinutes/);
+  assert.match(worker, /portions: Math\.round\(clampNumber\(body\.portions/);
+  assert.match(worker, /priorityIngredients: Array\.isArray\(body\.priorityIngredients\)/);
+  assert.match(worker, /const difficulty = typeof body\.difficulty/);
   assert.match(vite, /kitchen-simplified\.inject\.js/);
-  assert.match(vite, /Техника и избранное останутся без изменений/);
+  assert.match(vite, /audit-v7\.inject\.js/);
 });
 
 test("результаты содержат сортировки и постепенное раскрытие", () => {
@@ -55,6 +57,15 @@ test("Worker и клиент не обрезают подходящие реце
   assert.match(worker, /catalogSources/);
   assert.match(worker, /matchingCatalog/);
   assert.doesNotMatch(worker, /recipes\.slice\(0, 3\)/);
-  assert.doesNotMatch(worker, /Number\(body\.maxMinutes\).*recipe\.minutes/);
-  assert.doesNotMatch(worker, /difficultyRank/);
+  assert.match(worker, /body\.maxMinutes > 0/);
+  assert.match(worker, /difficultyRank/);
+});
+
+test("финальная выдача всегда делится на три понятные группы", () => {
+  const audit = readFileSync("src/audit-v7.inject.js", "utf8");
+  for (const title of ["Готовьте сейчас", "Купить один продукт", "Почти подходит"]) {
+    assert.match(audit, new RegExp(title));
+  }
+  assert.match(audit, /analysis\.requiredMissing\.length === 1/);
+  assert.match(audit, /analysis\.requiredMissing\.length >= 2/);
 });
