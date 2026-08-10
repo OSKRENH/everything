@@ -7,6 +7,7 @@ test("клиент и Worker используют одно ядро запасо
   const client = readFileSync("src/matching-core-v4.inject.js", "utf8");
   const worker = readFileSync("worker/matching-entry.js", "utf8");
   const next = readFileSync("worker/next-entry.js", "utf8");
+  const routes = readFileSync("worker/routes.js", "utf8");
 
   assert.match(vite, /matching-user-context\.js/);
   assert.match(vite, /matching-core-v4\.inject\.js/);
@@ -16,7 +17,9 @@ test("клиент и Worker используют одно ядро запасо
   assert.match(worker, /ingredient-semantics-v3\.js/);
   assert.doesNotMatch(worker, /ingredient-semantics-v2\.js/);
   assert.match(worker, /applyMatchingUserContext/);
-  assert.match(next, /matchingWorker\.fetch/);
+  assert.match(next, /dispatchRoute/);
+  assert.match(routes, /const toMatching = .*matchingWorker\.fetch/);
+  assert.match(routes, /exact\("\/api\/generate"[^\n]*toMatching/);
   assert.doesNotMatch(next, /oil-fix-entry|safe-entry/);
 });
 
