@@ -113,13 +113,23 @@ function stripHeadMeta(html, pattern) {
 
 function routeContent(route, entries) {
   if (route.type === "catalog") {
-    const links = entries.map((entry) => `<li><a href="${escapeHtml(entry.pathname)}">${escapeHtml(entry.recipe.title)}</a></li>`).join("");
+    const links = entries.map((entry) => {
+      const photo = recipeImageSet(entry.recipe, entry.slug);
+      const preview = photo
+        ? `<img class="seo-recipe-preview" src="${escapeHtml(photo.square)}" alt="${escapeHtml(entry.recipe.title)}" width="1200" height="1200" loading="lazy" decoding="async">`
+        : "";
+      return `<li>${preview}<a href="${escapeHtml(entry.pathname)}">${escapeHtml(entry.recipe.title)}</a></li>`;
+    }).join("");
     return `<section aria-label="Список рецептов"><h2>Все рецепты</h2><p>Полная база Кутно доступна без авторизации.</p><ul class="seo-recipe-list">${links}</ul></section>`;
   }
   const recipe = route.recipe;
+  const photo = recipeImageSet(recipe, route.slug);
+  const hero = photo
+    ? `<img class="seo-recipe-hero" src="${escapeHtml(photo.page)}" alt="${escapeHtml(recipe.title)}" width="1200" height="900" fetchpriority="high" decoding="async">`
+    : "";
   const ingredients = (recipe.ingredients || []).map((item) => `<li>${escapeHtml(ingredientLine(item))}</li>`).join("");
   const steps = (recipe.steps || []).map((step, index) => `<li id="step-${index + 1}">${escapeHtml(step)}</li>`).join("");
-  return `<section aria-label="Рецепт ${escapeHtml(recipe.title)}"><h2>Ингредиенты</h2><ul>${ingredients}</ul><h2>Как готовить</h2><ol>${steps}</ol><p><a href="/recipes">Вернуться в базу рецептов</a></p></section>`;
+  return `<section aria-label="Рецепт ${escapeHtml(recipe.title)}">${hero}<h2>Ингредиенты</h2><ul>${ingredients}</ul><h2>Как готовить</h2><ol>${steps}</ol><p><a href="/recipes">Вернуться в базу рецептов</a></p></section>`;
 }
 
 function routeNoscript(route, entries) {
