@@ -1,7 +1,7 @@
 import { seoRecipeEntries } from "./seo-pages.js";
 
 const SITE_ORIGIN = "https://kutno.ru";
-const HTML_CACHE = "public, max-age=300, s-maxage=1800, stale-while-revalidate=86400";
+const HTML_CACHE = "public, max-age=300, s-maxage=1800, stale-while-revalidate=600";
 const CONTENT_PUBLISHED = "2026-08-10";
 const CONTENT_MODIFIED = "2026-08-10";
 
@@ -123,22 +123,26 @@ function routeNoscript(route, entries) {
   return `<noscript><main style="max-width:920px;margin:40px auto;padding:0 24px;font-family:Arial,sans-serif">${routeContent(route, entries)}</main></noscript>`;
 }
 
-function replaceMarker(html, pattern, replacement, markerName) {
-  if (!pattern.test(html)) throw new Error(`SEO marker is missing: ${markerName}`);
+function replaceMarker(html, pattern, replacement, markerName, strict = false) {
+  if (!pattern.test(html)) {
+    if (strict) throw new Error(`SEO marker is missing: ${markerName}`);
+    console.error("seo_marker_missing", markerName);
+    return html;
+  }
   return html.replace(pattern, replacement);
 }
 
-function routeBootCopy(html, route) {
+function routeBootCopy(html, route, strict = false) {
   const kicker = route.type === "catalog" ? "База Кутно" : "Кутно / рецепт";
   const title = route.type === "catalog" ? "Все рецепты" : route.recipe.title;
   const copy = route.type === "catalog"
     ? "Открываем полноценную базу рецептов Кутно…"
     : route.recipe.subtitle || "Открываем рецепт в Кутно…";
   let output = html;
-  output = replaceMarker(output, /(<p[^>]*data-seo-kicker[^>]*>)[\s\S]*?(<\/p>)/i, `$1${escapeHtml(kicker)}$2`, "data-seo-kicker");
-  output = replaceMarker(output, /(<h1[^>]*data-seo-title[^>]*>)[\s\S]*?(<\/h1>)/i, `$1${escapeHtml(title)}$2`, "data-seo-title");
-  output = replaceMarker(output, /(<p[^>]*data-seo-copy[^>]*>)[\s\S]*?(<\/p>)/i, `$1${escapeHtml(copy)}$2`, "data-seo-copy");
-  output = replaceMarker(output, /(<div[^>]*data-seo-content[^>]*>)[\s\S]*?(<\/div>)/i, `$1${routeContent(route, route.entries)}$2`, "data-seo-content");
+  output = replaceMarker(output, /(<p[^>]*data-seo-kicker[^>]*>)[\s\S]*?(<\/p>)/i, `$1${escapeHtml(kicker)}$2`, "data-seo-kicker", strict);
+  output = replaceMarker(output, /(<h1[^>]*data-seo-title[^>]*>)[\s\S]*?(<\/h1>)/i, `$1${escapeHtml(title)}$2`, "data-seo-title", strict);
+  output = replaceMarker(output, /(<p[^>]*data-seo-copy[^>]*>)[\s\S]*?(<\/p>)/i, `$1${escapeHtml(copy)}$2`, "data-seo-copy", strict);
+  output = replaceMarker(output, /(<div[^>]*data-seo-content[^>]*>)[\s\S]*?(<\/div>)/i, `$1${routeContent(route, route.entries)}$2`, "data-seo-content", strict);
   return output;
 }
 
@@ -185,8 +189,9 @@ export async function servePublicAppPage(request, env) {
   const clientRoute = isRecipe
     ? { type: "recipe", id: route.id, slug: route.slug, pathname: route.pathname, title: route.recipe.title }
     : { type: "catalog", pathname: "/recipes" };
+  const strictSeoMarkers = env?.STRICT_SEO_MARKERS === true || env?.STRICT_SEO_MARKERS === "true";
 
-  let html = routeBootCopy(shell, route);
+  let html = routeBootCopy(shell, route, strictSeoMarkers);
   html = replaceHeadValue(html, /<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`);
   html = replaceHeadValue(html, /<meta\s+name="description"\s+content="[^"]*"\s*\/?\s*>/i, `<meta name="description" content="${escapeHtml(description)}" />`);
   html = replaceHeadValue(html, /<link\s+rel="canonical"\s+href="[^"]*"\s*\/?\s*>/i, `<link rel="canonical" href="${escapeHtml(canonicalUrl)}" />`);
