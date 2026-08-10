@@ -1,0 +1,36 @@
+name: Debug unit tests
+
+on:
+  push:
+    branches: [agent/am-mobile-batch-and-photo-tz]
+    paths: [.debug-unit-trigger]
+
+permissions:
+  contents: write
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/am-mobile-batch-and-photo-tz
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Capture tests
+        run: |
+          set +e
+          npm test > ci-test-output.txt 2>&1
+          status=$?
+          echo "" >> ci-test-output.txt
+          echo "EXIT=$status" >> ci-test-output.txt
+          exit 0
+      - name: Commit diagnostics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ci-test-output.txt
+          git commit -m "Capture unit test diagnostics"
+          git push origin HEAD:agent/am-mobile-batch-and-photo-tz
