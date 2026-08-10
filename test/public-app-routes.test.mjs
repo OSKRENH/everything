@@ -15,13 +15,19 @@ const env = {
 };
 
 test("новые публичные модули проходят синтаксическую проверку", () => {
-  for (const file of ["worker/public-app-pages.js", "src/public-routes.js"]) {
+  for (const file of ["worker/public-app-pages.js", "worker/fresh-sitemap.js", "src/public-routes.js"]) {
     const result = spawnSync(process.execPath, ["--check", file], { encoding: "utf8" });
     assert.equal(result.status, 0, `${file}: ${result.stderr || result.stdout}`);
   }
 });
 
-test("/recipes отдаёт основной shell Кутно, а не отдельную SEO-витрину", async () => {
+test("app shell содержит устойчивые SEO-маркеры", () => {
+  for (const marker of ["data-seo-kicker", "data-seo-title", "data-seo-copy", "data-seo-content"]) {
+    assert.match(indexHtml, new RegExp(marker));
+  }
+});
+
+test("/recipes отдаёт основной shell и видимый серверный список", async () => {
   const response = await servePublicAppPage(new Request("https://kutno.ru/recipes"), env);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("x-kutno-public-route"), "catalog");
@@ -30,11 +36,13 @@ test("/recipes отдаёт основной shell Кутно, а не отде�
   assert.match(html, /src="\/src\/bootstrap\.js\?v=1"/);
   assert.match(html, /window\.__KUTNO_PUBLIC_ROUTE__=\{"type":"catalog"/);
   assert.match(html, /"@type":"ItemList"/);
-  assert.match(html, /<h1>Все рецепты<\/h1>/);
+  assert.match(html, /<h1[^>]*data-seo-title[^>]*>Все рецепты<\/h1>/);
+  assert.match(html, /<div[^>]*data-seo-content[^>]*>[\s\S]*<h2>Все рецепты<\/h2>/);
+  assert.match(html, /class="seo-recipe-list"/);
   assert.doesNotMatch(html, /class="grid"/);
 });
 
-test("уникальный URL рецепта грузит основной shell и штатный bootstrap", async () => {
+test("уникальный URL рецепта грузит shell, видимый рецепт и JSON-LD с датами", async () => {
   const entry = seoRecipeEntries(2)[0];
   const response = await servePublicAppPage(new Request(`https://kutno.ru${entry.pathname}`), env);
   assert.equal(response.status, 200);
@@ -46,7 +54,10 @@ test("уникальный URL рецепта грузит основной shel
   assert.match(html, /"@type":"Recipe"/);
   assert.match(html, /"recipeIngredient":\[/);
   assert.match(html, /"recipeInstructions":\[/);
-  assert.match(html, new RegExp(`<h1>${entry.recipe.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h1>`));
+  assert.match(html, /"datePublished":"2026-08-10"/);
+  assert.match(html, /"dateModified":"2026-08-10"/);
+  assert.match(html, new RegExp(`<h1[^>]*data-seo-title[^>]*>${entry.recipe.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h1>`));
+  assert.match(html, /data-seo-content[^>]*>[\s\S]*<h2>Ингредиенты<\/h2>[\s\S]*<h2>Как готовить<\/h2>/);
 });
 
 test("несуществующий рецепт не превращается в app shell", async () => {
@@ -54,9 +65,11 @@ test("несуществующий рецепт не превращается в
   assert.equal(response, null);
 });
 
-test("robots явно разрешает OpenAI и остальных ботов на публичных страницах", async () => {
+test("robots явно разрешает OpenAI и не кэшируется на edge", async () => {
   const response = serveCrawlerRules(new Request("https://kutno.ru/robots.txt"));
   assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("cdn-cache-control"), "no-store");
   const body = await response.text();
   for (const agent of ["OAI-SearchBot", "GPTBot", "ChatGPT-User", "OAI-AdsBot", "*"]) {
     assert.match(body, new RegExp(`User-agent: ${agent.replace("*", "\\*")}\\nAllow: /`));

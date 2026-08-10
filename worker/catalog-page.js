@@ -2,6 +2,7 @@ import { enrichRecipeSemantics } from "../src/ingredient-semantics-v3.js";
 import { CATALOG_VERSION, INGREDIENT_GLOSSARY, WORLD_RECIPE_CATALOG } from "./recipe-catalog.js";
 import { manualRecipesForPortions } from "./manual-recipes.js";
 import { simpleRecipesForPortions } from "./simple-recipes.js";
+import { expandedHomeRecipesForPortions } from "./home-recipes-expanded.js";
 import { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
 
 const DEFAULT_LIMIT = 5;
@@ -105,7 +106,7 @@ function finalPreparedRecipe(recipe, portions, kind) {
     match: null,
     missing: Array.isArray(recipe.missing) ? recipe.missing : [],
     uses: Array.isArray(recipe.uses) ? recipe.uses : [],
-    why: recipe.why || (kind === "simple" ? "Простой домашний рецепт из продуктов, которые уже есть." : "Проверенный рецепт без лишних требований"),
+    why: recipe.why || (kind === "simple" || kind === "home" ? "Простой домашний рецепт из продуктов, которые уже есть." : "Проверенный рецепт без лишних требований"),
   };
 }
 
@@ -120,6 +121,7 @@ export function catalogSources(portions = 2) {
     sources.push({ kind, recipe });
   };
   simpleRecipesForPortions(targetPortions).forEach((recipe) => add("simple", recipe));
+  expandedHomeRecipesForPortions(targetPortions).forEach((recipe) => add("home", recipe));
   WORLD_RECIPE_CATALOG.forEach((recipe) => add("world", recipe));
   manualRecipesForPortions(targetPortions).forEach((recipe) => add("manual", recipe));
   return sources;
@@ -164,7 +166,7 @@ function compactRecipeForSource(source, context = null) {
     ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map(compactIngredient),
     nutrition: { calories: Number(recipe.nutrition?.calories) || 0 },
     source: sourceMeta(source),
-    portions: 2,
+    portions: Number(recipe.portions) || 2,
     missing: [],
     uses: [],
     why: recipe.why || (source.kind === "world" ? `Классическое блюдо кухни: ${recipe.cuisine}` : "Проверенный рецепт Кутно"),
@@ -220,7 +222,7 @@ function catalogFacets(sources) {
   return {
     cuisines: orderedUnique(index.map((recipe) => recipe.cuisine), ["Домашняя кухня", "Россия"]).map((value) => ({ value, flag: cuisineFlags[value] || "🌍" })),
     difficulties: orderedUnique(index.map((recipe) => recipe.difficulty), ["легко", "обычно", "сложно"]),
-    courses: orderedUnique(index.map((recipe) => recipe.course), ["завтрак", "суп", "основное", "салат", "закуска", "выпечка", "соус"]),
+    courses: orderedUnique(index.map((recipe) => recipe.course), ["завтрак", "суп", "основное", "салат", "закуска", "перекус", "выпечка", "соус"]),
     proteins: orderedUnique(index.map((recipe) => recipe.protein), ["мясо", "рыба и морепродукты", "без мяса"]),
   };
 }
@@ -230,7 +232,7 @@ function contextFromUrl(url) {
   return {
     ingredients: url.searchParams.getAll("ingredient"),
     priorityIngredients: [],
-    equipment: url.searchParams.getAll("equipment"),
+    equipment: [],
     ...(baseIngredients.length ? { baseIngredients } : {}),
   };
 }

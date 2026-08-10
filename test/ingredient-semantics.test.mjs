@@ -16,6 +16,7 @@ test("базовый набор по умолчанию остаётся кон�
 test("синонимы считаются точным совпадением", () => {
   assert.equal(ingredientMatch("помидоры", "томаты").type, "exact");
   assert.equal(ingredientMatch("картофель", "картошка").type, "exact");
+  assert.equal(ingredientMatch("яйца", "яичный желток").type, "exact");
 });
 
 test("репчатый и зелёный лук не считаются одним продуктом", () => {
@@ -27,10 +28,12 @@ test("кокосовое и обычное молоко не считаются 
   assert.equal(ingredientMatch("кокосовое молоко", "кокосовое молоко").type, "exact");
 });
 
-test("частный вид подходит общей категории, но обратное считается заменой", () => {
+test("частный вид подходит общей категории, а обратное считается заменой", () => {
   assert.equal(ingredientMatch("макароны", "спагетти").type, "category");
   assert.equal(ingredientMatch("спагетти", "макароны").type, "substitute");
   assert.equal(ingredientMatch("пармезан", "твёрдый сыр").type, "substitute");
+  assert.equal(ingredientMatch("гуанчале", "бекон").type, "substitute");
+  assert.equal(ingredientMatch("сливки", "молоко").type, "substitute");
 });
 
 test("базовые продукты не блокируют рецепт", () => {
@@ -45,13 +48,14 @@ test("базовые продукты не блокируют рецепт", () 
   };
   const analysis = analyzeRecipe(recipe, {
     ingredients: ["картошка"],
-    equipment: ["pan"],
+    equipment: [],
   });
   assert.equal(analysis.group, "ready");
   assert.equal(analysis.requiredMissing.length, 0);
+  assert.deepEqual(analysis.missingEquipment, []);
 });
 
-test("пустой список техники означает отсутствие нагревательной техники", () => {
+test("пустой список техники не фильтрует бытовые рецепты", () => {
   const recipe = {
     title: "Жареный картофель",
     ingredients: [{ name: "картофель" }],
@@ -61,8 +65,31 @@ test("пустой список техники означает отсутств
     ingredients: ["картофель"],
     equipment: [],
   });
-  assert.equal(analysis.group, "more");
-  assert.deepEqual(analysis.missingEquipment, ["Сковорода"]);
+  assert.equal(analysis.group, "ready");
+  assert.deepEqual(analysis.missingEquipment, []);
+});
+
+test("технику можно включить как явный строгий фильтр", () => {
+  const recipe = {
+    title: "Жареный картофель",
+    ingredients: [{ name: "картофель" }],
+    equipment: ["Сковорода"],
+  };
+  const missing = analyzeRecipe(recipe, {
+    ingredients: ["картофель"],
+    equipment: [],
+    enforceEquipment: true,
+  });
+  assert.equal(missing.group, "more");
+  assert.deepEqual(missing.missingEquipment, ["Сковорода"]);
+
+  const ready = analyzeRecipe(recipe, {
+    ingredients: ["картофель"],
+    equipment: ["сковорода"],
+    enforceEquipment: true,
+  });
+  assert.equal(ready.group, "ready");
+  assert.deepEqual(ready.missingEquipment, []);
 });
 
 test("необязательная зелень не переводит рецепт в покупки", () => {
@@ -79,7 +106,7 @@ test("необязательная зелень не переводит реце
   assert.equal(ingredientRole(recipe.ingredients[3], recipe, 3), "optional");
   const analysis = analyzeRecipe(recipe, {
     ingredients: ["спагетти", "чеснок"],
-    equipment: ["pot", "pan"],
+    equipment: [],
   });
   assert.equal(analysis.group, "substitute");
   assert.equal(analysis.requiredMissing.length, 0);
@@ -99,7 +126,7 @@ test("один отсутствующий главный продукт попа
   };
   const analysis = analyzeRecipe(recipe, {
     ingredients: ["рис", "лук"],
-    equipment: ["pot"],
+    equipment: [],
   });
   assert.equal(analysis.group, "one");
   assert.deepEqual(analysis.requiredMissing.map((item) => item.name), ["курица"]);
@@ -115,7 +142,7 @@ test("приоритетный продукт заметно повышает р
     ],
     equipment: ["Кастрюля", "Сковорода"],
   };
-  const common = { ingredients: ["гречка", "грибы", "лук"], equipment: ["pot", "pan"] };
+  const common = { ingredients: ["гречка", "грибы", "лук"], equipment: [] };
   const withoutPriority = analyzeRecipe(recipe, common);
   const withPriority = analyzeRecipe(recipe, { ...common, priorityIngredients: ["грибы"] });
   assert.ok(withPriority.score > withoutPriority.score);

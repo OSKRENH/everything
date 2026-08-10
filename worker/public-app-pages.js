@@ -2,6 +2,8 @@ import { seoRecipeEntries } from "./seo-pages.js";
 
 const SITE_ORIGIN = "https://kutno.ru";
 const HTML_CACHE = "public, max-age=300, s-maxage=1800, stale-while-revalidate=86400";
+const CONTENT_PUBLISHED = "2026-08-10";
+const CONTENT_MODIFIED = "2026-08-10";
 
 function escapeHtml(value = "") {
   return String(value)
@@ -48,6 +50,8 @@ function recipeStructuredData(entry) {
     description: recipeDescription(recipe),
     mainEntityOfPage: url,
     author: { "@type": "Organization", name: "Кутно", url: SITE_ORIGIN },
+    datePublished: CONTENT_PUBLISHED,
+    dateModified: CONTENT_MODIFIED,
     totalTime: `PT${Math.max(1, Math.round(Number(recipe.minutes) || 30))}M`,
     recipeYield: String(portions),
     recipeCuisine: cleanText(recipe.cuisine, 100),
@@ -104,28 +108,38 @@ function replaceHeadValue(html, pattern, replacement) {
   return pattern.test(html) ? html.replace(pattern, replacement) : html.replace("</head>", `${replacement}\n</head>`);
 }
 
-function routeNoscript(route, entries) {
+function routeContent(route, entries) {
   if (route.type === "catalog") {
     const links = entries.map((entry) => `<li><a href="${escapeHtml(entry.pathname)}">${escapeHtml(entry.recipe.title)}</a></li>`).join("");
-    return `<noscript><main style="max-width:920px;margin:40px auto;padding:0 24px;font-family:Arial,sans-serif"><h1>База рецептов Кутно</h1><p>Для интерактивной версии нужен JavaScript. Все рецепты доступны по отдельным адресам:</p><ul>${links}</ul></main></noscript>`;
+    return `<section aria-label="Список рецептов"><h2>Все рецепты</h2><p>Полная база Кутно доступна без авторизации.</p><ul class="seo-recipe-list">${links}</ul></section>`;
   }
   const recipe = route.recipe;
   const ingredients = (recipe.ingredients || []).map((item) => `<li>${escapeHtml(ingredientLine(item))}</li>`).join("");
-  const steps = (recipe.steps || []).map((step) => `<li>${escapeHtml(step)}</li>`).join("");
-  return `<noscript><main style="max-width:920px;margin:40px auto;padding:0 24px;font-family:Arial,sans-serif"><a href="/recipes">База рецептов</a><h1>${escapeHtml(recipe.title)}</h1><p>${escapeHtml(recipeDescription(recipe))}</p><h2>Ингредиенты</h2><ul>${ingredients}</ul><h2>Как готовить</h2><ol>${steps}</ol></main></noscript>`;
+  const steps = (recipe.steps || []).map((step, index) => `<li id="step-${index + 1}">${escapeHtml(step)}</li>`).join("");
+  return `<section aria-label="Рецепт ${escapeHtml(recipe.title)}"><h2>Ингредиенты</h2><ul>${ingredients}</ul><h2>Как готовить</h2><ol>${steps}</ol><p><a href="/recipes">Вернуться в базу рецептов</a></p></section>`;
+}
+
+function routeNoscript(route, entries) {
+  return `<noscript><main style="max-width:920px;margin:40px auto;padding:0 24px;font-family:Arial,sans-serif">${routeContent(route, entries)}</main></noscript>`;
+}
+
+function replaceMarker(html, pattern, replacement, markerName) {
+  if (!pattern.test(html)) throw new Error(`SEO marker is missing: ${markerName}`);
+  return html.replace(pattern, replacement);
 }
 
 function routeBootCopy(html, route) {
-  if (route.type === "catalog") {
-    return html
-      .replace("<p class=\"boot-kicker\">Рецепты из того, что есть</p>", "<p class=\"boot-kicker\">База Кутно</p>")
-      .replace("<h1>Что приготовить сегодня</h1>", "<h1>Все рецепты</h1>")
-      .replace("Подготавливаем кухню и базу рецептов. Первый экран уже работает без загрузки приложения.", "Открываем полноценную базу рецептов Кутно…");
-  }
-  return html
-    .replace("<p class=\"boot-kicker\">Рецепты из того, что есть</p>", `<p class=\"boot-kicker\">Кутно / рецепт</p>`)
-    .replace("<h1>Что приготовить сегодня</h1>", `<h1>${escapeHtml(route.recipe.title)}</h1>`)
-    .replace("Подготавливаем кухню и базу рецептов. Первый экран уже работает без загрузки приложения.", escapeHtml(route.recipe.subtitle || "Открываем рецепт в Кутно…"));
+  const kicker = route.type === "catalog" ? "База Кутно" : "Кутно / рецепт";
+  const title = route.type === "catalog" ? "Все рецепты" : route.recipe.title;
+  const copy = route.type === "catalog"
+    ? "Открываем полноценную базу рецептов Кутно…"
+    : route.recipe.subtitle || "Открываем рецепт в Кутно…";
+  let output = html;
+  output = replaceMarker(output, /(<p[^>]*data-seo-kicker[^>]*>)[\s\S]*?(<\/p>)/i, `$1${escapeHtml(kicker)}$2`, "data-seo-kicker");
+  output = replaceMarker(output, /(<h1[^>]*data-seo-title[^>]*>)[\s\S]*?(<\/h1>)/i, `$1${escapeHtml(title)}$2`, "data-seo-title");
+  output = replaceMarker(output, /(<p[^>]*data-seo-copy[^>]*>)[\s\S]*?(<\/p>)/i, `$1${escapeHtml(copy)}$2`, "data-seo-copy");
+  output = replaceMarker(output, /(<div[^>]*data-seo-content[^>]*>)[\s\S]*?(<\/div>)/i, `$1${routeContent(route, route.entries)}$2`, "data-seo-content");
+  return output;
 }
 
 async function appShell(request, env) {
@@ -146,9 +160,7 @@ function publicRouteFor(request) {
   if (url.pathname === "/recipes/") return { redirect: `${SITE_ORIGIN}/recipes` };
   if (url.pathname === "/recipes") return { type: "catalog", pathname: "/recipes", entries };
   if (!url.pathname.startsWith("/recipe/")) return null;
-  if (url.pathname.length > "/recipe/".length && url.pathname.endsWith("/")) {
-    return { redirect: canonical(url.pathname.slice(0, -1)) };
-  }
+  if (url.pathname.length > "/recipe/".length && url.pathname.endsWith("/")) return { redirect: canonical(url.pathname.slice(0, -1)) };
   const slug = decodeURIComponent(url.pathname.slice("/recipe/".length));
   const entry = entries.find((item) => item.slug === slug);
   if (!entry) return { missing: true };
@@ -206,7 +218,8 @@ export function serveCrawlerRules(request) {
     status: 200,
     headers: {
       "content-type": "text/plain; charset=utf-8",
-      "cache-control": "public, max-age=900, s-maxage=3600",
+      "cache-control": "no-store",
+      "cdn-cache-control": "no-store",
       "x-content-type-options": "nosniff",
     },
   });

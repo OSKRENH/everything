@@ -1,8 +1,10 @@
-import safeWorker from "./safe-entry.js";
+import matchingWorker from "./matching-entry.js";
 import { serveCatalogIndex, serveCatalogPage, serveRecipeDetail } from "./catalog-page.js";
 import { serveLitePage } from "./lite-page.js";
 import { serveCrawlerRules, servePublicAppPage } from "./public-app-pages.js";
 import { serveSeoRequest } from "./seo-pages.js";
+import { ensureFeatureStateTextSchema } from "./feature-state-migration.js";
+import { serveFreshSitemap } from "./fresh-sitemap.js";
 export { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
 
 const MAX_TELEMETRY_EVENTS = 20;
@@ -122,13 +124,14 @@ export default {
       const crawlerResponse = serveCrawlerRules(request);
       if (crawlerResponse) return timedResponse(crawlerResponse, "robots", startedAt, requestId);
 
+      const sitemapResponse = serveFreshSitemap(request);
+      if (sitemapResponse) return timedResponse(sitemapResponse, "sitemap", startedAt, requestId);
+
       const publicAppResponse = await servePublicAppPage(request, env);
       if (publicAppResponse) return timedResponse(publicAppResponse, "public-app", startedAt, requestId);
 
       const seoResponse = serveSeoRequest(request);
-      if (seoResponse) {
-        return timedResponse(seoResponse, "seo", startedAt, requestId);
-      }
+      if (seoResponse) return timedResponse(seoResponse, "seo", startedAt, requestId);
 
       if ((url.pathname === "/lite" || url.pathname === "/lite/recipe") && request.method === "GET") {
         return timedResponse(serveLitePage(request), "lite", startedAt, requestId);
@@ -145,8 +148,11 @@ export default {
       if (url.pathname.startsWith("/api/recipe/") && request.method === "GET") {
         return timedResponse(await serveRecipeDetail(request, requestId), "recipe", startedAt, requestId);
       }
+      if (url.pathname === "/api/feature-state") {
+        await ensureFeatureStateTextSchema(env);
+      }
 
-      const response = await safeWorker.fetch(request, env, ctx);
+      const response = await matchingWorker.fetch(request, env, ctx);
       const headers = new Headers(response.headers);
       headers.set("x-request-id", requestId);
       headers.set("server-timing", `app;dur=${Date.now() - startedAt}`);

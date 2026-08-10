@@ -24,7 +24,7 @@ test("ручные инструменты доступны даже при пу�
   assert.deepEqual(analysis.missingEquipment, []);
 });
 
-test("пустой выбор техники не разрешает плиту или духовку", () => {
+test("пустой выбор техники не запрещает плиту или духовку", () => {
   const recipe = {
     title: "Жареные овощи",
     ingredients: [{ name: "помидоры" }, { name: "огурец" }],
@@ -34,11 +34,26 @@ test("пустой выбор техники не разрешает плиту 
     ingredients: ["помидоры", "огурец"],
     equipment: [],
   });
+  assert.equal(analysis.group, "ready");
+  assert.deepEqual(analysis.missingEquipment, []);
+});
+
+test("явный фильтр техники может запрещать отсутствующую сковороду", () => {
+  const recipe = {
+    title: "Жареные овощи",
+    ingredients: [{ name: "помидоры" }, { name: "огурец" }],
+    equipment: ["Сковорода"],
+  };
+  const analysis = analyzeRecipe(recipe, {
+    ingredients: ["помидоры", "огурец"],
+    equipment: [],
+    enforceEquipment: true,
+  });
   assert.equal(analysis.group, "more");
   assert.deepEqual(analysis.missingEquipment, ["Сковорода"]);
 });
 
-test("ручные инструменты остаются доступными вместе с выбранной техникой", () => {
+test("ручные инструменты остаются доступными при явном фильтре техники", () => {
   const recipe = {
     title: "Сэндвич",
     ingredients: [{ name: "хлеб" }, { name: "сыр" }],
@@ -46,7 +61,8 @@ test("ручные инструменты остаются доступными 
   };
   const analysis = analyzeRecipe(recipe, {
     ingredients: ["хлеб", "твёрдый сыр"],
-    equipment: ["blender"],
+    equipment: ["блендер"],
+    enforceEquipment: true,
   });
   assert.equal(analysis.group, "ready");
 });

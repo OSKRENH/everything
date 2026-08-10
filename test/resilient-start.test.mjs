@@ -55,9 +55,11 @@ test("страница отдельного рецепта формируетс�
   assert.doesNotMatch(html, /<script/);
 });
 
-test("Worker подключает /lite до тяжёлого приложения", () => {
+test("Worker подключает /lite до основного matching worker", () => {
   const worker = readFileSync("worker/next-entry.js", "utf8");
   assert.match(worker, /serveLitePage/);
   assert.match(worker, /url\.pathname === "\/lite"/);
-  assert.ok(worker.indexOf("serveLitePage(request)") < worker.indexOf("safeWorker.fetch"));
+  assert.match(worker, /matchingWorker\.fetch/);
+  assert.ok(worker.indexOf("serveLitePage(request)") < worker.indexOf("matchingWorker.fetch"));
+  assert.doesNotMatch(worker, /safeWorker/);
 });
