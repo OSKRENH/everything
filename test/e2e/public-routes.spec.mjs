@@ -74,12 +74,35 @@ test("/recipes открывает штатную Базу Кутно", async ({ 
 
 test("/recipe/slug открывает штатный большой recipe-sheet", async ({ page }) => {
   await installApi(page);
-  await installPublicRoute(page, { type: "recipe", id: "public-1", title: "Публичный рецепт", slug: "publichnyi-retsept", pathname: "/recipe/publichnyi-retsept" });
+  await installPublicRoute(page, { type: "recipe", id: "public-1", title: "Публичный рецепт", slug: "publichnyy-retsept", pathname: "/recipe/publichnyy-retsept" });
   await page.goto("/");
   await expect(page.locator(".recipe-sheet")).toBeVisible();
   await expect(page.locator("#recipe-title")).toHaveText("Публичный рецепт");
   await expect(page.locator(".recipe-sheet")).toContainText("Что понадобится");
   await expect(page.locator(".recipe-sheet")).toContainText("Как готовить");
   await expect(page.getByRole("button", { name: /В избранное/ })).toBeVisible();
-  expect(new URL(page.url()).pathname).toBe("/recipe/publichnyi-retsept");
+  expect(new URL(page.url()).pathname).toBe("/recipe/publichnyy-retsept");
+});
+
+test("открытый из приложения рецепт получает копируемый URL даже при другом runtime id", async ({ page }) => {
+  await installApi(page);
+  await page.goto("/");
+  await page.waitForFunction(() => Boolean(window.kutnoBridge?.openRecipe && window.kutnoPublicRoute?.sync));
+
+  const runtimeRecipe = {
+    ...fullRecipe,
+    id: "runtime-public-1",
+    source: { ...fullRecipe.source, id: "runtime-public-1" },
+  };
+  const opened = await page.evaluate(async (recipe) => window.kutnoBridge.openRecipe({
+    id: recipe.id,
+    title: recipe.title,
+    recipe,
+    animate: false,
+  }), runtimeRecipe);
+
+  expect(opened).toBe(true);
+  await expect(page.locator(".recipe-sheet")).toBeVisible();
+  await expect(page.locator("#recipe-title")).toHaveText("Публичный рецепт");
+  await expect.poll(() => new URL(page.url()).pathname).toBe("/recipe/publichnyy-retsept");
 });
