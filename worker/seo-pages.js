@@ -1,8 +1,8 @@
 import { catalogSources, fullRecipeForSource, sourceIdentity } from "./catalog-page.js";
 
 const SITE_ORIGIN = "https://kutno.ru";
-const HTML_CACHE = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
-const TEXT_CACHE = "public, max-age=900, s-maxage=3600, stale-while-revalidate=86400";
+const HTML_CACHE = "public, max-age=300, s-maxage=3600, stale-while-revalidate=600";
+const TEXT_CACHE = "public, max-age=900, s-maxage=3600, stale-while-revalidate=600";
 
 const CYRILLIC = {
   а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "yo", ж: "zh", з: "z", и: "i", й: "y",
