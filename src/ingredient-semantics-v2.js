@@ -100,7 +100,7 @@ function transformedRecipe(recipe, baseIngredients) {
 }
 
 function transformedContext(context = {}) {
-  const selectedEquipment = Array.isArray(context.equipment) ? context.equipment : [];
+  const selectedEquipment = Array.isArray(context.equipment) ? context.equipment.filter(Boolean) : [];
   const baseIngredients = Array.isArray(context.baseIngredients) ? context.baseIngredients : DEFAULT_BASE_INGREDIENTS;
   const ownedIngredients = Array.isArray(context.ingredients) ? context.ingredients : [];
   return {
@@ -108,7 +108,9 @@ function transformedContext(context = {}) {
     ingredients: [...new Set([...ownedIngredients, ...baseIngredients])].map(semanticValue),
     priorityIngredients: (Array.isArray(context.priorityIngredients) ? context.priorityIngredients : []).map(semanticValue),
     baseIngredients: baseIngredients.map(semanticValue),
-    equipment: [...new Set([...MANUAL_EQUIPMENT, ...selectedEquipment])],
+    // Пустой выбор техники означает «не фильтровать по технике». Ручные инструменты
+    // добавляем только когда пользователь явно включил фильтрацию оборудования.
+    equipment: selectedEquipment.length ? [...new Set([...MANUAL_EQUIPMENT, ...selectedEquipment])] : [],
   };
 }
 
