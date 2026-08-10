@@ -41,8 +41,8 @@ export const ROUTES = [
   custom("lite", ({ pathname, method }) => method === "GET" && (pathname === "/lite" || pathname === "/lite/recipe"), ({ request, env }) => serveLitePage(request, env)),
 
   exact("/api/telemetry", ["POST"], "telemetry", ({ request, env, requestId }) => saveTelemetry(request, env, requestId)),
-  exact("/api/catalog", ["GET"], "catalog", ({ request, requestId }) => serveCatalogPage(request, requestId)),
-  exact("/api/catalog-index", ["GET"], "catalog-index", ({ request, requestId }) => serveCatalogIndex(request, requestId)),
+  exact("/api/catalog", ["GET"], "catalog", ({ request, env, requestId }) => serveCatalogPage(request, env, requestId)),
+  exact("/api/catalog-index", ["GET"], "catalog-index", ({ request, env, requestId }) => serveCatalogIndex(request, env, requestId)),
   prefix("/api/recipe/", ["GET"], "recipe", ({ request, env, requestId }) => serveRecipeDetail(request, env, requestId)),
 
   exact("/api/generate", ["POST"], "generate", toMatchingWithPhotos),
