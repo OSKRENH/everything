@@ -34,6 +34,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A worker/recipe-catalog.js scripts/data/recipe-catalog-source.js scripts test
+          git add -A
           git commit -m "Move heavy recipe catalog to build-time data"
           git push origin HEAD:agent/am-mobile-batch-and-photo-tz
