@@ -33,6 +33,8 @@ jobs:
         run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "первые двенадцать карточек"
       - name: QA catalog total
         run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "общий размер базы"
+      - name: QA catalog cache freshness
+        run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "версию кэша"
       - name: QA catalog facets
         run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "все страны"
       - name: QA catalog index
@@ -40,7 +42,7 @@ jobs:
       - name: QA catalog country paging
         run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "выбор страны"
       - name: QA catalog show more
-        run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "кнопка Показать ещё"
+        run: npx playwright test test/e2e/catalog-all-pages.spec.mjs --grep "Показать ещё"
       - name: QA fast matching
         run: npx playwright test test/e2e/fast-matching.spec.mjs
       - name: QA kitchen simplified
