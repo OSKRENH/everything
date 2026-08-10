@@ -1,5 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import { CATALOG_VERSION, INGREDIENT_GLOSSARY, WORLD_RECIPE_CATALOG } from "./recipe-catalog.js";
+import { CATALOG_VERSION, RUNTIME_RECIPES } from "./generated/catalog-runtime.js";
+import { INGREDIENT_GLOSSARY } from "./generated/glossary-runtime.js";
 
 const MODEL = "@cf/openai/gpt-oss-120b";
 const FALLBACK_MODEL = "@cf/openai/gpt-oss-20b";
@@ -826,7 +827,7 @@ async function ensureRecipeCatalog(env) {
   if (current?.value === CATALOG_VERSION) return;
 
   const now = Date.now();
-  const statements = WORLD_RECIPE_CATALOG.map((entry) => env.DB.prepare(`
+  const statements = RUNTIME_RECIPES.map((entry) => env.DB.prepare(`
     INSERT INTO recipes (id, title, cuisine, difficulty, recipe_json, catalog_version, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
@@ -1880,7 +1881,7 @@ export default {
     if (url.pathname === "/api/source-status" && request.method === "GET") {
       return json({
         catalogVersion: CATALOG_VERSION,
-        catalogSize: WORLD_RECIPE_CATALOG.length,
+        catalogSize: RUNTIME_RECIPES.length,
         spoonacularConfigured: Boolean(spoonacularKey(env)),
         source: "kutno-catalog",
       });
