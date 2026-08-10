@@ -126,7 +126,7 @@ test("основной путь: кухня → рецепт → база → и
   await page.getByRole("button", { name: "База", exact: true }).click();
   await expect(page.getByRole("heading", { name: "База рецептов" })).toBeVisible();
   await expect(page.locator(".catalog-card")).toHaveCount(catalog.length);
-  await expect(page.locator(".catalog-count")).toContainText(`В базе — ${catalog.length}`);
+  await expect(page.locator(".catalog-count")).toContainText(`В базе — ${String(catalog.length).padStart(2, "0")}`);
   await expect(page.locator("[data-catalog-scroll-sentinel]")).toHaveCount(0);
   await expect(page.locator(".pot-loader-large")).toHaveCount(0);
   expect(api.catalogRequests()).toBe(1);
