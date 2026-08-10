@@ -114,7 +114,7 @@ test("каталог получает следующую страницу тол
   expect(api.catalogRequests()).toBe(1);
 
   const revealBatch = await page.evaluate(() => {
-    if (window.matchMedia("(max-width: 700px)").matches) return 1;
+    if (window.matchMedia("(max-width: 700px)").matches) return 5;
     if (window.matchMedia("(max-width: 980px)").matches) return 2;
     return 3;
   });
