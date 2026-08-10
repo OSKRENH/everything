@@ -1,0 +1,30 @@
+name: Regenerate runtime
+
+on:
+  push:
+    branches: [agent/am-mobile-batch-and-photo-tz]
+    paths: [.regenerate-runtime-trigger]
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/am-mobile-batch-and-photo-tz
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: node scripts/generate-recipe-runtime.mjs
+      - name: Commit generated runtime
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add worker/generated public/recipe-data
+          git diff --cached --quiet && exit 0
+          git commit -m "Regenerate lightweight recipe runtime"
+          git push origin HEAD:agent/am-mobile-batch-and-photo-tz
