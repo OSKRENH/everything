@@ -60,7 +60,7 @@ const cases = [
   ["GET /sitemap.xml", req("GET", "/sitemap.xml"), 200, "application/xml"],
   ["GET /robots.txt", req("GET", "/robots.txt"), 200, "text/plain"],
   ["GET /lite", req("GET", "/lite"), 200, "text/html"],
-  ["GET /lite/recipe", req("GET", `/lite/recipe?slug=${encodeURIComponent(firstRecipe.slug)}`), 200, "text/html"],
+  ["GET /lite/recipe", req("GET", `/lite/recipe?id=${encodeURIComponent(firstRecipe.id)}`), 200, "text/html"],
   ["GET /api/health", req("GET", "/api/health"), 200, "application/json"],
   ["GET /api/config", req("GET", "/api/config"), 200, "application/json"],
   ["GET /api/source-status", req("GET", "/api/source-status"), 200, "application/json"],
