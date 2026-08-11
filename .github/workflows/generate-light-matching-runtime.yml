@@ -19,7 +19,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run generate:recipe-runtime
+      - run: node scripts/generate-recipe-runtime.mjs
       - name: Commit generated runtime
         run: |
           git add public/recipe-data/catalog-runtime.json worker/generated
