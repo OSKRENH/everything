@@ -1,14 +1,14 @@
-import { serveCatalogIndex, serveCatalogPage, serveRecipeDetail } from "./catalog-page.js";
-import { ensureFeatureStateTextSchema } from "./feature-state-migration.js";
-import { serveFreshSitemap } from "./fresh-sitemap.js";
-import { serveLitePage } from "./lite-page.js";
-import { serveCrawlerRules, servePublicAppPage } from "./public-app-pages.js";
-import { recipeImageSet, serveRecipePhotoManifest } from "./recipe-images.js";
 import { saveTelemetry } from "./telemetry.js";
 
 let baseWorkerModulePromise = null;
 let featureWorkerModulePromise = null;
 let matchingWorkerModulePromise = null;
+let catalogModulePromise = null;
+let publicAppModulePromise = null;
+let sitemapModulePromise = null;
+let liteModulePromise = null;
+let recipeImagesModulePromise = null;
+let featureMigrationModulePromise = null;
 
 function methodIs(request, allowed) { return allowed.includes(request.method); }
 function exact(path, methods, name, handler, before = []) { return { name, methods, path, handler, before }; }
@@ -33,38 +33,53 @@ async function matchingWorkerFetch(request, env, ctx) {
   return matchingWorker.fetch(request, env, ctx);
 }
 
-const ensureSchemas = async ({ env }) => ensureFeatureStateTextSchema(env);
+async function catalogModule() {
+  catalogModulePromise ||= import("./catalog-page.js");
+  return catalogModulePromise;
+}
+
+async function publicAppModule() {
+  publicAppModulePromise ||= import("./public-app-pages.js");
+  return publicAppModulePromise;
+}
+
+async function sitemapModule() {
+  sitemapModulePromise ||= import("./fresh-sitemap.js");
+  return sitemapModulePromise;
+}
+
+async function liteModule() {
+  liteModulePromise ||= import("./lite-page.js");
+  return liteModulePromise;
+}
+
+async function recipeImagesModule() {
+  recipeImagesModulePromise ||= import("./recipe-images.js");
+  return recipeImagesModulePromise;
+}
+
+const ensureSchemas = async ({ env }) => {
+  featureMigrationModulePromise ||= import("./feature-state-migration.js");
+  const { ensureFeatureStateTextSchema } = await featureMigrationModulePromise;
+  return ensureFeatureStateTextSchema(env);
+};
 const toBase = ({ request, env, ctx }) => baseWorkerFetch(request, env, ctx);
 const toFeature = ({ request, env, ctx }) => featureWorkerFetch(request, env, ctx);
 const toMatching = ({ request, env, ctx }) => matchingWorkerFetch(request, env, ctx);
 
-async function toMatchingWithPhotos({ request, env, ctx }) {
-  const response = await matchingWorkerFetch(request, env, ctx);
-  if (!response.ok || !(response.headers.get("content-type") || "").includes("application/json")) return response;
-  const data = await response.json().catch(() => null);
-  if (!data || !Array.isArray(data.recipes)) return response;
-  data.recipes = data.recipes.map((recipe) => {
-    const photo = recipeImageSet(recipe);
-    return { ...recipe, hasPhoto: Boolean(photo), photo };
-  });
-  const headers = new Headers(response.headers);
-  headers.delete("content-length");
-  return new Response(JSON.stringify(data), { status: response.status, statusText: response.statusText, headers });
-}
-
 export const ROUTES = [
-  exact("/robots.txt", ["GET", "HEAD"], "robots", ({ request }) => serveCrawlerRules(request)),
-  exact("/sitemap.xml", ["GET", "HEAD"], "sitemap", ({ request }) => serveFreshSitemap(request)),
-  exact("/api/photo-manifest", ["GET", "HEAD"], "photo-manifest", ({ request }) => serveRecipePhotoManifest(request)),
-  custom("public-app", ({ pathname, method }) => ["GET", "HEAD"].includes(method) && (pathname === "/recipes" || pathname === "/recipes/" || pathname === "/recipe" || pathname === "/recipe/" || pathname.startsWith("/recipe/")), ({ request, env }) => servePublicAppPage(request, env)),
-  custom("lite", ({ pathname, method }) => method === "GET" && (pathname === "/lite" || pathname === "/lite/recipe"), ({ request, env }) => serveLitePage(request, env)),
+  exact("/robots.txt", ["GET", "HEAD"], "robots", async ({ request }) => (await publicAppModule()).serveCrawlerRules(request)),
+  exact("/sitemap.xml", ["GET", "HEAD"], "sitemap", async ({ request }) => (await sitemapModule()).serveFreshSitemap(request)),
+  exact("/api/photo-manifest", ["GET", "HEAD"], "photo-manifest", async ({ request }) => (await recipeImagesModule()).serveRecipePhotoManifest(request)),
+  custom("public-app", ({ pathname, method }) => ["GET", "HEAD"].includes(method) && (pathname === "/recipes" || pathname === "/recipes/" || pathname === "/recipe" || pathname === "/recipe/" || pathname.startsWith("/recipe/")), async ({ request, env }) => (await publicAppModule()).servePublicAppPage(request, env)),
+  custom("lite", ({ pathname, method }) => method === "GET" && (pathname === "/lite" || pathname === "/lite/recipe"), async ({ request, env }) => (await liteModule()).serveLitePage(request, env)),
 
   exact("/api/telemetry", ["POST"], "telemetry", ({ request, env, requestId }) => saveTelemetry(request, env, requestId)),
-  exact("/api/catalog", ["GET"], "catalog", ({ request, env, requestId }) => serveCatalogPage(request, env, requestId)),
-  exact("/api/catalog-index", ["GET"], "catalog-index", ({ request, env, requestId }) => serveCatalogIndex(request, env, requestId)),
-  prefix("/api/recipe/", ["GET"], "recipe", ({ request, env, requestId }) => serveRecipeDetail(request, env, requestId)),
+  exact("/api/catalog", ["GET"], "catalog", async ({ request, env, requestId }) => (await catalogModule()).serveCatalogPage(request, env, requestId)),
+  exact("/api/catalog-index", ["GET"], "catalog-index", async ({ request, env, requestId }) => (await catalogModule()).serveCatalogIndex(request, env, requestId)),
+  prefix("/api/recipe/", ["GET"], "recipe", async ({ request, env, requestId }) => (await catalogModule()).serveRecipeDetail(request, env, requestId)),
 
-  exact("/api/generate", ["POST"], "generate", toMatchingWithPhotos),
+  exact("/api/generate", ["POST"], "generate", toMatching),
   exact("/api/matching-suggestions", ["GET"], "matching-suggestions", toMatching),
 
   exact("/api/feature-state", ["GET", "PUT"], "feature-state", toFeature, [ensureSchemas]),
