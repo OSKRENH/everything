@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const pixel = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+const photoViewports = [[390, 844], [700, 900], [701, 900], [1024, 768], [1440, 900]];
 
 function responsiveRecipe() {
   return {
@@ -112,43 +113,63 @@ async function generatePhotoResult(page) {
   await expect(page.locator(".recipe-entry .kutno-recipe-photo-link")).toBeVisible();
 }
 
-test("карточка результата с фото сохраняет трёхколоночный контракт на всех breakpoint", async ({ page }) => {
-  await installApi(page);
+async function readRecipeLayout(page) {
+  return page.locator(".recipe-entry").evaluate((entry) => {
+    const main = entry.querySelector(":scope > .recipe-main");
+    const side = entry.querySelector(":scope > .recipe-side");
+    const marker = entry.querySelector(":scope > .kutno-recipe-marker");
+    const title = main?.querySelector("h3");
+    const rect = (element) => {
+      const value = element?.getBoundingClientRect();
+      return value ? { left: value.left, right: value.right, width: value.width, height: value.height } : null;
+    };
+    const style = (element) => {
+      if (!element) return null;
+      const value = getComputedStyle(element);
+      return {
+        display: value.display,
+        gridColumn: value.gridColumn,
+        gridRow: value.gridRow,
+        minWidth: value.minWidth,
+      };
+    };
+    return {
+      viewport: innerWidth,
+      clientWidth: document.documentElement.clientWidth,
+      mobileMedia: matchMedia("(max-width: 700px)").matches,
+      entryGrid: getComputedStyle(entry).gridTemplateColumns,
+      children: [...entry.children].map((element) => element.className),
+      marker: rect(marker),
+      main: rect(main),
+      side: rect(side),
+      title: rect(title),
+      markerStyle: style(marker),
+      mainStyle: style(main),
+      sideStyle: style(side),
+    };
+  });
+}
 
-  for (const [width, height] of [[390, 844], [700, 900], [701, 900], [1024, 768], [1440, 900]]) {
+for (const [width, height] of photoViewports) {
+  test(`карточка результата с фото стабильна при холодной загрузке ${width}x${height}`, async ({ page }) => {
+    await installApi(page);
     await resetAt(page, width, height);
     await generatePhotoResult(page);
 
-    const layout = await page.locator(".recipe-entry").evaluate((entry) => {
-      const main = entry.querySelector(":scope > .recipe-main");
-      const side = entry.querySelector(":scope > .recipe-side");
-      const marker = entry.querySelector(":scope > .kutno-recipe-marker");
-      const title = main?.querySelector("h3");
-      const rect = (element) => {
-        const value = element?.getBoundingClientRect();
-        return value ? { left: value.left, right: value.right, width: value.width, height: value.height } : null;
-      };
-      return {
-        viewport: innerWidth,
-        children: [...entry.children].map((element) => element.className),
-        marker: rect(marker),
-        main: rect(main),
-        side: rect(side),
-        title: rect(title),
-      };
-    });
+    const layout = await readRecipeLayout(page);
+    const debug = JSON.stringify(layout);
 
-    expect(layout.children).toHaveLength(3);
-    expect(layout.children[0]).toContain("kutno-recipe-marker");
-    expect(layout.children[1]).toContain("recipe-main");
-    expect(layout.children[2]).toContain("recipe-side");
-    expect(layout.main.width, `recipe-main at ${width}px`).toBeGreaterThan(160);
-    expect(layout.title.width, `title at ${width}px`).toBeGreaterThan(120);
-    expect(layout.title.height, `title at ${width}px`).toBeLessThan(180);
-    expect(layout.marker.left).toBeGreaterThanOrEqual(-1);
-    expect(layout.side.right).toBeLessThanOrEqual(layout.viewport + 1);
-  }
-});
+    expect(layout.children, debug).toHaveLength(3);
+    expect(layout.children[0], debug).toContain("kutno-recipe-marker");
+    expect(layout.children[1], debug).toContain("recipe-main");
+    expect(layout.children[2], debug).toContain("recipe-side");
+    expect(layout.main.width, debug).toBeGreaterThan(160);
+    expect(layout.title.width, debug).toBeGreaterThan(120);
+    expect(layout.title.height, debug).toBeLessThan(180);
+    expect(layout.marker.left, debug).toBeGreaterThanOrEqual(-1);
+    expect(layout.side.right, debug).toBeLessThanOrEqual(layout.viewport + 1);
+  });
+}
 
 test("кухня и выдача не обрезаются между tablet и desktop", async ({ page }) => {
   await installApi(page);
