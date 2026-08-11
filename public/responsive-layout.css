@@ -18,15 +18,24 @@
   margin: 0 0 8px;
 }
 
-/* The desktop kitchen grid needs roughly 1090px before 350px + 600px + 7vw fit.
-   Collapse it earlier instead of clipping the form between the tablet and desktop layouts. */
+/* The wide kitchen/results grids do not physically fit just above the old 980px breakpoint.
+   Keep the tablet layout until there is enough room instead of silently clipping content. */
 @media (min-width: 981px) and (max-width: 1100px) {
-  .page-shell .intro-grid {
+  .page-shell .intro-grid,
+  .page-shell .results-section {
     grid-template-columns: minmax(0, 1fr);
     gap: 55px;
   }
 
   .intro-grid > .intro-copy {
     min-height: auto;
+  }
+
+  .results-section > .results-heading {
+    position: static;
+  }
+
+  .results-heading h2 br {
+    display: none;
   }
 }
