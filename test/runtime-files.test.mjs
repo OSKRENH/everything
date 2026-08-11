@@ -103,7 +103,11 @@ test("Worker использует компактный runtime-каталог и
 
   assert.match(matchingWorker, /loadRuntimeRecipes/);
   assert.match(matchingWorker, /matchingCatalog/);
-  assert.match(matchingWorker, /ingredientUnlockSuggestions/);
+  assert.match(matchingWorker, /MATCHING_CANDIDATE_LIMIT = 72/);
+  assert.match(matchingWorker, /matchingCandidatePool/);
+  assert.match(matchingWorker, /rankAndSuggestRecipes/);
+  assert.doesNotMatch(matchingWorker, /enrichRecipeSemantics/);
+  assert.doesNotMatch(matchingWorker, /ingredientUnlockSuggestions/);
   assert.match(matchingWorker, /!incoming\.aiIdeas/);
   assert.match(matchingWorker, /compactMatchedRecipe/);
   assert.doesNotMatch(matchingWorker, /catalogSources|recipe-catalog\.js|simple-recipes|home-recipes|manual-recipes/);
