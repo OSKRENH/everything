@@ -1,6 +1,3 @@
-import baseWorker from "./index.js";
-import featureWorker from "./entry.js";
-import matchingWorker from "./matching-entry.js";
 import { serveCatalogIndex, serveCatalogPage, serveRecipeDetail } from "./catalog-page.js";
 import { ensureFeatureStateTextSchema } from "./feature-state-migration.js";
 import { serveFreshSitemap } from "./fresh-sitemap.js";
@@ -9,18 +6,40 @@ import { serveCrawlerRules, servePublicAppPage } from "./public-app-pages.js";
 import { recipeImageSet, serveRecipePhotoManifest } from "./recipe-images.js";
 import { saveTelemetry } from "./telemetry.js";
 
+let baseWorkerModulePromise = null;
+let featureWorkerModulePromise = null;
+let matchingWorkerModulePromise = null;
+
 function methodIs(request, allowed) { return allowed.includes(request.method); }
 function exact(path, methods, name, handler, before = []) { return { name, methods, path, handler, before }; }
 function prefix(pathPrefix, methods, name, handler, before = []) { return { name, methods, prefix: pathPrefix, handler, before }; }
 function custom(name, matches, handler, before = []) { return { name, matches, handler, before }; }
 
+async function baseWorkerFetch(request, env, ctx) {
+  baseWorkerModulePromise ||= import("./index.js");
+  const { default: baseWorker } = await baseWorkerModulePromise;
+  return baseWorker.fetch(request, env, ctx);
+}
+
+async function featureWorkerFetch(request, env, ctx) {
+  featureWorkerModulePromise ||= import("./entry.js");
+  const { default: featureWorker } = await featureWorkerModulePromise;
+  return featureWorker.fetch(request, env, ctx);
+}
+
+async function matchingWorkerFetch(request, env, ctx) {
+  matchingWorkerModulePromise ||= import("./matching-entry.js");
+  const { default: matchingWorker } = await matchingWorkerModulePromise;
+  return matchingWorker.fetch(request, env, ctx);
+}
+
 const ensureSchemas = async ({ env }) => ensureFeatureStateTextSchema(env);
-const toBase = ({ request, env, ctx }) => baseWorker.fetch(request, env, ctx);
-const toFeature = ({ request, env, ctx }) => featureWorker.fetch(request, env, ctx);
-const toMatching = ({ request, env, ctx }) => matchingWorker.fetch(request, env, ctx);
+const toBase = ({ request, env, ctx }) => baseWorkerFetch(request, env, ctx);
+const toFeature = ({ request, env, ctx }) => featureWorkerFetch(request, env, ctx);
+const toMatching = ({ request, env, ctx }) => matchingWorkerFetch(request, env, ctx);
 
 async function toMatchingWithPhotos({ request, env, ctx }) {
-  const response = await matchingWorker.fetch(request, env, ctx);
+  const response = await matchingWorkerFetch(request, env, ctx);
   if (!response.ok || !(response.headers.get("content-type") || "").includes("application/json")) return response;
   const data = await response.json().catch(() => null);
   if (!data || !Array.isArray(data.recipes)) return response;
@@ -85,7 +104,7 @@ export function matchRoute(request) {
 
 export async function dispatchRoute(request, env, ctx, requestId) {
   const route = matchRoute(request);
-  if (!route) return { label: "assets", response: await baseWorker.fetch(request, env, ctx) };
+  if (!route) return { label: "assets", response: await baseWorkerFetch(request, env, ctx) };
   const context = { request, env, ctx, requestId, url: new URL(request.url), route };
   for (const before of route.before || []) await before(context);
   const response = await route.handler(context);
