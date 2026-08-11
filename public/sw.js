@@ -1,11 +1,11 @@
-const CACHE_NAME = "kutno-resilient-v2";
+const CACHE_NAME = "kutno-resilient-v3";
 const FALLBACK_URL = "/lite";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    await Promise.allSettled([cache.add(FALLBACK_URL), cache.add("/")]);
+    await Promise.allSettled([cache.add(FALLBACK_URL)]);
   })());
 });
 
@@ -21,14 +21,12 @@ function isApi(url) {
   return url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/");
 }
 
-async function networkFirst(request) {
+async function navigationNetworkOnly(request) {
   const cache = await caches.open(CACHE_NAME);
   try {
-    const response = await fetch(request);
-    if (response.ok) cache.put(request, response.clone()).catch(() => {});
-    return response;
+    return await fetch(request, { cache: "no-store" });
   } catch {
-    return await cache.match(request) || await cache.match(FALLBACK_URL) || Response.error();
+    return await cache.match(FALLBACK_URL) || Response.error();
   }
 }
 
@@ -47,7 +45,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin || isApi(url)) return;
   if (request.mode === "navigate") {
-    event.respondWith(networkFirst(request));
+    event.respondWith(navigationNetworkOnly(request));
     return;
   }
   if (["script", "style", "font", "image"].includes(request.destination)) {

@@ -90,6 +90,15 @@ async function openCatalog(page) {
   await page.getByRole("button", { name: "База", exact: true }).click();
 }
 
+test("прямой вход в Базу не запускает старый пятиэлементный загрузчик", async ({ page }) => {
+  const api = await installApi(page);
+  await page.goto("/#catalog");
+  await expect(page.locator(".catalog-card")).toHaveCount(12);
+  await expect(page.locator(".archive-heading .eyebrow")).toContainText("Редакционная коллекция / 12");
+  await expect(page.locator(".catalog-count")).toContainText(`В базе — ${catalog.length}`);
+  expect(api.requests()).toBe(1);
+});
+
 test("первые двенадцать карточек остаются на экране до явного продолжения", async ({ page }) => {
   const api = await installApi(page);
   await openCatalog(page);
