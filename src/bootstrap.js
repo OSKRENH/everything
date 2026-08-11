@@ -128,8 +128,19 @@ const shouldRegisterServiceWorker = "serviceWorker" in navigator
   && !["localhost", "127.0.0.1"].includes(location.hostname);
 
 if (shouldRegisterServiceWorker) {
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let reloadingForFreshWorker = false;
+  if (hadController) {
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloadingForFreshWorker) return;
+      reloadingForFreshWorker = true;
+      location.reload();
+    });
+  }
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+    navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" })
+      .then((registration) => registration.update())
+      .catch(() => {});
   }, { once: true });
 }
 
