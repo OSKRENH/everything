@@ -20,11 +20,19 @@ function fastNormalizedTerm(value = "") {
   return FAST_EQUIVALENT_TERMS.get(term) || term;
 }
 
-function precomputedMatchTerms(ingredients = []) {
-  return [...new Set(ingredients
+function fastPrefixes(value = "") {
+  return String(value).split(/[\s-]+/).filter((word) => word.length >= 4).map((word) => word.slice(0, 4));
+}
+
+function precomputedMatchIndex(ingredients = []) {
+  const terms = [...new Set(ingredients
     .flatMap((item) => [item?.name, ...(Array.isArray(item?.aliases) ? item.aliases : [])])
     .map((value) => fastNormalizedTerm(value))
     .filter(Boolean))];
+  return {
+    terms,
+    prefixes: [...new Set(terms.flatMap((term) => fastPrefixes(term)))],
+  };
 }
 
 function compactSource(source) {
@@ -37,6 +45,7 @@ function compactSource(source) {
     pantry: item?.pantry === true,
     ...(item?.role ? { role: String(item.role) } : {}),
   }));
+  const matchIndex = precomputedMatchIndex(ingredients);
   return {
     id,
     storageKey: storageKey(id),
@@ -51,7 +60,8 @@ function compactSource(source) {
     portions: 2,
     equipment: Array.isArray(full?.equipment) ? full.equipment.map(String) : [],
     ingredients,
-    matchTerms: precomputedMatchTerms(ingredients),
+    matchTerms: matchIndex.terms,
+    matchPrefixes: matchIndex.prefixes,
     nutrition: { calories: Number(full?.nutrition?.calories) || 0 },
     source: full?.source || source.recipe?.source || {},
     why: String(full?.why || "Проверенный рецепт Кутно"),
@@ -84,4 +94,4 @@ for (const source of sources) {
   await writeFile(new URL(`${storageKey(id)}.json`, bodiesDir), JSON.stringify({ id, variants }));
 }
 
-console.log(`Generated ${compact.length} compact recipes with precomputed match terms, lightweight route index and ${sources.length} recipe body files.`);
+console.log(`Generated ${compact.length} compact recipes with precomputed match terms/prefixes, lightweight route index and ${sources.length} recipe body files.`);
