@@ -15,6 +15,10 @@ test("runtime-миграция чинит оба строковых user id до
   assert.match(migration, /tableColumns\(env, "shared_recipes"\)/);
   assert.match(routes, /exact\("\/api\/feature-state"/);
   assert.match(routes, /prefix\("\/api\/shared-recipes\/"/);
-  assert.match(routes, /const ensureSchemas = async \(\{ env \}\) => ensureFeatureStateTextSchema\(env\)/);
+  assert.match(routes, /featureMigrationModulePromise \|\|= import\("\.\/feature-state-migration\.js"\)/);
+  assert.match(routes, /const \{ ensureFeatureStateTextSchema \} = await featureMigrationModulePromise/);
+  assert.match(routes, /return ensureFeatureStateTextSchema\(env\)/);
+  assert.doesNotMatch(routes, /^import\s+.*feature-state-migration\.js/m);
   assert.match(routes, /feature-state[^\n]*toFeature, \[ensureSchemas\]/);
+  assert.match(routes, /shared-recipes[^\n]*toFeature, \[ensureSchemas\]/);
 });
