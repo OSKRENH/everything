@@ -18,7 +18,8 @@ test("клиент и Worker используют одно ядро запасо
   assert.doesNotMatch(worker, /ingredient-semantics-v2\.js/);
   assert.match(worker, /applyMatchingUserContext/);
   assert.match(next, /dispatchRoute/);
-  assert.match(routes, /const toMatching = .*matchingWorker\.fetch/);
+  assert.match(routes, /matchingWorkerModulePromise\s*\|\|=\s*import\("\.\/matching-entry\.js"\)/);
+  assert.match(routes, /const toMatching = .*matchingWorkerFetch/);
   assert.match(routes, /exact\("\/api\/generate"[^\n]*toMatching/);
   assert.doesNotMatch(next, /oil-fix-entry|safe-entry/);
 });
