@@ -65,7 +65,11 @@ test("клиент быстро открывает каталог, индекс 
   assert.match(bootstrap, /await import\("\.\/main\.js"\)/);
   assert.match(bootstrap, /requestIdleCallback/);
   assert.match(bootstrap, /navigator\.serviceWorker\.register/);
-  assert.match(serviceWorker, /kutno-resilient-v2/);
+  assert.match(bootstrap, /updateViaCache: "none"/);
+  assert.match(serviceWorker, /kutno-resilient-v3/);
+  assert.match(serviceWorker, /navigationNetworkOnly/);
+  assert.match(serviceWorker, /fetch\(request, \{ cache: "no-store" \}\)/);
+  assert.doesNotMatch(serviceWorker, /cache\.add\("\/"\)/);
   assert.match(vite, /catalog-render-meta\.inject\.js/);
   assert.match(vite, /catalog-scroll-fill\.inject\.js/);
   assert.match(vite, /kitchen-smart-suggestions\.inject\.js/);
