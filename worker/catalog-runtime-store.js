@@ -15,17 +15,25 @@ async function loadFromNode() {
   return JSON.parse(source);
 }
 
-export async function loadRuntimeRecipes(request, env = {}) {
+export async function loadRuntimeCatalog(request, env = {}) {
   if (!runtimePromise) {
     runtimePromise = (async () => {
       const payload = await loadFromAssets(request, env) || await loadFromNode();
       const recipes = Array.isArray(payload?.recipes) ? payload.recipes : [];
       if (!recipes.length) throw new Error("Catalog runtime is unavailable");
-      return recipes;
+      return {
+        catalogVersion: String(payload?.catalogVersion || ""),
+        matching: payload?.matching && typeof payload.matching === "object" ? payload.matching : {},
+        recipes,
+      };
     })().catch((error) => {
       runtimePromise = null;
       throw error;
     });
   }
   return runtimePromise;
+}
+
+export async function loadRuntimeRecipes(request, env = {}) {
+  return (await loadRuntimeCatalog(request, env)).recipes;
 }
