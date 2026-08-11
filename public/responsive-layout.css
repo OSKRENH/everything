@@ -1,8 +1,22 @@
 .recipe-entry > .kutno-recipe-marker {
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
   min-width: 0;
   flex-direction: column;
   align-items: stretch;
+}
+
+.recipe-entry > .recipe-main {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.recipe-entry > .recipe-side {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 0;
 }
 
 .recipe-entry > .kutno-recipe-marker > .recipe-number {
@@ -10,12 +24,32 @@
 }
 
 .recipe-entry .kutno-recipe-photo-link {
+  display: block;
   width: 100%;
+  min-width: 0;
 }
 
 .recipe-entry .kutno-recipe-photo--card {
   width: 100%;
+  min-width: 0;
   margin: 0 0 8px;
+}
+
+@media (max-width: 700px) {
+  .recipe-entry > .kutno-recipe-marker {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .recipe-entry > .recipe-main {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .recipe-entry > .recipe-side {
+    grid-column: 2;
+    grid-row: 2;
+  }
 }
 
 /* The wide kitchen/results grids do not physically fit just above the old 980px breakpoint.
