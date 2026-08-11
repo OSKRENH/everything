@@ -17,8 +17,10 @@ test("тяжёлые источники рецептов остаются тол
   assert.match(baseWorker, /generated\/glossary-runtime\.js/);
   assert.match(catalog, /generated\/catalog-runtime\.js/);
   assert.match(catalog, /loadRuntimeRecipes/);
-  assert.match(matching, /loadRuntimeRecipes/);
+  assert.match(matching, /loadRuntimeCatalog/);
+  assert.doesNotMatch(matching, /loadRuntimeRecipes/);
   assert.match(runtimeStore, /\/recipe-data\/catalog-runtime\.json/);
+  assert.match(runtimeStore, /env\?\.ASSETS\?\.fetch/);
 
   assert.equal(existsSync("worker/recipe-catalog.js"), false, "heavy authoring catalog must not live under worker/");
   assert.equal(existsSync("scripts/data/recipe-catalog-source.js"), true, "heavy authoring catalog must live under scripts/data/");
