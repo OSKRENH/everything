@@ -50,7 +50,7 @@ export function serveRecipePhotoManifest(request) {
     status: 200,
     headers: {
       "content-type": "application/json; charset=utf-8",
-      "cache-control": "public, max-age=300, s-maxage=600, stale-while-revalidate=600",
+      "cache-control": "public, max-age=0, s-maxage=600, stale-while-revalidate=600",
       "x-content-type-options": "nosniff",
     },
   });
