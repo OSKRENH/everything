@@ -136,7 +136,8 @@ test("клиентский маршрут открывает Базу и шта�
   assert.match(source, /recipe-sheet/);
   assert.match(source, /history\.pushState/);
   assert.match(bootstrap, /await import\("\.\/public-routes\.js"\)/);
-  assert.match(bootstrap, /\/recipe-photos\.js\?v=1/);
+  assert.match(bootstrap, /\/recipe-photos\.js\?v=2/);
+  assert.match(bootstrap, /\/responsive-layout\.css\?v=1/);
   assert.match(photos, /fetchPriority = "high"/);
   assert.match(photos, /image\.loading = "lazy"/);
   assert.match(photos, /image\.width = meta\.width/);
