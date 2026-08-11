@@ -1,10 +1,18 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "kutno",
-  "main": ".worker-build/index.js",
+  "main": ".worker-build/index.mjs",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
   "no_bundle": true,
+  "find_additional_modules": true,
+  "base_dir": ".worker-build",
+  "rules": [
+    {
+      "type": "ESModule",
+      "globs": ["**/*.mjs"]
+    }
+  ],
   "build": {
     "command": "node scripts/build-worker.mjs"
   },

@@ -134,9 +134,11 @@ test("Worker использует компактный runtime-каталог и
   assert.doesNotMatch(lite, /recipe-catalog\.js|simple-recipes|home-recipes|manual-recipes/);
   assert.match(v1, /export \* from "\.\/ingredient-semantics-v3\.js"/);
   assert.match(v2, /export \* from "\.\/ingredient-semantics-v3\.js"/);
-  assert.match(wrangler, /\.worker-build\/index\.js/);
+  assert.match(wrangler, /\.worker-build\/index\.mjs/);
   assert.match(wrangler, /"no_bundle"\s*:\s*true/);
+  assert.match(wrangler, /"find_additional_modules"\s*:\s*true/);
   assert.match(wrangler, /node scripts\/build-worker\.mjs/);
   assert.match(workerBuild, /worker\/next-entry\.js/);
   assert.match(workerBuild, /charset:\s*"utf8"/);
+  assert.match(workerBuild, /splitting:\s*true/);
 });

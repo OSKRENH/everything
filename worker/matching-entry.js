@@ -1,4 +1,3 @@
-import featureWorker from "./entry.js";
 import { analyzeRecipe, normalizeIngredient } from "../src/ingredient-semantics-v3.js";
 import { applyMatchingUserContext, matchingPayloadFromContext } from "../src/matching-user-context.js";
 import { loadRuntimeRecipes } from "./catalog-runtime-store.js";
@@ -12,9 +11,16 @@ const FAST_EQUIVALENT_TERMS = new Map([
   ["яйца", "яйца"],
 ]);
 let genericSuggestionCache = null;
+let featureWorkerModulePromise = null;
 
 function json(data, status = 200, headers = {}) {
   return Response.json(data, { status, headers: { "cache-control": "no-store", "x-content-type-options": "nosniff", ...headers } });
+}
+
+async function featureWorkerFetch(request, env, ctx) {
+  featureWorkerModulePromise ||= import("./entry.js");
+  const { default: featureWorker } = await featureWorkerModulePromise;
+  return featureWorker.fetch(request, env, ctx);
 }
 
 function requestWithJson(request, body) {
@@ -343,7 +349,7 @@ function genericSuggestions(catalog, body, limit = 6) {
 
 async function runAiIdeas(body, request, env, ctx) {
   const generationBody = { ...body, equipment: body.enforceEquipment ? body.equipment : [], portions: body.portions };
-  const response = await featureWorker.fetch(requestWithJson(request, generationBody), env, ctx);
+  const response = await featureWorkerFetch(requestWithJson(request, generationBody), env, ctx);
   const data = await response.clone().json().catch(() => null);
   if (!data) return { response, data: null, recipes: [] };
   const recipes = Array.isArray(data.recipes) ? rankRecipes(data.recipes, body).map((item) => compactMatchedRecipe(item.recipe)) : [];
@@ -461,6 +467,6 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/api/generate" && request.method === "POST") return smartGenerate(request, env, ctx);
     if (url.pathname === "/api/matching-suggestions" && request.method === "GET") return matchingSuggestions(request, env);
-    return featureWorker.fetch(request, env, ctx);
+    return featureWorkerFetch(request, env, ctx);
   },
 };
