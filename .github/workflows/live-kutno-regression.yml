@@ -1,0 +1,30 @@
+name: Live Kutno Regression
+
+on:
+  push:
+    branches:
+      - qa/live-regression-20260811
+
+permissions:
+  contents: read
+
+jobs:
+  live-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout QA harness
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify latest production markers
+        run: |
+          curl -fsS -D /tmp/catalog.headers -o /tmp/catalog.body https://kutno.ru/api/catalog
+          grep -i '^cache-control: public, max-age=0' /tmp/catalog.headers
+          node -e 'const fs=require("fs");const x=JSON.parse(fs.readFileSync("/tmp/catalog.body","utf8"));if(x.limit!==12||x.recipes?.length!==12)process.exit(1); console.log("catalog marker ok",x.limit,x.recipes.length)'
+      - name: Stress production generate
+        run: node qa/generate-stress.mjs
+      - name: Run uploaded regression suite against production
+        run: node qa/kutno-live-tests.mjs https://kutno.ru
