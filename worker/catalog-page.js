@@ -153,12 +153,53 @@ async function bodyFromAssets(request, env, recipe) {
   return response.json().catch(() => null);
 }
 
+function scaledAmount(amount, factor) {
+  const text = String(amount || "").trim();
+  if (!text || factor === 1 || /по вкусу/i.test(text)) return text;
+  const match = text.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/u);
+  if (!match) return text;
+  const unit = String(match[2] || "").trim();
+  const raw = Number(match[1].replace(",", ".")) * factor;
+  let value = raw;
+  if (/^(г|мл)$/iu.test(unit)) value = Math.max(1, Math.round(raw / 5) * 5);
+  else if (/^(?:шт\.?|зубч\.?|гол\.?)$/iu.test(unit)) value = Math.max(1, Math.ceil(raw));
+  else value = Math.max(0.25, Math.round(raw * 4) / 4);
+  const displayed = Number.isInteger(value) ? String(value) : String(value).replace(".", ",");
+  return `${displayed}${unit ? ` ${unit}` : ""}`;
+}
+
+function scaledNutrition(nutrition, factor) {
+  if (!nutrition || typeof nutrition !== "object" || factor === 1) return nutrition || {};
+  const next = { ...nutrition };
+  for (const key of ["calories", "protein", "fat", "carbs"]) {
+    if (Number.isFinite(Number(next[key]))) next[key] = Math.max(0, Math.round(Number(next[key]) * factor));
+  }
+  return next;
+}
+
+function scaleRecipeBody(recipe, targetPortions) {
+  if (!recipe) return null;
+  const basePortions = Math.max(1, Number(recipe.portions) || Number(recipe.servings) || 2);
+  const factor = targetPortions / basePortions;
+  return {
+    ...recipe,
+    portions: targetPortions,
+    servings: targetPortions,
+    ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((item) => ({
+      ...item,
+      amount: scaledAmount(item?.amount, factor),
+    })),
+    nutrition: scaledNutrition(recipe.nutrition, factor),
+  };
+}
+
 export async function loadRecipeBody(request, env, id, portions = 2) {
   const recipe = catalogRuntimeRecipe(id);
   if (!recipe) return null;
   const payload = await bodyFromKv(env, recipe) || await bodyFromAssets(request, env, recipe);
-  const target = String(Math.min(8, Math.max(1, Number(portions) || 2)));
-  return payload?.variants?.[target] || payload?.recipe || null;
+  const target = Math.min(8, Math.max(1, Number(portions) || 2));
+  const base = payload?.variants?.["2"] || payload?.recipe || payload?.variants?.[String(target)] || null;
+  return scaleRecipeBody(base, target);
 }
 
 export async function serveCatalogPage(request, envOrRequestId = {}, requestId = "") {
