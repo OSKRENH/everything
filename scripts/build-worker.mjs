@@ -7,8 +7,11 @@ await mkdir(outdir, { recursive: true });
 
 const result = await build({
   entryPoints: [new URL("../worker/next-entry.js", import.meta.url).pathname],
-  outfile: new URL("index.js", outdir).pathname,
+  outdir: outdir.pathname,
+  entryNames: "index",
+  chunkNames: "chunks/[name]-[hash]",
   bundle: true,
+  splitting: true,
   format: "esm",
   platform: "neutral",
   target: "es2022",
@@ -22,4 +25,4 @@ const result = await build({
 });
 
 await writeFile(new URL("meta.json", outdir), JSON.stringify(result.metafile));
-console.log("Worker prebundle built with UTF-8 output.");
+console.log("Worker prebundle built with UTF-8 output and lazy ESM chunks.");
