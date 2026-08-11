@@ -1,0 +1,32 @@
+.recipe-entry > .kutno-recipe-marker {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.recipe-entry > .kutno-recipe-marker > .recipe-number {
+  padding-top: 0;
+}
+
+.recipe-entry .kutno-recipe-photo-link {
+  width: 100%;
+}
+
+.recipe-entry .kutno-recipe-photo--card {
+  width: 100%;
+  margin: 0 0 8px;
+}
+
+/* The desktop kitchen grid needs roughly 1090px before 350px + 600px + 7vw fit.
+   Collapse it earlier instead of clipping the form between the tablet and desktop layouts. */
+@media (min-width: 981px) and (max-width: 1100px) {
+  .page-shell .intro-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 55px;
+  }
+
+  .intro-grid > .intro-copy {
+    min-height: auto;
+  }
+}
