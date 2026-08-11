@@ -4,7 +4,6 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { serveCrawlerRules, servePublicAppPage } from "../worker/public-app-pages.js";
 import { recipeImageSet, recipeImageUrls, recipePhotoManifest, serveRecipePhotoManifest } from "../worker/recipe-images.js";
-import { recipeHasPhoto } from "../worker/recipe-photo-catalog.js";
 import { seoRecipeEntries } from "../worker/seo-pages.js";
 import { runtimeEnv } from "./runtime-assets.mjs";
 
@@ -68,28 +67,27 @@ test("рецепт с иллюстрацией получает 16:9 OG/Twitter 
   assert.match(html, /name="twitter:card" content="summary_large_image"/);
 });
 
-test("рецепт без записи в фотокаталоге не получает image или og:image", async () => {
-  const entry = seoRecipeEntries(2).find((item) => !recipeHasPhoto(item.recipe, item.slug));
+test("новый рецепт из полного фотокаталога получает image и og:image", async () => {
+  const entry = seoRecipeEntries(2).find((item) => item.slug === "pomidory-s-yaytsom-po-kitayski");
   assert.ok(entry);
   const response = await servePublicAppPage(new Request(`https://kutno.ru${entry.pathname}`), env);
   const html = await response.text();
-  assert.doesNotMatch(html, /"image":\[/);
-  assert.doesNotMatch(html, /property="og:image"/);
-  assert.doesNotMatch(html, /name="twitter:image"/);
-  assert.match(html, /name="twitter:card" content="summary"/);
+  assert.match(html, /"image":\["https:\/\/kutno\.ru\/img\/pomidory-s-yaytsom-po-kitayski-1x1\.webp","https:\/\/kutno\.ru\/img\/pomidory-s-yaytsom-po-kitayski-4x3\.webp","https:\/\/kutno\.ru\/img\/pomidory-s-yaytsom-po-kitayski-16x9\.webp"\]/);
+  assert.match(html, /property="og:image" content="https:\/\/kutno\.ru\/img\/pomidory-s-yaytsom-po-kitayski-16x9\.webp"/);
+  assert.match(html, /name="twitter:image" content="https:\/\/kutno\.ru\/img\/pomidory-s-yaytsom-po-kitayski-16x9\.webp"/);
+  assert.match(html, /name="twitter:card" content="summary_large_image"/);
 });
 
 test("фото URL строятся только для slug из фотокаталога", () => {
-  assert.equal(recipeHasPhoto({}, "syrniki"), true);
   assert.deepEqual(recipeImageUrls({}, "syrniki"), ["https://kutno.ru/img/syrniki-1x1.webp", "https://kutno.ru/img/syrniki-4x3.webp", "https://kutno.ru/img/syrniki-16x9.webp"]);
   assert.equal(recipeImageSet({}, "syrniki").social, "https://kutno.ru/img/syrniki-16x9.webp");
   assert.deepEqual(recipeImageUrls({}, "net-takogo-retsepta"), []);
 });
 
-test("фото-манифест возвращает ровно 119 подключённых рецептов", async () => {
+test("фото-манифест возвращает ровно 227 подключённых рецептов", async () => {
   const photos = recipePhotoManifest(2);
-  assert.equal(photos.length, 119);
-  assert.equal(new Set(photos.map((item) => item.slug)).size, 119);
+  assert.equal(photos.length, 227);
+  assert.equal(new Set(photos.map((item) => item.slug)).size, 227);
   const response = serveRecipePhotoManifest(new Request("https://kutno.ru/api/photo-manifest"));
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { photos });

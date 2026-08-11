@@ -12,19 +12,17 @@ function assertPhotoSet(recipe) {
   assert.match(recipe.photo.social, /^https:\/\/kutno\.ru\/img\/[a-z0-9-]+-16x9\.webp$/);
 }
 
-test("catalog-index отдаёт ровно 119 рецептов с рабочим photo set", async () => {
+test("catalog-index отдаёт все 227 рецептов с рабочим photo set", async () => {
   const response = await serveCatalogIndex(new Request("https://kutno.test/api/catalog-index"), "photo-index");
   assert.equal(response.status, 200);
   const data = await response.json();
   const manifest = recipePhotoManifest(2);
   const withPhoto = data.index.filter((recipe) => recipe.hasPhoto === true);
-  assert.equal(manifest.length, 119);
+  assert.equal(manifest.length, 227);
   assert.equal(withPhoto.length, manifest.length);
+  assert.equal(data.index.length, manifest.length);
   withPhoto.forEach(assertPhotoSet);
-
-  const withoutPhoto = data.index.find((recipe) => recipe.hasPhoto === false);
-  assert.ok(withoutPhoto, "в базе должен оставаться рецепт без загруженной фотографии");
-  assert.equal(withoutPhoto.photo, null);
+  assert.ok(data.index.every((recipe) => recipe.photo && recipe.hasPhoto === true));
 });
 
 test("все страницы /api/catalog совпадают с photo-manifest", async () => {
@@ -45,9 +43,11 @@ test("все страницы /api/catalog совпадают с photo-manifest"
 
   const manifest = recipePhotoManifest(2);
   const withPhoto = all.filter((recipe) => recipe.hasPhoto === true);
+  assert.equal(manifest.length, 227);
+  assert.equal(all.length, manifest.length);
   assert.equal(withPhoto.length, manifest.length);
   withPhoto.forEach(assertPhotoSet);
-  assert.ok(all.filter((recipe) => recipe.hasPhoto === false).every((recipe) => recipe.photo === null));
+  assert.ok(all.every((recipe) => recipe.photo && recipe.hasPhoto === true));
 });
 
 test("/api/generate возвращает photo set для найденного рецепта с иллюстрацией", async () => {
