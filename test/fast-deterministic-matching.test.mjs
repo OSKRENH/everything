@@ -31,6 +31,15 @@ test("обычный подбор работает без AI binding и возв
   assert.ok(data.recipes.every((recipe) => !("steps" in recipe)));
 });
 
+test("яйцо и яйца проходят одинаковый быстрый prefilter", async () => {
+  const singular = await (await generate({ ingredients: ["яйцо"] })).json();
+  const plural = await (await generate({ ingredients: ["яйца"] })).json();
+  assert.deepEqual(
+    singular.recipes.map((recipe) => recipe.id),
+    plural.recipes.map((recipe) => recipe.id),
+  );
+});
+
 test("одно яйцо не считается достаточным для омлета на четыре яйца", async () => {
   const data = await (await generate({
     ingredients: ["яйца", "картофель"],

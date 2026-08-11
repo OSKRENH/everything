@@ -8,6 +8,10 @@ const MATCHING_PAGE_SIZE = 20;
 const MATCHING_CANDIDATE_LIMIT = 40;
 const RUNTIME_BASE_PORTIONS = 2;
 const FAST_RECIPE_PROFILE_CACHE = new Map();
+const FAST_EQUIVALENT_TERMS = new Map([
+  ["яйцо", "яйца"],
+  ["яйца", "яйца"],
+]);
 let genericSuggestionCache = null;
 
 function json(data, status = 200, headers = {}) {
@@ -121,6 +125,11 @@ async function matchingCatalog(request, env, body, portions = 2) {
   return { runtime, candidates };
 }
 
+function fastNormalizedTerm(value = "") {
+  const term = normalizeIngredient(value);
+  return FAST_EQUIVALENT_TERMS.get(term) || term;
+}
+
 function fastPrefixes(value = "") {
   return String(value).split(/[\s-]+/).filter((word) => word.length >= 4).map((word) => word.slice(0, 4));
 }
@@ -129,7 +138,7 @@ function fastRecipeProfile(recipe) {
   const id = String(recipe?.id || "");
   if (id && FAST_RECIPE_PROFILE_CACHE.has(id)) return FAST_RECIPE_PROFILE_CACHE.get(id);
   const profile = [...new Set((recipe?.ingredients || []).flatMap((item) => [item?.name, ...(item?.aliases || [])])
-    .map((value) => normalizeIngredient(value))
+    .map((value) => fastNormalizedTerm(value))
     .filter(Boolean))].map((term) => ({ term, prefixes: fastPrefixes(term) }));
   if (id) FAST_RECIPE_PROFILE_CACHE.set(id, profile);
   return profile;
@@ -142,7 +151,7 @@ function fastTermScore(recipeTerm, ownedTerm) {
 }
 
 function matchingCandidatePool(catalog, body, limit = MATCHING_CANDIDATE_LIMIT) {
-  const owned = cleanList(body.ingredients).map((item) => normalizeIngredient(item)).filter(Boolean).map((term) => ({ term, prefixes: fastPrefixes(term) }));
+  const owned = cleanList(body.ingredients).map((item) => fastNormalizedTerm(item)).filter(Boolean).map((term) => ({ term, prefixes: fastPrefixes(term) }));
   if (!owned.length) return [];
   return catalog
     .map((recipe, index) => {
