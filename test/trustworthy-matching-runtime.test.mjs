@@ -6,6 +6,7 @@ test("клиент и Worker используют одно ядро запасо
   const vite = readFileSync("vite.config.js", "utf8");
   const client = readFileSync("src/matching-core-v4.inject.js", "utf8");
   const worker = readFileSync("worker/matching-entry.js", "utf8");
+  const generator = readFileSync("scripts/generate-recipe-runtime.mjs", "utf8");
   const next = readFileSync("worker/next-entry.js", "utf8");
   const routes = readFileSync("worker/routes.js", "utf8");
 
@@ -14,7 +15,11 @@ test("клиент и Worker используют одно ядро запасо
   assert.match(client, /matchingApplyUserContext/);
   assert.match(client, /pantry: userContext\.pantry/);
   assert.match(client, /feedback: userContext\.feedback/);
-  assert.match(worker, /ingredient-semantics-v3\.js/);
+  assert.match(generator, /ingredient-semantics-v3\.js/);
+  assert.match(worker, /light-ingredient-semantics\.js/);
+  assert.match(worker, /light-matching-user-context\.js/);
+  assert.doesNotMatch(worker, /\.\.\/src\/ingredient-semantics-v3\.js/);
+  assert.doesNotMatch(worker, /\.\.\/src\/matching-user-context\.js/);
   assert.doesNotMatch(worker, /ingredient-semantics-v2\.js/);
   assert.match(worker, /applyMatchingUserContext/);
   assert.match(next, /dispatchRoute/);
