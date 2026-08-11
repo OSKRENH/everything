@@ -1,7 +1,6 @@
-import { analyzeRecipe, normalizeIngredient } from "../src/ingredient-semantics-v3.js";
-import { applyMatchingUserContext, matchingPayloadFromContext } from "../src/matching-user-context.js";
-import { loadRuntimeRecipes } from "./catalog-runtime-store.js";
-import { recipeImageSet } from "./recipe-images.js";
+import { analyzeRecipe, normalizeIngredient } from "./light-ingredient-semantics.js";
+import { applyMatchingUserContext, matchingPayloadFromContext } from "./light-matching-user-context.js";
+import { loadRuntimeCatalog } from "./catalog-runtime-store.js";
 
 const MATCHING_PAGE_SIZE = 20;
 const MATCHING_CANDIDATE_LIMIT = 40;
@@ -93,7 +92,6 @@ function scaleAmount(amount, portions) {
 
 function matchingRecipeFromRuntime(recipe, portions) {
   const factor = portions / RUNTIME_BASE_PORTIONS;
-  const photo = recipeImageSet(recipe);
   return {
     id: String(recipe.id),
     compact: true,
@@ -113,21 +111,24 @@ function matchingRecipeFromRuntime(recipe, portions) {
       aliases: Array.isArray(item?.aliases) ? item.aliases.map(String).filter(Boolean) : [],
       pantry: item?.pantry === true,
       ...(item?.role ? { role: String(item.role) } : {}),
+      roleNoBase: ["required", "optional", "base"].includes(item?.roleNoBase) ? item.roleNoBase : "required",
+      semanticIds: Array.isArray(item?.semanticIds) ? item.semanticIds.map(String).filter(Boolean) : [],
     })),
     nutrition: { calories: Math.max(0, Math.round((Number(recipe.nutrition?.calories) || 0) * factor)) },
     source: recipe.source || {},
     missing: [],
     uses: [],
     why: recipe.why || "Проверенный рецепт Кутно",
-    hasPhoto: Boolean(photo),
-    photo,
+    hasPhoto: recipe.hasPhoto === true,
+    photo: recipe.photo || null,
   };
 }
 
 async function matchingCatalog(request, env, body, portions = 2) {
-  const runtime = await loadRuntimeRecipes(request, env);
+  const payload = await loadRuntimeCatalog(request, env);
+  const runtime = payload.recipes;
   const candidates = matchingCandidatePool(runtime, body).map((recipe) => matchingRecipeFromRuntime(recipe, portions));
-  return { runtime, candidates };
+  return { runtime, candidates, semantics: payload.matching || {} };
 }
 
 function fastNormalizedTerm(value = "") {
@@ -200,11 +201,11 @@ function groupAllowed(analysis) {
   return (analysis.requiredMissing?.length || 0) <= 3;
 }
 
-function analyzeWithContext(recipe, context) {
-  return applyMatchingUserContext(recipe, analyzeRecipe(recipe, context), context);
+function analyzeWithContext(recipe, context, semantics) {
+  return applyMatchingUserContext(recipe, analyzeRecipe(recipe, context, semantics), context, semantics);
 }
 
-function enrichedWithContext(recipe, context, analysis = analyzeWithContext(recipe, context)) {
+function enrichedWithContext(recipe, context, semantics, analysis = analyzeWithContext(recipe, context, semantics)) {
   const userOwned = new Set((context.ingredients || []).map(normalizedTitle));
   const uses = [...new Set(
     analysis.exactAvailable
@@ -214,7 +215,7 @@ function enrichedWithContext(recipe, context, analysis = analyzeWithContext(reci
   const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;
   return {
     ...recipe,
-    ingredients: (analysis.ingredients || []).map(({ match, ...item }) => ({
+    ingredients: (analysis.ingredients || []).map(({ match, semanticIds, roleNoBase, ...item }) => ({
       ...item,
       matchType: match?.type || "none",
       matchedOwned: match?.owned || "",
@@ -245,14 +246,14 @@ function suggestionList(counts, limit = 6) {
   return [...counts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ru")).slice(0, limit);
 }
 
-function rankAndSuggestRecipes(catalog, body) {
+function rankAndSuggestRecipes(catalog, body, semantics) {
   const context = matchingContext(body);
   const owned = new Set(context.ingredients.map(normalizedTitle));
   const counts = new Map();
   const ranked = [];
 
   for (const recipe of catalog) {
-    const analysis = analyzeWithContext(recipe, context);
+    const analysis = analyzeWithContext(recipe, context, semantics);
     if (analysis.requiredMissing?.length === 1) {
       const name = String(analysis.requiredMissing[0]?.name || "").trim();
       const key = normalizedTitle(name);
@@ -264,7 +265,7 @@ function rankAndSuggestRecipes(catalog, body) {
       }
     }
 
-    const enriched = enrichedWithContext(recipe, context, analysis);
+    const enriched = enrichedWithContext(recipe, context, semantics, analysis);
     const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;
     if (!groupAllowed(analysis) || enriched.usedCount < 1 || (context.enforceEquipment && analysis.missingEquipment.length)) continue;
     ranked.push({
@@ -290,8 +291,8 @@ function rankAndSuggestRecipes(catalog, body) {
   return { ranked, suggestions: suggestionList(counts) };
 }
 
-function rankRecipes(catalog, body) {
-  return rankAndSuggestRecipes(catalog, body).ranked;
+function rankRecipes(catalog, body, semantics) {
+  return rankAndSuggestRecipes(catalog, body, semantics).ranked;
 }
 
 function compactMatchedRecipe(recipe) {
@@ -347,12 +348,12 @@ function genericSuggestions(catalog, body, limit = 6) {
   return genericSuggestionBase(catalog).filter((item) => !owned.has(item.key)).slice(0, limit).map(({ name, count }) => ({ name, count }));
 }
 
-async function runAiIdeas(body, request, env, ctx) {
+async function runAiIdeas(body, request, env, ctx, semantics) {
   const generationBody = { ...body, equipment: body.enforceEquipment ? body.equipment : [], portions: body.portions };
   const response = await featureWorkerFetch(requestWithJson(request, generationBody), env, ctx);
   const data = await response.clone().json().catch(() => null);
   if (!data) return { response, data: null, recipes: [] };
-  const recipes = Array.isArray(data.recipes) ? rankRecipes(data.recipes, body).map((item) => compactMatchedRecipe(item.recipe)) : [];
+  const recipes = Array.isArray(data.recipes) ? rankRecipes(data.recipes, body, semantics).map((item) => compactMatchedRecipe(item.recipe)) : [];
   return { response, data, recipes };
 }
 
@@ -426,20 +427,20 @@ async function smartGenerate(request, env, ctx) {
   if (invalid) return json({ error: invalid }, 400);
   const body = normalizedBody(incoming);
   if (!body.ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
-  const { runtime, candidates } = await matchingCatalog(request, env, body, body.portions);
-  const analyzed = rankAndSuggestRecipes(candidates, body);
+  const { runtime, candidates, semantics } = await matchingCatalog(request, env, body, body.portions);
+  const analyzed = rankAndSuggestRecipes(candidates, body, semantics);
   const catalogRanked = analyzed.ranked.map(({ recipe }) => compactMatchedRecipe(recipe));
   const suggestions = analyzed.suggestions.length ? analyzed.suggestions : genericSuggestions(runtime, body);
 
   if (catalogRanked.length && !incoming.aiIdeas) return pagedResultResponse(catalogRanked, body, { suggestions });
   if (catalogRanked.length && incoming.aiIdeas) {
-    const generated = await runAiIdeas(body, request, env, ctx);
+    const generated = await runAiIdeas(body, request, env, ctx, semantics);
     const combined = mergeRecipes(catalogRanked, generated.recipes);
     return pagedResultResponse(combined, body, { source: generated.recipes.length ? "deterministic-plus-ai" : "deterministic-catalog", suggestions, extra: generated.data || {} });
   }
 
   if (!incoming.aiIdeas) return pagedResultResponse([], body, { suggestions, extra: { error: suggestions.length ? "Добавьте один из предложенных продуктов — появятся новые варианты" : "Для этого набора пока нет близкого рецепта" } });
-  const generated = await runAiIdeas(body, request, env, ctx);
+  const generated = await runAiIdeas(body, request, env, ctx, semantics);
   if (generated.recipes.length) return pagedResultResponse(generated.recipes, body, { source: "workers-ai", suggestions, extra: generated.data || {} });
   if (!generated.data && !generated.response.ok) return generated.response;
   return pagedResultResponse([], body, { suggestions, extra: { error: suggestions.length ? "Добавьте один из предложенных продуктов" : "Попробуйте другой набор продуктов" } });
@@ -457,8 +458,8 @@ async function matchingSuggestions(request, env) {
     searchMode: "strict",
   });
   if (!body.ingredients.length) return json({ suggestions: [] });
-  const { runtime, candidates } = await matchingCatalog(request, env, body, body.portions);
-  const analyzed = rankAndSuggestRecipes(candidates, body);
+  const { runtime, candidates, semantics } = await matchingCatalog(request, env, body, body.portions);
+  const analyzed = rankAndSuggestRecipes(candidates, body, semantics);
   return json({ suggestions: analyzed.suggestions.length ? analyzed.suggestions : genericSuggestions(runtime, body) }, 200, { "cache-control": "public, max-age=60, s-maxage=300" });
 }
 
