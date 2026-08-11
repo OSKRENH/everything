@@ -15,7 +15,8 @@ test("основная форма остаётся простой, а Worker н�
   assert.match(audit, /state\.equipment = \[\]/);
   assert.match(worker, /maxMinutes: Math\.round\(clampNumber\(body\.maxMinutes/);
   assert.match(worker, /portions: Math\.round\(clampNumber\(body\.portions/);
-  assert.match(worker, /priorityIngredients: Array\.isArray\(body\.priorityIngredients\)/);
+  assert.match(worker, /priorityIngredients: cleanList\(body\.priorityIngredients\)/);
+  assert.match(worker, /ingredients: cleanList\(body\.ingredients\)/);
   assert.match(worker, /const difficulty = typeof body\.difficulty/);
   assert.match(vite, /kitchen-simplified\.inject\.js/);
   assert.match(vite, /audit-v7\.inject\.js/);
