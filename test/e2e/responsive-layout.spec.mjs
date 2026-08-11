@@ -111,10 +111,13 @@ async function generatePhotoResult(page) {
   await expect(page.locator(".recipe-entry")).toHaveCount(1);
   await expect(page.locator(".recipe-entry > .kutno-recipe-marker")).toBeVisible();
   await expect(page.locator(".recipe-entry .kutno-recipe-photo-link")).toBeVisible();
+  await expect(page.locator(".recipe-entry > .recipe-main")).toBeVisible();
 }
 
 async function readRecipeLayout(page) {
-  return page.locator(".recipe-entry").evaluate((entry) => {
+  return page.evaluate(() => {
+    const entry = document.querySelector(".recipe-entry");
+    if (!entry) return { missing: true, viewport: innerWidth, clientWidth: document.documentElement.clientWidth };
     const main = entry.querySelector(":scope > .recipe-main");
     const side = entry.querySelector(":scope > .recipe-side");
     const marker = entry.querySelector(":scope > .kutno-recipe-marker");
@@ -134,6 +137,8 @@ async function readRecipeLayout(page) {
       };
     };
     return {
+      missing: false,
+      connected: entry.isConnected,
       viewport: innerWidth,
       clientWidth: document.documentElement.clientWidth,
       mobileMedia: matchMedia("(max-width: 700px)").matches,
@@ -159,6 +164,8 @@ for (const [width, height] of photoViewports) {
     const layout = await readRecipeLayout(page);
     const debug = JSON.stringify(layout);
 
+    expect(layout.missing, debug).toBe(false);
+    expect(layout.connected, debug).toBe(true);
     expect(layout.children, debug).toHaveLength(3);
     expect(layout.children[0], debug).toContain("kutno-recipe-marker");
     expect(layout.children[1], debug).toContain("recipe-main");
@@ -177,18 +184,22 @@ test("кухня и выдача не обрезаются между tablet и 
   for (const width of [981, 1000, 1024, 1050, 1100]) {
     await resetAt(page, width, 800);
 
-    const kitchen = await page.locator(".kitchen-form").evaluate((element) => {
-      const rect = element.getBoundingClientRect();
-      return { viewport: innerWidth, left: rect.left, right: rect.right, width: rect.width };
+    const kitchen = await page.evaluate(() => {
+      const element = document.querySelector(".kitchen-form");
+      const rect = element?.getBoundingClientRect();
+      return rect ? { viewport: innerWidth, left: rect.left, right: rect.right, width: rect.width } : null;
     });
+    expect(kitchen, `kitchen missing at ${width}px`).not.toBeNull();
     expect(kitchen.left, `kitchen left at ${width}px`).toBeGreaterThanOrEqual(-1);
     expect(kitchen.right, `kitchen right at ${width}px`).toBeLessThanOrEqual(kitchen.viewport + 1);
 
     await generatePhotoResult(page);
-    const results = await page.locator(".results-section").evaluate((element) => {
-      const rect = element.getBoundingClientRect();
-      return { viewport: innerWidth, left: rect.left, right: rect.right, width: rect.width };
+    const results = await page.evaluate(() => {
+      const element = document.querySelector(".results-section");
+      const rect = element?.getBoundingClientRect();
+      return rect ? { viewport: innerWidth, left: rect.left, right: rect.right, width: rect.width } : null;
     });
+    expect(results, `results missing at ${width}px`).not.toBeNull();
     expect(results.left, `results left at ${width}px`).toBeGreaterThanOrEqual(-1);
     expect(results.right, `results right at ${width}px`).toBeLessThanOrEqual(results.viewport + 1);
   }
