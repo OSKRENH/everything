@@ -10,6 +10,7 @@ const result = await build({
   outdir: outdir.pathname,
   entryNames: "index",
   chunkNames: "chunks/[name]-[hash]",
+  outExtension: { ".js": ".mjs" },
   bundle: true,
   splitting: true,
   format: "esm",
