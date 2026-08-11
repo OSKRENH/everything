@@ -5,9 +5,10 @@ import { loadRuntimeRecipes } from "./catalog-runtime-store.js";
 import { recipeImageSet } from "./recipe-images.js";
 
 const MATCHING_PAGE_SIZE = 20;
-const MATCHING_CANDIDATE_LIMIT = 72;
+const MATCHING_CANDIDATE_LIMIT = 40;
 const RUNTIME_BASE_PORTIONS = 2;
-const FAST_RECIPE_TERM_CACHE = new Map();
+const FAST_RECIPE_PROFILE_CACHE = new Map();
+let genericSuggestionCache = null;
 
 function json(data, status = 200, headers = {}) {
   return Response.json(data, { status, headers: { "cache-control": "no-store", "x-content-type-options": "nosniff", ...headers } });
@@ -26,7 +27,7 @@ function clampNumber(value, fallback, min, max) {
   return Math.min(max, Math.max(min, number));
 }
 
-function cleanList(value, { limit = 32, maxLength = 120 } = {}) {
+function cleanList(value, { limit = 24, maxLength = 120 } = {}) {
   if (!Array.isArray(value)) return [];
   return [...new Set(value
     .filter((item) => typeof item === "string")
@@ -114,39 +115,39 @@ function matchingRecipeFromRuntime(recipe, portions) {
   };
 }
 
-async function matchingCatalog(request, env, portions = 2) {
+async function matchingCatalog(request, env, body, portions = 2) {
   const runtime = await loadRuntimeRecipes(request, env);
-  return runtime.map((recipe) => matchingRecipeFromRuntime(recipe, portions));
+  const candidates = matchingCandidatePool(runtime, body).map((recipe) => matchingRecipeFromRuntime(recipe, portions));
+  return { runtime, candidates };
 }
 
-function fastRecipeTerms(recipe) {
+function fastPrefixes(value = "") {
+  return String(value).split(/[\s-]+/).filter((word) => word.length >= 4).map((word) => word.slice(0, 4));
+}
+
+function fastRecipeProfile(recipe) {
   const id = String(recipe?.id || "");
-  if (id && FAST_RECIPE_TERM_CACHE.has(id)) return FAST_RECIPE_TERM_CACHE.get(id);
-  const terms = [...new Set((recipe?.ingredients || []).flatMap((item) => [item?.name, ...(item?.aliases || [])])
+  if (id && FAST_RECIPE_PROFILE_CACHE.has(id)) return FAST_RECIPE_PROFILE_CACHE.get(id);
+  const profile = [...new Set((recipe?.ingredients || []).flatMap((item) => [item?.name, ...(item?.aliases || [])])
     .map((value) => normalizeIngredient(value))
-    .filter(Boolean))];
-  if (id) FAST_RECIPE_TERM_CACHE.set(id, terms);
-  return terms;
-}
-
-function fastWordPrefixes(value = "") {
-  return normalizeIngredient(value).split(/[\s-]+/).filter((word) => word.length >= 4).map((word) => word.slice(0, 4));
+    .filter(Boolean))].map((term) => ({ term, prefixes: fastPrefixes(term) }));
+  if (id) FAST_RECIPE_PROFILE_CACHE.set(id, profile);
+  return profile;
 }
 
 function fastTermScore(recipeTerm, ownedTerm) {
-  if (recipeTerm === ownedTerm) return 6;
-  if (recipeTerm.length >= 4 && ownedTerm.length >= 4 && (recipeTerm.includes(ownedTerm) || ownedTerm.includes(recipeTerm))) return 4;
-  const left = fastWordPrefixes(recipeTerm);
-  const right = fastWordPrefixes(ownedTerm);
-  return left.some((prefix) => right.includes(prefix)) ? 1 : 0;
+  if (recipeTerm.term === ownedTerm.term) return 6;
+  if (recipeTerm.term.length >= 4 && ownedTerm.term.length >= 4 && (recipeTerm.term.includes(ownedTerm.term) || ownedTerm.term.includes(recipeTerm.term))) return 4;
+  return recipeTerm.prefixes.some((prefix) => ownedTerm.prefixes.includes(prefix)) ? 1 : 0;
 }
 
 function matchingCandidatePool(catalog, body, limit = MATCHING_CANDIDATE_LIMIT) {
-  const owned = cleanList(body.ingredients).map((item) => normalizeIngredient(item)).filter(Boolean);
+  const owned = cleanList(body.ingredients).map((item) => normalizeIngredient(item)).filter(Boolean).map((term) => ({ term, prefixes: fastPrefixes(term) }));
   if (!owned.length) return [];
   return catalog
     .map((recipe, index) => {
-      const terms = fastRecipeTerms(recipe);
+      if (!recipePassesFilters(recipe, body)) return { recipe, index, score: 0 };
+      const terms = fastRecipeProfile(recipe);
       let score = 0;
       for (const ownedTerm of owned) {
         let best = 0;
@@ -240,7 +241,6 @@ function rankAndSuggestRecipes(catalog, body) {
   const ranked = [];
 
   for (const recipe of catalog) {
-    if (!recipePassesFilters(recipe, body)) continue;
     const analysis = analyzeWithContext(recipe, context);
     if (analysis.requiredMissing?.length === 1) {
       const name = String(analysis.requiredMissing[0]?.name || "").trim();
@@ -312,21 +312,28 @@ function compactMatchedRecipe(recipe) {
   };
 }
 
-function genericSuggestions(catalog, body, limit = 6) {
-  const owned = new Set(cleanList(body.ingredients).map(normalizedTitle));
+function genericSuggestionBase(catalog) {
+  if (genericSuggestionCache) return genericSuggestionCache;
   const counts = new Map();
   for (const recipe of catalog) {
     for (const item of recipe.ingredients || []) {
       if (item?.pantry === true || item?.role === "base") continue;
       const name = String(item?.name || "").trim();
       const key = normalizedTitle(name);
-      if (!name || !key || owned.has(key)) continue;
-      const current = counts.get(key) || { name, count: 0 };
+      if (!name || !key) continue;
+      const current = counts.get(key) || { name, count: 0, key };
       current.count += 1;
+      if (name.length < current.name.length) current.name = name;
       counts.set(key, current);
     }
   }
-  return suggestionList(counts, limit);
+  genericSuggestionCache = [...counts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ru")).slice(0, 24);
+  return genericSuggestionCache;
+}
+
+function genericSuggestions(catalog, body, limit = 6) {
+  const owned = new Set(cleanList(body.ingredients).map(normalizedTitle));
+  return genericSuggestionBase(catalog).filter((item) => !owned.has(item.key)).slice(0, limit).map(({ name, count }) => ({ name, count }));
 }
 
 async function runAiIdeas(body, request, env, ctx) {
@@ -373,6 +380,7 @@ function normalizedBody(body = {}) {
     ingredients: cleanList(body.ingredients),
     equipment: cleanList(body.equipment, { limit: 24, maxLength: 80 }),
     baseIngredients: Array.isArray(body.baseIngredients) ? cleanList(body.baseIngredients, { limit: 24, maxLength: 80 }) : undefined,
+    excludeTitles: cleanList(body.excludeTitles, { limit: 48, maxLength: 120 }),
     maxMinutes: Math.round(clampNumber(body.maxMinutes, 0, 0, 1440)),
     portions: Math.round(clampNumber(body.portions, 2, 1, 24)),
     offset: Math.floor(clampNumber(body.offset, 0, 0, 10000)),
@@ -384,16 +392,33 @@ function normalizedBody(body = {}) {
   };
 }
 
+function invalidIncomingBody(body = {}) {
+  if (!Array.isArray(body.ingredients)) return "Передайте продукты списком";
+  if (body.ingredients.length > 64) return "Слишком много продуктов в одном запросе";
+  if (body.ingredients.some((item) => typeof item !== "string")) return "Названия продуктов должны быть строками";
+  if (body.ingredients.some((item) => item.length > 256 || /[<>]/.test(item))) return "Некорректное название продукта";
+  if (body.portions !== undefined) {
+    const portions = Number(body.portions);
+    if (!Number.isFinite(portions) || portions < 1 || portions > 24) return "Количество порций должно быть от 1 до 24";
+  }
+  if (body.offset !== undefined) {
+    const offset = Number(body.offset);
+    if (!Number.isFinite(offset) || offset < 0 || offset > 10000) return "Некорректное смещение выдачи";
+  }
+  if (body.course !== undefined && (typeof body.course !== "string" || body.course.length > 80 || /[<>]/.test(body.course))) return "Некорректный тип блюда";
+  return "";
+}
+
 async function smartGenerate(request, env, ctx) {
   const incoming = await request.clone().json().catch(() => ({}));
-  if (!Array.isArray(incoming.ingredients)) return json({ error: "Передайте продукты списком" }, 400);
+  const invalid = invalidIncomingBody(incoming);
+  if (invalid) return json({ error: invalid }, 400);
   const body = normalizedBody(incoming);
   if (!body.ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
-  const catalog = await matchingCatalog(request, env, body.portions);
-  const candidates = matchingCandidatePool(catalog, body);
+  const { runtime, candidates } = await matchingCatalog(request, env, body, body.portions);
   const analyzed = rankAndSuggestRecipes(candidates, body);
   const catalogRanked = analyzed.ranked.map(({ recipe }) => compactMatchedRecipe(recipe));
-  const suggestions = analyzed.suggestions.length ? analyzed.suggestions : genericSuggestions(catalog, body);
+  const suggestions = analyzed.suggestions.length ? analyzed.suggestions : genericSuggestions(runtime, body);
 
   if (catalogRanked.length && !incoming.aiIdeas) return pagedResultResponse(catalogRanked, body, { suggestions });
   if (catalogRanked.length && incoming.aiIdeas) {
@@ -421,10 +446,9 @@ async function matchingSuggestions(request, env) {
     searchMode: "strict",
   });
   if (!body.ingredients.length) return json({ suggestions: [] });
-  const catalog = await matchingCatalog(request, env, body.portions);
-  const candidates = matchingCandidatePool(catalog, body);
+  const { runtime, candidates } = await matchingCatalog(request, env, body, body.portions);
   const analyzed = rankAndSuggestRecipes(candidates, body);
-  return json({ suggestions: analyzed.suggestions.length ? analyzed.suggestions : genericSuggestions(catalog, body) }, 200, { "cache-control": "public, max-age=60, s-maxage=300" });
+  return json({ suggestions: analyzed.suggestions.length ? analyzed.suggestions : genericSuggestions(runtime, body) }, 200, { "cache-control": "public, max-age=60, s-maxage=300" });
 }
 
 export default {
