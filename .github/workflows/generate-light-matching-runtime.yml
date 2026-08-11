@@ -1,0 +1,33 @@
+name: Generate light matching runtime
+
+on:
+  push:
+    branches:
+      - fix/light-matcher-semantics-20260811
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: ${{ !contains(github.event.head_commit.message, '[generated-runtime]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run generate:recipe-runtime
+      - name: Commit generated runtime
+        run: |
+          git add public/recipe-data/catalog-runtime.json worker/generated
+          if git diff --cached --quiet; then
+            echo "Generated runtime already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "[generated-runtime] Refresh precomputed matching data"
+          git push
