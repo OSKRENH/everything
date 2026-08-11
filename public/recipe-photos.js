@@ -73,9 +73,27 @@ function syncHero(indexes) {
   if (photo) sheet.querySelector(":scope > .sheet-topline")?.insertAdjacentElement("afterend", photo);
 }
 
+function attachCardPhoto(card, photo) {
+  if (!card.matches(".recipe-entry")) {
+    card.prepend(photo);
+    return;
+  }
+
+  const number = card.querySelector(":scope > .recipe-number");
+  if (!number) {
+    card.prepend(photo);
+    return;
+  }
+
+  const marker = document.createElement("div");
+  marker.className = "kutno-recipe-marker";
+  number.replaceWith(marker);
+  marker.append(photo, number);
+}
+
 function syncCards(indexes) {
   document.querySelectorAll("article").forEach((card) => {
-    if (card.querySelector(":scope > .kutno-recipe-photo--card")) return;
+    if (card.querySelector(".kutno-recipe-photo--card")) return;
     const opener = card.querySelector("[data-open-recipe]");
     if (!opener) return;
     const title = normalizePhotoTitle(opener.textContent);
@@ -83,7 +101,7 @@ function syncCards(indexes) {
     const item = indexes.byTitle.get(title);
     if (!item?.slug) return;
     const photo = createPhoto(item.slug, "square");
-    if (photo) card.prepend(photo);
+    if (photo) attachCardPhoto(card, photo);
   });
 }
 
