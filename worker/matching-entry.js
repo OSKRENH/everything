@@ -7,7 +7,6 @@ import { recipeImageSet } from "./recipe-images.js";
 const MATCHING_PAGE_SIZE = 20;
 const MATCHING_CANDIDATE_LIMIT = 40;
 const RUNTIME_BASE_PORTIONS = 2;
-const FAST_RECIPE_PROFILE_CACHE = new Map();
 const FAST_EQUIVALENT_TERMS = new Map([
   ["яйцо", "яйца"],
   ["яйца", "яйца"],
@@ -134,20 +133,25 @@ function fastPrefixes(value = "") {
   return String(value).split(/[\s-]+/).filter((word) => word.length >= 4).map((word) => word.slice(0, 4));
 }
 
-function fastRecipeProfile(recipe) {
-  const id = String(recipe?.id || "");
-  if (id && FAST_RECIPE_PROFILE_CACHE.has(id)) return FAST_RECIPE_PROFILE_CACHE.get(id);
-  const profile = [...new Set((recipe?.ingredients || []).flatMap((item) => [item?.name, ...(item?.aliases || [])])
-    .map((value) => fastNormalizedTerm(value))
-    .filter(Boolean))].map((term) => ({ term, prefixes: fastPrefixes(term) }));
-  if (id) FAST_RECIPE_PROFILE_CACHE.set(id, profile);
-  return profile;
+function fastRecipeIndex(recipe) {
+  const terms = Array.isArray(recipe?.matchTerms) && recipe.matchTerms.length
+    ? recipe.matchTerms
+    : (Array.isArray(recipe?.ingredients) ? recipe.ingredients : [])
+      .map((item) => String(item?.name || "").toLocaleLowerCase("ru-RU").replace(/ё/g, "е").trim())
+      .filter(Boolean);
+  const prefixes = Array.isArray(recipe?.matchPrefixes) && recipe.matchPrefixes.length
+    ? recipe.matchPrefixes
+    : [...new Set(terms.flatMap((term) => fastPrefixes(term)))];
+  return { terms, prefixes };
 }
 
-function fastTermScore(recipeTerm, ownedTerm) {
-  if (recipeTerm.term === ownedTerm.term) return 6;
-  if (recipeTerm.term.length >= 4 && ownedTerm.term.length >= 4 && (recipeTerm.term.includes(ownedTerm.term) || ownedTerm.term.includes(recipeTerm.term))) return 4;
-  return recipeTerm.prefixes.some((prefix) => ownedTerm.prefixes.includes(prefix)) ? 1 : 0;
+function fastRecipeScore(recipe, ownedTerm) {
+  const index = fastRecipeIndex(recipe);
+  if (index.terms.includes(ownedTerm.term)) return 6;
+  for (const term of index.terms) {
+    if (term.length >= 4 && ownedTerm.term.length >= 4 && (term.includes(ownedTerm.term) || ownedTerm.term.includes(term))) return 4;
+  }
+  return ownedTerm.prefixes.some((prefix) => index.prefixes.includes(prefix)) ? 1 : 0;
 }
 
 function matchingCandidatePool(catalog, body, limit = MATCHING_CANDIDATE_LIMIT) {
@@ -156,16 +160,8 @@ function matchingCandidatePool(catalog, body, limit = MATCHING_CANDIDATE_LIMIT) 
   return catalog
     .map((recipe, index) => {
       if (!recipePassesFilters(recipe, body)) return { recipe, index, score: 0 };
-      const terms = fastRecipeProfile(recipe);
       let score = 0;
-      for (const ownedTerm of owned) {
-        let best = 0;
-        for (const recipeTerm of terms) {
-          best = Math.max(best, fastTermScore(recipeTerm, ownedTerm));
-          if (best === 6) break;
-        }
-        score += best;
-      }
+      for (const ownedTerm of owned) score += fastRecipeScore(recipe, ownedTerm);
       return { recipe, index, score };
     })
     .filter((item) => item.score > 0)
