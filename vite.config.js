@@ -110,8 +110,12 @@ export default defineConfig({
             "Техника, сложность, порции и избранное останутся без изменений.",
             "Избранное останется без изменений.",
           );
+        const immediateCatalogBootstrap = `render({ preserveScroll: false });\nrestoreSession();\nif ((currentView === "catalog" || currentView === "swipe") && !catalogRecipes.length) loadCatalog();`;
+        const deferredCatalogBootstrap = `render({ preserveScroll: false });\nrestoreSession();\nqueueMicrotask(() => {\n  if ((currentView === "catalog" || currentView === "swipe") && !catalogRecipes.length) loadCatalog();\n});`;
+        const runtimeMain = consistentMain.replace(immediateCatalogBootstrap, deferredCatalogBootstrap);
+        if (runtimeMain === consistentMain) throw new Error("Не удалось отложить прямую загрузку каталога до установки runtime-обёрток");
         return {
-          code: `${semanticImport}\n${consistentMain}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}\n\n${catalogFacetsSource}\n\n${catalogRenderMetaSource}\n\n${catalogScrollFillSource}\n\n${swipeFullCatalogSource}\n\n${matchingCoreV4Source}\n\n${kitchenSimplifiedSource}\n\n${kitchenSmartSuggestionsSource}\n\n${catalogDetailSource}\n\n${auditV7Source}`,
+          code: `${semanticImport}\n${runtimeMain}\n\n${bridgeSource}\n\nconst kutnoFetchBeforeMatching = window.fetch.bind(window);\n\n${matchingSource}\n\n${fetchResetSource}\n\n${matchingFixesSource}\n\n${catalogPerformanceSource}\n\n${catalogFacetsSource}\n\n${catalogRenderMetaSource}\n\n${catalogScrollFillSource}\n\n${swipeFullCatalogSource}\n\n${matchingCoreV4Source}\n\n${kitchenSimplifiedSource}\n\n${kitchenSmartSuggestionsSource}\n\n${catalogDetailSource}\n\n${auditV7Source}`,
           map: null,
         };
       },
