@@ -1,18 +1,51 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { catalogSources, fullRecipeForSource, sourceIdentity } from "./catalog-source.mjs";
 import { CATALOG_VERSION } from "../worker/catalog-version.js";
+import { normalizeIngredient } from "../src/ingredient-semantics-v3.js";
 import { INGREDIENT_GLOSSARY } from "./data/recipe-catalog-source.js";
 
 const generatedDir = new URL("../worker/generated/", import.meta.url);
 const bodiesDir = new URL("../public/recipe-data/", import.meta.url);
+const FAST_EQUIVALENT_TERMS = new Map([
+  ["яйцо", "яйца"],
+  ["яйца", "яйца"],
+]);
 
 function storageKey(id) {
   return Buffer.from(String(id), "utf8").toString("base64url");
 }
 
+function fastNormalizedTerm(value = "") {
+  const term = normalizeIngredient(value);
+  return FAST_EQUIVALENT_TERMS.get(term) || term;
+}
+
+function fastPrefixes(value = "") {
+  return String(value).split(/[\s-]+/).filter((word) => word.length >= 4).map((word) => word.slice(0, 4));
+}
+
+function precomputedMatchIndex(ingredients = []) {
+  const terms = [...new Set(ingredients
+    .flatMap((item) => [item?.name, ...(Array.isArray(item?.aliases) ? item.aliases : [])])
+    .map((value) => fastNormalizedTerm(value))
+    .filter(Boolean))];
+  return {
+    terms,
+    prefixes: [...new Set(terms.flatMap((term) => fastPrefixes(term)))],
+  };
+}
+
 function compactSource(source) {
   const full = fullRecipeForSource(source, 2);
   const id = sourceIdentity(source.kind, source.recipe);
+  const ingredients = (Array.isArray(full?.ingredients) ? full.ingredients : []).map((item) => ({
+    name: String(item?.name || ""),
+    amount: String(item?.amount || ""),
+    aliases: Array.isArray(item?.aliases) ? item.aliases.map(String).filter(Boolean) : [],
+    pantry: item?.pantry === true,
+    ...(item?.role ? { role: String(item.role) } : {}),
+  }));
+  const matchIndex = precomputedMatchIndex(ingredients);
   return {
     id,
     storageKey: storageKey(id),
@@ -26,13 +59,9 @@ function compactSource(source) {
     difficulty: String(full?.difficulty || "легко"),
     portions: 2,
     equipment: Array.isArray(full?.equipment) ? full.equipment.map(String) : [],
-    ingredients: (Array.isArray(full?.ingredients) ? full.ingredients : []).map((item) => ({
-      name: String(item?.name || ""),
-      amount: String(item?.amount || ""),
-      aliases: Array.isArray(item?.aliases) ? item.aliases.map(String).filter(Boolean) : [],
-      pantry: item?.pantry === true,
-      ...(item?.role ? { role: String(item.role) } : {}),
-    })),
+    ingredients,
+    matchTerms: matchIndex.terms,
+    matchPrefixes: matchIndex.prefixes,
     nutrition: { calories: Number(full?.nutrition?.calories) || 0 },
     source: full?.source || source.recipe?.source || {},
     why: String(full?.why || "Проверенный рецепт Кутно"),
@@ -65,4 +94,4 @@ for (const source of sources) {
   await writeFile(new URL(`${storageKey(id)}.json`, bodiesDir), JSON.stringify({ id, variants }));
 }
 
-console.log(`Generated ${compact.length} compact recipes, lightweight route index and ${sources.length} recipe body files.`);
+console.log(`Generated ${compact.length} compact recipes with precomputed match terms/prefixes, lightweight route index and ${sources.length} recipe body files.`);
