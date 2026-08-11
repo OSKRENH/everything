@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const runtimeFiles = [
-  "vite.config.js", "worker/index.js", "worker/entry.js", "worker/matching-entry.js", "worker/next-entry.js", "worker/routes.js", "worker/telemetry.js", "worker/catalog-cursor.js", "worker/catalog-page.js", "worker/catalog-runtime-store.js", "worker/lite-page.js", "worker/generated/catalog-runtime.js", "worker/feature-state-migration.js", "worker/fresh-sitemap.js", "worker/public-app-pages.js", "worker/recipe-images.js", "worker/seo-pages.js",
+  "vite.config.js", "worker/index.js", "worker/entry.js", "worker/matching-entry.js", "worker/next-entry.js", "worker/routes.js", "worker/telemetry.js", "worker/catalog-cursor.js", "worker/catalog-page.js", "worker/catalog-runtime-store.js", "worker/light-ingredient-semantics.js", "worker/light-matching-user-context.js", "worker/lite-page.js", "worker/generated/catalog-runtime.js", "worker/feature-state-migration.js", "worker/fresh-sitemap.js", "worker/public-app-pages.js", "worker/recipe-images.js", "worker/seo-pages.js",
   "src/bootstrap.js", "src/ingredient-semantics.js", "src/ingredient-semantics-v2.js", "src/ingredient-semantics-v3.js", "src/kutno-api.js", "src/kutno-store.js", "src/kutno-next.js", "src/kutno-bridge.inject.js", "src/matching-engine.inject.js", "src/fetch-reset.inject.js", "src/matching-fixes.inject.js", "src/catalog-performance.inject.js", "src/catalog-facets.inject.js", "src/catalog-render-meta.inject.js", "src/catalog-scroll-fill.inject.js", "src/swipe-full-catalog.inject.js", "src/matching-core-v4.inject.js", "src/kitchen-simplified.inject.js", "src/kitchen-smart-suggestions.inject.js", "src/catalog-detail.inject.js", "src/audit-v7.inject.js",
   "public/kutno-features.js", "public/feature-sync-throttle.js", "public/recipe-photos.js", "public/sw.js",
 ];
@@ -101,7 +101,11 @@ test("Worker использует компактный runtime-каталог и
   const wrangler = readFileSync("wrangler.jsonc", "utf8");
   const workerBuild = readFileSync("scripts/build-worker.mjs", "utf8");
 
-  assert.match(matchingWorker, /loadRuntimeRecipes/);
+  assert.match(matchingWorker, /loadRuntimeCatalog/);
+  assert.match(matchingWorker, /light-ingredient-semantics\.js/);
+  assert.match(matchingWorker, /light-matching-user-context\.js/);
+  assert.doesNotMatch(matchingWorker, /\.\.\/src\/ingredient-semantics-v3\.js/);
+  assert.doesNotMatch(matchingWorker, /\.\.\/src\/matching-user-context\.js/);
   assert.match(matchingWorker, /matchingCatalog/);
   assert.match(matchingWorker, /MATCHING_CANDIDATE_LIMIT = 40/);
   assert.match(matchingWorker, /matchingCandidatePool/);
