@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import matchingWorker from "../worker/matching-entry.js";
-import { serveCatalogPage } from "../worker/catalog-page.js";
+import { loadRecipeBody, serveCatalogPage } from "../worker/catalog-page.js";
 
 function generate(body) {
   return matchingWorker.fetch(new Request("https://kutno.test/api/generate", {
@@ -57,6 +57,49 @@ test("подсказки показывают продукт, который о�
   assert.ok(data.suggestions.length > 0);
   assert.ok(data.suggestions.every((item) => item.name && item.count > 0));
   assert.ok(data.suggestions.every((item) => !["яйца", "картофель"].includes(item.name.toLocaleLowerCase("ru-RU"))));
+});
+
+test("опасно большие и разметочные запросы отсекаются до matching CPU", async () => {
+  const cases = [
+    { ingredients: Array.from({ length: 200 }, (_, index) => `продукт${index}`) },
+    { ingredients: ["<script>alert(1)</script>"] },
+    { ingredients: ["яйца"], portions: 9999 },
+    { ingredients: ["яйца"], course: "<b>x</b>" },
+  ];
+  for (const body of cases) {
+    const response = await generate(body);
+    assert.equal(response.status, 400);
+  }
+});
+
+test("деталь рецепта масштабирует количества от базовых двух порций", async () => {
+  const payload = {
+    variants: {
+      "2": {
+        id: "simple:simple-omelette",
+        title: "Омлет",
+        portions: 2,
+        servings: 2,
+        ingredients: [
+          { name: "яйца", amount: "4 шт." },
+          { name: "вода", amount: "40 мл" },
+          { name: "соль", amount: "по вкусу" },
+        ],
+        nutrition: { calories: 245, protein: 16, fat: 19, carbs: 1 },
+      },
+    },
+  };
+  const env = {
+    ASSETS: {
+      fetch: async () => Response.json(payload),
+    },
+  };
+  const recipe = await loadRecipeBody(new Request("https://kutno.test/api/recipe/simple:simple-omelette"), env, "simple:simple-omelette", 8);
+  assert.equal(recipe.portions, 8);
+  assert.equal(recipe.servings, 8);
+  assert.equal(recipe.ingredients[0].amount, "16 шт.");
+  assert.equal(recipe.ingredients[1].amount, "160 мл");
+  assert.equal(recipe.ingredients[2].amount, "по вкусу");
 });
 
 test("первая страница каталога остаётся меньше 16 КБ", async () => {
