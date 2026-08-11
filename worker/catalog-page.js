@@ -4,9 +4,9 @@ import { loadRuntimeRecipes } from "./catalog-runtime-store.js";
 import { CATALOG_VERSION, RUNTIME_RECIPES } from "./generated/catalog-runtime.js";
 import { recipeImageSet } from "./recipe-images.js";
 
-const DEFAULT_LIMIT = 5;
+const DEFAULT_LIMIT = 12;
 const MAX_LIMIT = 12;
-const STATIC_CACHE = "public, max-age=300, s-maxage=3600, stale-while-revalidate=600";
+const STATIC_CACHE = "public, max-age=0, s-maxage=3600, stale-while-revalidate=600";
 const RECIPE_BODY_PREFIX = "recipe:";
 
 function json(data, status = 200, headers = {}) {

@@ -1,10 +1,13 @@
 import featureWorker from "./entry.js";
-import { analyzeRecipe, enrichRecipeSemantics } from "../src/ingredient-semantics-v3.js";
+import { analyzeRecipe, normalizeIngredient } from "../src/ingredient-semantics-v3.js";
 import { applyMatchingUserContext, matchingPayloadFromContext } from "../src/matching-user-context.js";
 import { loadRuntimeRecipes } from "./catalog-runtime-store.js";
+import { recipeImageSet } from "./recipe-images.js";
 
 const MATCHING_PAGE_SIZE = 20;
+const MATCHING_CANDIDATE_LIMIT = 72;
 const RUNTIME_BASE_PORTIONS = 2;
+const FAST_RECIPE_TERM_CACHE = new Map();
 
 function json(data, status = 200, headers = {}) {
   return Response.json(data, { status, headers: { "cache-control": "no-store", "x-content-type-options": "nosniff", ...headers } });
@@ -23,14 +26,22 @@ function clampNumber(value, fallback, min, max) {
   return Math.min(max, Math.max(min, number));
 }
 
+function cleanList(value, { limit = 32, maxLength = 120 } = {}) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value
+    .filter((item) => typeof item === "string")
+    .map((item) => item.trim().slice(0, maxLength))
+    .filter(Boolean))].slice(0, limit);
+}
+
 function matchingContext(body = {}) {
   const user = matchingPayloadFromContext(body);
   return {
-    ingredients: Array.isArray(body.ingredients) ? body.ingredients : [],
-    priorityIngredients: Array.isArray(body.priorityIngredients) ? body.priorityIngredients : [],
-    equipment: body.enforceEquipment === true && Array.isArray(body.equipment) ? body.equipment : [],
+    ingredients: cleanList(body.ingredients),
+    priorityIngredients: cleanList(body.priorityIngredients),
+    equipment: body.enforceEquipment === true ? cleanList(body.equipment, { limit: 24, maxLength: 80 }) : [],
     enforceEquipment: body.enforceEquipment === true,
-    baseIngredients: Array.isArray(body.baseIngredients) ? body.baseIngredients : undefined,
+    baseIngredients: Array.isArray(body.baseIngredients) ? cleanList(body.baseIngredients, { limit: 24, maxLength: 80 }) : undefined,
     pantry: user.pantry,
     feedback: user.feedback,
   };
@@ -72,6 +83,7 @@ function scaleAmount(amount, portions) {
 
 function matchingRecipeFromRuntime(recipe, portions) {
   const factor = portions / RUNTIME_BASE_PORTIONS;
+  const photo = recipeImageSet(recipe);
   return {
     id: String(recipe.id),
     compact: true,
@@ -97,13 +109,59 @@ function matchingRecipeFromRuntime(recipe, portions) {
     missing: [],
     uses: [],
     why: recipe.why || "Проверенный рецепт Кутно",
-    hasPhoto: recipe.hasPhoto === true,
+    hasPhoto: Boolean(photo),
+    photo,
   };
 }
 
 async function matchingCatalog(request, env, portions = 2) {
   const runtime = await loadRuntimeRecipes(request, env);
   return runtime.map((recipe) => matchingRecipeFromRuntime(recipe, portions));
+}
+
+function fastRecipeTerms(recipe) {
+  const id = String(recipe?.id || "");
+  if (id && FAST_RECIPE_TERM_CACHE.has(id)) return FAST_RECIPE_TERM_CACHE.get(id);
+  const terms = [...new Set((recipe?.ingredients || []).flatMap((item) => [item?.name, ...(item?.aliases || [])])
+    .map((value) => normalizeIngredient(value))
+    .filter(Boolean))];
+  if (id) FAST_RECIPE_TERM_CACHE.set(id, terms);
+  return terms;
+}
+
+function fastWordPrefixes(value = "") {
+  return normalizeIngredient(value).split(/[\s-]+/).filter((word) => word.length >= 4).map((word) => word.slice(0, 4));
+}
+
+function fastTermScore(recipeTerm, ownedTerm) {
+  if (recipeTerm === ownedTerm) return 6;
+  if (recipeTerm.length >= 4 && ownedTerm.length >= 4 && (recipeTerm.includes(ownedTerm) || ownedTerm.includes(recipeTerm))) return 4;
+  const left = fastWordPrefixes(recipeTerm);
+  const right = fastWordPrefixes(ownedTerm);
+  return left.some((prefix) => right.includes(prefix)) ? 1 : 0;
+}
+
+function matchingCandidatePool(catalog, body, limit = MATCHING_CANDIDATE_LIMIT) {
+  const owned = cleanList(body.ingredients).map((item) => normalizeIngredient(item)).filter(Boolean);
+  if (!owned.length) return [];
+  return catalog
+    .map((recipe, index) => {
+      const terms = fastRecipeTerms(recipe);
+      let score = 0;
+      for (const ownedTerm of owned) {
+        let best = 0;
+        for (const recipeTerm of terms) {
+          best = Math.max(best, fastTermScore(recipeTerm, ownedTerm));
+          if (best === 6) break;
+        }
+        score += best;
+      }
+      return { recipe, index, score };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, limit)
+    .map((item) => item.recipe);
 }
 
 function difficultyRank(value = "") {
@@ -135,7 +193,6 @@ function analyzeWithContext(recipe, context) {
 }
 
 function enrichedWithContext(recipe, context, analysis = analyzeWithContext(recipe, context)) {
-  const enriched = enrichRecipeSemantics(recipe, context);
   const userOwned = new Set((context.ingredients || []).map(normalizedTitle));
   const uses = [...new Set(
     analysis.exactAvailable
@@ -143,14 +200,17 @@ function enrichedWithContext(recipe, context, analysis = analyzeWithContext(reci
       .map((item) => item.match.owned),
   )];
   const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;
-  const requiredTotal = analysis.ingredients.filter((item) => item.role === "required").length;
   return {
-    ...enriched,
+    ...recipe,
+    ingredients: (analysis.ingredients || []).map(({ match, ...item }) => ({
+      ...item,
+      matchType: match?.type || "none",
+      matchedOwned: match?.owned || "",
+    })),
     uses,
     usedCount: uses.length,
-    coverage: exactRequired / Math.max(1, requiredTotal),
+    coverage: exactRequired / Math.max(1, analysis.ingredients.filter((item) => item.role === "required").length),
     matching: {
-      ...(enriched.matching || {}),
       group: analysis.group,
       score: analysis.score,
       reasons: analysis.reasons,
@@ -158,8 +218,9 @@ function enrichedWithContext(recipe, context, analysis = analyzeWithContext(reci
       missingOptional: analysis.optionalMissing.map((item) => item.name),
       substitutions: analysis.substitutions.map((item) => ({ ingredient: item.name, owned: item.match?.owned || "" })),
       missingEquipment: analysis.missingEquipment,
-      quantityShortages: analysis.quantityShortages.map((item) => ({ name: item.name, have: `${item.have.quantity} ${item.have.unit}`.trim(), need: item.need })),
-      preferencePenalty: analysis.preferencePenalty,
+      priorityHits: analysis.priorityHits || [],
+      quantityShortages: (analysis.quantityShortages || []).map((item) => ({ name: item.name, have: `${item.have.quantity} ${item.have.unit}`.trim(), need: item.need })),
+      preferencePenalty: analysis.preferencePenalty || 0,
     },
   };
 }
@@ -168,35 +229,58 @@ function rankingScore(item) {
   return item.usedCount * 10 - item.missingCount * 7 - item.optionalMissing - item.substitutions * 2;
 }
 
-function rankRecipes(catalog, body) {
+function suggestionList(counts, limit = 6) {
+  return [...counts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ru")).slice(0, limit);
+}
+
+function rankAndSuggestRecipes(catalog, body) {
   const context = matchingContext(body);
-  return catalog
-    .map((recipe) => {
-      const analysis = analyzeWithContext(recipe, context);
-      const enriched = enrichedWithContext(recipe, context, analysis);
-      const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;
-      return {
-        recipe: enriched,
-        analysis,
-        missingCount: analysis.requiredMissing.length,
-        usedCount: enriched.usedCount,
-        exactRequired,
-        substitutions: analysis.substitutions.length,
-        optionalMissing: analysis.optionalMissing.length,
-      };
-    })
-    .filter(({ recipe, analysis }) => recipePassesFilters(recipe, body)
-      && groupAllowed(analysis)
-      && recipe.usedCount >= 1
-      && (!context.enforceEquipment || analysis.missingEquipment.length === 0))
-    .sort((a, b) => rankingScore(b) - rankingScore(a)
-      || a.missingCount - b.missingCount
-      || b.usedCount - a.usedCount
-      || b.exactRequired - a.exactRequired
-      || a.substitutions - b.substitutions
-      || a.optionalMissing - b.optionalMissing
-      || Number(a.recipe.minutes) - Number(b.recipe.minutes)
-      || a.recipe.title.localeCompare(b.recipe.title, "ru"));
+  const owned = new Set(context.ingredients.map(normalizedTitle));
+  const counts = new Map();
+  const ranked = [];
+
+  for (const recipe of catalog) {
+    if (!recipePassesFilters(recipe, body)) continue;
+    const analysis = analyzeWithContext(recipe, context);
+    if (analysis.requiredMissing?.length === 1) {
+      const name = String(analysis.requiredMissing[0]?.name || "").trim();
+      const key = normalizedTitle(name);
+      if (name && key && !owned.has(key)) {
+        const current = counts.get(key) || { name, count: 0 };
+        current.count += 1;
+        if (name.length < current.name.length) current.name = name;
+        counts.set(key, current);
+      }
+    }
+
+    const enriched = enrichedWithContext(recipe, context, analysis);
+    const exactRequired = analysis.exactAvailable.filter((item) => item.role === "required").length;
+    if (!groupAllowed(analysis) || enriched.usedCount < 1 || (context.enforceEquipment && analysis.missingEquipment.length)) continue;
+    ranked.push({
+      recipe: enriched,
+      analysis,
+      missingCount: analysis.requiredMissing.length,
+      usedCount: enriched.usedCount,
+      exactRequired,
+      substitutions: analysis.substitutions.length,
+      optionalMissing: analysis.optionalMissing.length,
+    });
+  }
+
+  ranked.sort((a, b) => rankingScore(b) - rankingScore(a)
+    || a.missingCount - b.missingCount
+    || b.usedCount - a.usedCount
+    || b.exactRequired - a.exactRequired
+    || a.substitutions - b.substitutions
+    || a.optionalMissing - b.optionalMissing
+    || Number(a.recipe.minutes) - Number(b.recipe.minutes)
+    || a.recipe.title.localeCompare(b.recipe.title, "ru"));
+
+  return { ranked, suggestions: suggestionList(counts) };
+}
+
+function rankRecipes(catalog, body) {
+  return rankAndSuggestRecipes(catalog, body).ranked;
 }
 
 function compactMatchedRecipe(recipe) {
@@ -223,26 +307,26 @@ function compactMatchedRecipe(recipe) {
     usedCount: Number(recipe.usedCount) || 0,
     coverage: Number(recipe.coverage) || 0,
     why: recipe.why,
+    hasPhoto: recipe.hasPhoto === true,
+    photo: recipe.photo || null,
   };
 }
 
-function ingredientUnlockSuggestions(catalog, body, limit = 6) {
-  const context = matchingContext(body);
-  const owned = new Set(context.ingredients.map(normalizedTitle));
+function genericSuggestions(catalog, body, limit = 6) {
+  const owned = new Set(cleanList(body.ingredients).map(normalizedTitle));
   const counts = new Map();
   for (const recipe of catalog) {
-    if (!recipePassesFilters(recipe, { ...body, course: "все", excludeTitles: [] })) continue;
-    const analysis = analyzeWithContext(recipe, context);
-    if (analysis.requiredMissing?.length !== 1) continue;
-    const name = String(analysis.requiredMissing[0]?.name || "").trim();
-    const key = normalizedTitle(name);
-    if (!name || !key || owned.has(key)) continue;
-    const current = counts.get(key) || { name, count: 0 };
-    current.count += 1;
-    if (name.length < current.name.length) current.name = name;
-    counts.set(key, current);
+    for (const item of recipe.ingredients || []) {
+      if (item?.pantry === true || item?.role === "base") continue;
+      const name = String(item?.name || "").trim();
+      const key = normalizedTitle(name);
+      if (!name || !key || owned.has(key)) continue;
+      const current = counts.get(key) || { name, count: 0 };
+      current.count += 1;
+      counts.set(key, current);
+    }
   }
-  return [...counts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ru")).slice(0, limit);
+  return suggestionList(counts, limit);
 }
 
 async function runAiIdeas(body, request, env, ctx) {
@@ -283,13 +367,16 @@ function pagedResultResponse(recipes, body, options = {}) {
 }
 
 function normalizedBody(body = {}) {
-  const difficulty = typeof body.difficulty === "string" && body.difficulty.trim() ? body.difficulty.trim() : undefined;
+  const difficulty = typeof body.difficulty === "string" && body.difficulty.trim() ? body.difficulty.trim().slice(0, 40) : undefined;
   return {
     ...body,
+    ingredients: cleanList(body.ingredients),
+    equipment: cleanList(body.equipment, { limit: 24, maxLength: 80 }),
+    baseIngredients: Array.isArray(body.baseIngredients) ? cleanList(body.baseIngredients, { limit: 24, maxLength: 80 }) : undefined,
     maxMinutes: Math.round(clampNumber(body.maxMinutes, 0, 0, 1440)),
     portions: Math.round(clampNumber(body.portions, 2, 1, 24)),
     offset: Math.floor(clampNumber(body.offset, 0, 0, 10000)),
-    priorityIngredients: Array.isArray(body.priorityIngredients) ? body.priorityIngredients.filter(Boolean) : [],
+    priorityIngredients: cleanList(body.priorityIngredients),
     difficulty,
     searchMode: body.searchMode === "plus-one" ? "plus-one" : "strict",
     course: ["все", "завтрак", "суп", "основное", "перекус", "салат", "закуска", "соус"].includes(body.course) ? body.course : "все",
@@ -299,12 +386,14 @@ function normalizedBody(body = {}) {
 
 async function smartGenerate(request, env, ctx) {
   const incoming = await request.clone().json().catch(() => ({}));
-  const ingredients = Array.isArray(incoming.ingredients) ? incoming.ingredients.filter((item) => String(item || "").trim()) : [];
-  if (!ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
-  const body = normalizedBody({ ...incoming, ingredients });
+  if (!Array.isArray(incoming.ingredients)) return json({ error: "Передайте продукты списком" }, 400);
+  const body = normalizedBody(incoming);
+  if (!body.ingredients.length) return json({ error: "Добавьте хотя бы один продукт" }, 400);
   const catalog = await matchingCatalog(request, env, body.portions);
-  const suggestions = ingredientUnlockSuggestions(catalog, body);
-  const catalogRanked = rankRecipes(catalog, body).map(({ recipe }) => compactMatchedRecipe(recipe));
+  const candidates = matchingCandidatePool(catalog, body);
+  const analyzed = rankAndSuggestRecipes(candidates, body);
+  const catalogRanked = analyzed.ranked.map(({ recipe }) => compactMatchedRecipe(recipe));
+  const suggestions = analyzed.suggestions.length ? analyzed.suggestions : genericSuggestions(catalog, body);
 
   if (catalogRanked.length && !incoming.aiIdeas) return pagedResultResponse(catalogRanked, body, { suggestions });
   if (catalogRanked.length && incoming.aiIdeas) {
@@ -333,7 +422,9 @@ async function matchingSuggestions(request, env) {
   });
   if (!body.ingredients.length) return json({ suggestions: [] });
   const catalog = await matchingCatalog(request, env, body.portions);
-  return json({ suggestions: ingredientUnlockSuggestions(catalog, body) }, 200, { "cache-control": "public, max-age=60, s-maxage=300" });
+  const candidates = matchingCandidatePool(catalog, body);
+  const analyzed = rankAndSuggestRecipes(candidates, body);
+  return json({ suggestions: analyzed.suggestions.length ? analyzed.suggestions : genericSuggestions(catalog, body) }, 200, { "cache-control": "public, max-age=60, s-maxage=300" });
 }
 
 export default {
