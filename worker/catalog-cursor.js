@@ -15,14 +15,19 @@ export function encodeCatalogCursor(offset) {
   return base64UrlEncode(`${CURSOR_PREFIX}${Math.max(0, Math.floor(Number(offset) || 0))}`);
 }
 
-export function decodeCatalogCursor(cursor = "") {
-  if (!cursor) return 0;
+export function parseCatalogCursor(cursor = "") {
+  if (!cursor) return { valid: true, offset: 0 };
   try {
     const decoded = base64UrlDecode(cursor);
-    if (!decoded.startsWith(CURSOR_PREFIX)) return 0;
+    if (!decoded.startsWith(CURSOR_PREFIX)) return { valid: false, offset: 0 };
     const offset = Number(decoded.slice(CURSOR_PREFIX.length));
-    return Number.isSafeInteger(offset) && offset >= 0 ? offset : 0;
+    if (!Number.isSafeInteger(offset) || offset < 0) return { valid: false, offset: 0 };
+    return { valid: true, offset };
   } catch {
-    return 0;
+    return { valid: false, offset: 0 };
   }
+}
+
+export function decodeCatalogCursor(cursor = "") {
+  return parseCatalogCursor(cursor).offset;
 }
