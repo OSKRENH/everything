@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { servePublicAppPage } from "../worker/public-app-pages.js";
-import { recipeHasPhoto } from "../worker/recipe-photo-catalog.js";
 import { seoRecipeEntries } from "../worker/seo-pages.js";
 import { runtimeEnv } from "./runtime-assets.mjs";
 
@@ -37,11 +36,12 @@ test("серверный /recipes содержит квадратные lazy-п�
   assert.match(preview, /decoding="async"/);
 });
 
-test("рецепт без фото не получает серверный img", async () => {
-  const entry = seoRecipeEntries().find((item) => !recipeHasPhoto(item.recipe, item.slug));
+test("новый рецепт из полного фотокаталога получает серверный hero", async () => {
+  const entry = seoRecipeEntries().find((item) => item.slug === "pomidory-s-yaytsom-po-kitayski");
   assert.ok(entry);
   const response = await servePublicAppPage(new Request(`https://kutno.ru${entry.pathname}`), env);
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.doesNotMatch(html, /class="seo-recipe-hero"/);
+  assert.match(html, /class="seo-recipe-hero"/);
+  assert.match(html, /src="https:\/\/kutno\.ru\/img\/pomidory-s-yaytsom-po-kitayski-4x3\.webp"/);
 });

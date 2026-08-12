@@ -8,6 +8,8 @@ const EXPECTED = {
   "4x3": [1200, 900],
   "16x9": [1200, 675],
 };
+// Reject tiny placeholder or corrupt assets before production.
+const MIN_IMAGE_BYTES = 10_000;
 
 function uint24le(buffer, offset) {
   return buffer[offset] | (buffer[offset + 1] << 8) | (buffer[offset + 2] << 16);
@@ -52,7 +54,7 @@ export function webpDimensions(buffer) {
 export function checkImageDirectory(directory) {
   const absolute = path.resolve(directory);
   const entries = fs.readdirSync(absolute, { withFileTypes: true });
-  assert.equal(entries.length, 357, `${directory}: expected 357 files`);
+  assert.equal(entries.length, 681, `${directory}: expected 681 files`);
   assert.ok(entries.every((entry) => entry.isFile()), `${directory}: nested folders are not allowed`);
 
   const bySlug = new Map();
@@ -62,14 +64,14 @@ export function checkImageDirectory(directory) {
     const [, slug, ratio] = match;
     const file = path.join(absolute, entry.name);
     const stat = fs.statSync(file);
-    assert.ok(stat.size > 0, `${entry.name}: zero-byte image`);
+    assert.ok(stat.size >= MIN_IMAGE_BYTES, `${entry.name}: suspiciously small image (${stat.size} bytes)`);
     const dimensions = webpDimensions(fs.readFileSync(file));
     assert.deepEqual(dimensions, EXPECTED[ratio], `${entry.name}: wrong dimensions`);
     if (!bySlug.has(slug)) bySlug.set(slug, new Set());
     bySlug.get(slug).add(ratio);
   }
 
-  assert.equal(bySlug.size, 119, `${directory}: expected 119 slugs`);
+  assert.equal(bySlug.size, 227, `${directory}: expected 227 slugs`);
   for (const [slug, ratios] of bySlug) {
     assert.deepEqual([...ratios].sort(), ["16x9", "1x1", "4x3"].sort(), `${slug}: incomplete image set`);
   }
@@ -80,5 +82,5 @@ const invoked = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPa
 if (invoked) {
   const directory = process.argv[2] || "public/img";
   const slugs = checkImageDirectory(directory);
-  console.log(`Verified ${slugs.size} recipe image sets / 357 WebP files in ${directory}`);
+  console.log(`Verified ${slugs.size} recipe image sets / 681 WebP files in ${directory}`);
 }

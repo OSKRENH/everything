@@ -1,481 +1,232 @@
 // Generated from the approved recipe illustration archive. Runtime truth is intentionally compact: id + slug only.
 const RECIPE_PHOTO_PAIRS = Object.freeze([
-  [
-    "catalog:es-alioli",
-    "alioli"
-  ],
-  [
-    "catalog:es-gazpacho",
-    "andalusskiy-gaspacho"
-  ],
-  [
-    "home-vegetable-pan-eggplant",
-    "baklazhany-s-lukom-na-skovorode"
-  ],
-  [
-    "catalog:in-butter-chicken",
-    "batter-chiken"
-  ],
-  [
-    "catalog:ru-beef-stroganoff",
-    "befstroganov"
-  ],
-  [
-    "home-vegetable-pan-pepper",
-    "bolgarskiy-perets-s-lukom-na-skovorode"
-  ],
-  [
-    "home-vegetable-pan-broccoli",
-    "brokkoli-s-lukom-na-skovorode"
-  ],
-  [
-    "catalog:vn-bun-cha",
-    "bun-cha"
-  ],
-  [
-    "catalog:in-dal-tadka",
-    "dal-tadka"
-  ],
-  [
-    "simple:simple-potato-pancakes",
-    "draniki"
-  ],
-  [
-    "manual:manual-greek-salad",
-    "grecheskiy-salat"
-  ],
-  [
-    "home-ground-meat-buckwheat",
-    "grechka-s-farshem"
-  ],
-  [
-    "home-buckwheat-beef",
-    "grechka-s-govyadinoy"
-  ],
-  [
-    "home-buckwheat-chicken",
-    "grechka-s-kuritsey"
-  ],
-  [
-    "home-buckwheat-vegetables",
-    "grechka-s-morkovyu-i-pertsem"
-  ],
-  [
-    "home-buckwheat-mushroom",
-    "grechka-s-shampinonami"
-  ],
-  [
-    "home-buckwheat-egg",
-    "grechka-s-yaytsom"
-  ],
-  [
-    "home-buckwheat-onion",
-    "grechka-s-zharenym-lukom"
-  ],
-  [
-    "catalog:mx-guacamole",
-    "guakamole"
-  ],
-  [
-    "home-vegetable-pan-zucchini",
-    "kabachki-s-lukom-na-skovorode"
-  ],
-  [
-    "catalog:it-cacio-e-pepe",
-    "kacho-e-pepe"
-  ],
-  [
-    "manual:manual-caprese",
-    "kapreze"
-  ],
-  [
-    "home-ground-meat-potato",
-    "kartofel-s-farshem-na-skovorode"
-  ],
-  [
-    "home-potato-bake-mushroom",
-    "kartofel-zapechyonnyy-s-gribami"
-  ],
-  [
-    "home-potato-bake-chicken",
-    "kartofel-zapechyonnyy-s-kuritsey"
-  ],
-  [
-    "home-potato-bake-onion",
-    "kartofel-zapechyonnyy-s-lukom"
-  ],
-  [
-    "home-potato-bake-tomato",
-    "kartofel-zapechyonnyy-s-pomidorami"
-  ],
-  [
-    "home-potato-bake-fish",
-    "kartofel-zapechyonnyy-s-ryboy"
-  ],
-  [
-    "simple:simple-mashed-potatoes",
-    "kartofelnoe-pyure"
-  ],
-  [
-    "simple:simple-potato-egg-salad",
-    "kartofelnyy-salat-s-yaytsom"
-  ],
-  [
-    "catalog:cn-egg-fried-rice",
-    "kitayskiy-zharenyy-ris-s-yaytsom"
-  ],
-  [
-    "home-honey-soy-chicken-wings",
-    "kurinye-krylya-v-medovo-soevom-souse"
-  ],
-  [
-    "home-chicken-soup-lentil",
-    "kurinyy-sup-s-chechevitsey"
-  ],
-  [
-    "home-chicken-soup-buckwheat",
-    "kurinyy-sup-s-grechkoy"
-  ],
-  [
-    "home-chicken-soup-potato",
-    "kurinyy-sup-s-kartofelem"
-  ],
-  [
-    "home-chicken-soup-noodle",
-    "kurinyy-sup-s-lapshoy"
-  ],
-  [
-    "home-chicken-soup-vegetables",
-    "kurinyy-sup-s-ovoschami"
-  ],
-  [
-    "home-chicken-soup-rice",
-    "kurinyy-sup-s-risom"
-  ],
-  [
-    "home-chicken-pan-pepper",
-    "kuritsa-s-bolgarskim-pertsem"
-  ],
-  [
-    "home-chicken-pan-mushroom",
-    "kuritsa-s-gribami-na-skovorode"
-  ],
-  [
-    "home-chicken-pan-onion",
-    "kuritsa-s-lukom-na-skovorode"
-  ],
-  [
-    "home-chicken-pan-tomato",
-    "kuritsa-s-pomidorami-na-skovorode"
-  ],
-  [
-    "home-chicken-pan-cheese",
-    "kuritsa-s-syrom-na-skovorode"
-  ],
-  [
-    "home-chicken-pan-cream",
-    "kuritsa-v-slivkah"
-  ],
-  [
-    "home-chicken-oven-cheese",
-    "kuritsa-zapechyonnaya-pod-syrom"
-  ],
-  [
-    "home-chicken-oven-broccoli",
-    "kuritsa-zapechyonnaya-s-brokkoli"
-  ],
-  [
-    "home-chicken-oven-mushroom",
-    "kuritsa-zapechyonnaya-s-gribami"
-  ],
-  [
-    "home-chicken-oven-potato",
-    "kuritsa-zapechyonnaya-s-kartofelem"
-  ],
-  [
-    "home-chicken-oven-onion",
-    "kuritsa-zapechyonnaya-s-lukom"
-  ],
-  [
-    "home-chicken-oven-tomato",
-    "kuritsa-zapechyonnaya-s-pomidorami"
-  ],
-  [
-    "catalog:pe-lomo-saltado",
-    "lomo-saltado"
-  ],
-  [
-    "home-pasta-basic-bacon",
-    "makarony-s-bekonom"
-  ],
-  [
-    "home-ground-meat-pasta",
-    "makarony-s-farshem"
-  ],
-  [
-    "home-pasta-basic-mushroom",
-    "makarony-s-gribami"
-  ],
-  [
-    "home-pasta-basic-chicken",
-    "makarony-s-kuritsey"
-  ],
-  [
-    "home-pasta-basic-tomato",
-    "makarony-s-pomidorami"
-  ],
-  [
-    "home-pasta-basic-cheese",
-    "makarony-s-syrom"
-  ],
-  [
-    "home-pasta-basic-tuna",
-    "makarony-s-tuntsom"
-  ],
-  [
-    "catalog:cn-mapo-tofu",
-    "mapo-tofu"
-  ],
-  [
-    "catalog:jp-miso-soup",
-    "misosiru"
-  ],
-  [
-    "home-carrot-apple-salad",
-    "morkovno-yablochnyy-salat"
-  ],
-  [
-    "catalog:in-mint-chutney",
-    "myatnyy-chatni"
-  ],
-  [
-    "home-pancakes-cheese",
-    "nesladkie-oladi-s-syrom"
-  ],
-  [
-    "catalog:vn-nuoc-cham",
-    "nyok-cham"
-  ],
-  [
-    "manual:manual-yogurt-cucumber",
-    "ogurtsy-s-yogurtom"
-  ],
-  [
-    "catalog:ru-okroshka",
-    "okroshka-na-kvase"
-  ],
-  [
-    "home-pancakes-banana",
-    "oladi-s-bananom"
-  ],
-  [
-    "home-pancakes-apple",
-    "oladi-s-yablokom"
-  ],
-  [
-    "home-pancakes-berries",
-    "oladi-s-yagodami"
-  ],
-  [
-    "simple:simple-omelette",
-    "omlet"
-  ],
-  [
-    "home-omelette-mushroom",
-    "omlet-s-gribami"
-  ],
-  [
-    "home-omelette-tomato",
-    "omlet-s-pomidorami"
-  ],
-  [
-    "home-omelette-cheese",
-    "omlet-s-syrom"
-  ],
-  [
-    "home-omelette-ham",
-    "omlet-s-vetchinoy"
-  ],
-  [
-    "home-omelette-green-onion",
-    "omlet-s-zelyonym-lukom"
-  ],
-  [
-    "home-omelette-spinach",
-    "omlet-so-shpinatom"
-  ],
-  [
-    "simple:simple-boiled-potatoes",
-    "otvarnoy-kartofel"
-  ],
-  [
-    "home-boiled-dumplings-sourcream",
-    "otvarnye-pelmeni-so-smetanoy"
-  ],
-  [
-    "home-vegetable-soup-lentil",
-    "ovoschnoy-sup-s-chechevitsey"
-  ],
-  [
-    "home-vegetable-soup-bean",
-    "ovoschnoy-sup-s-fasolyu"
-  ],
-  [
-    "home-vegetable-soup-cabbage",
-    "ovoschnoy-sup-s-kapustoy"
-  ],
-  [
-    "home-oatmeal-banana",
-    "ovsyanaya-kasha-s-bananom"
-  ],
-  [
-    "home-oatmeal-cocoa",
-    "ovsyanaya-kasha-s-kakao"
-  ],
-  [
-    "home-oatmeal-honey",
-    "ovsyanaya-kasha-s-myodom"
-  ],
-  [
-    "home-oatmeal-nuts",
-    "ovsyanaya-kasha-s-orehami"
-  ],
-  [
-    "home-oatmeal-apple",
-    "ovsyanaya-kasha-s-yablokom"
-  ],
-  [
-    "home-oatmeal-berries",
-    "ovsyanaya-kasha-s-yagodami"
-  ],
-  [
-    "catalog:jp-oyakodon",
-    "oyakodon"
-  ],
-  [
-    "catalog:th-pad-thai",
-    "pad-tay"
-  ],
-  [
-    "home-pasta-creamy-broccoli",
-    "pasta-v-slivkah-s-brokkoli"
-  ],
-  [
-    "home-pasta-creamy-mushroom",
-    "pasta-v-slivkah-s-gribami"
-  ],
-  [
-    "home-pasta-creamy-chicken",
-    "pasta-v-slivkah-s-kuritsey"
-  ],
-  [
-    "home-pasta-creamy-ham",
-    "pasta-v-slivkah-s-vetchinoy"
-  ],
-  [
-    "home-pasta-creamy-spinach",
-    "pasta-v-slivkah-so-shpinatom"
-  ],
-  [
-    "catalog:pe-aji-verde",
-    "peruanskiy-ahi-verde"
-  ],
-  [
-    "catalog:it-pesto",
-    "pesto-dzhenoveze"
-  ],
-  [
-    "catalog:ru-pozharsky",
-    "pozharskie-kotlety"
-  ],
-  [
-    "catalog:ru-syrniki",
-    "syrniki"
-  ],
-  [
-    "catalog:ua-varenyky",
-    "vareniki-s-kartofelem"
-  ],
-  [
-    "home-yogurt-bowl-banana",
-    "yogurt-s-bananom"
-  ],
-  [
-    "home-yogurt-bowl-honey",
-    "yogurt-s-myodom"
-  ],
-  [
-    "home-yogurt-bowl-nuts",
-    "yogurt-s-orehami"
-  ],
-  [
-    "home-yogurt-bowl-oats",
-    "yogurt-s-ovsyanymi-hlopyami"
-  ],
-  [
-    "home-yogurt-bowl-apple",
-    "yogurt-s-yablokom"
-  ],
-  [
-    "home-yogurt-bowl-berries",
-    "yogurt-s-yagodami"
-  ],
-  [
-    "home-potato-bake-cheese",
-    "zapechyonnyy-kartofel-s-syrom"
-  ],
-  [
-    "simple:simple-fried-potatoes-onion",
-    "zharenaya-kartoshka-s-lukom"
-  ],
-  [
-    "home-potato-pan-bacon",
-    "zharenyy-kartofel-s-bekonom"
-  ],
-  [
-    "home-potato-pan-pepper",
-    "zharenyy-kartofel-s-bolgarskim-pertsem"
-  ],
-  [
-    "home-potato-pan-mushroom",
-    "zharenyy-kartofel-s-gribami"
-  ],
-  [
-    "home-potato-pan-chicken",
-    "zharenyy-kartofel-s-kuritsey"
-  ],
-  [
-    "home-potato-pan-cheese",
-    "zharenyy-kartofel-s-syrom"
-  ],
-  [
-    "home-potato-pan-egg",
-    "zharenyy-kartofel-s-yaytsom"
-  ],
-  [
-    "home-fried-rice-bacon",
-    "zharenyy-ris-s-bekonom"
-  ],
-  [
-    "home-fried-rice-mushroom",
-    "zharenyy-ris-s-gribami"
-  ],
-  [
-    "home-fried-rice-chicken",
-    "zharenyy-ris-s-kuritsey"
-  ],
-  [
-    "home-fried-rice-vegetables",
-    "zharenyy-ris-s-ovoschami"
-  ],
-  [
-    "home-fried-rice-tuna",
-    "zharenyy-ris-s-tuntsom"
-  ],
-  [
-    "home-fried-rice-egg",
-    "zharenyy-ris-s-yaytsom"
-  ]
+  ["catalog:es-alioli", "alioli"],
+  ["catalog:es-gazpacho", "andalusskiy-gaspacho"],
+  ["home-vegetable-pan-eggplant", "baklazhany-s-lukom-na-skovorode"],
+  ["catalog:in-butter-chicken", "batter-chiken"],
+  ["catalog:ru-beef-stroganoff", "befstroganov"],
+  ["home-vegetable-pan-pepper", "bolgarskiy-perets-s-lukom-na-skovorode"],
+  ["home-vegetable-pan-broccoli", "brokkoli-s-lukom-na-skovorode"],
+  ["catalog:vn-bun-cha", "bun-cha"],
+  ["catalog:in-dal-tadka", "dal-tadka"],
+  ["simple:simple-potato-pancakes", "draniki"],
+  ["manual:manual-greek-salad", "grecheskiy-salat"],
+  ["home-ground-meat-buckwheat", "grechka-s-farshem"],
+  ["home-buckwheat-beef", "grechka-s-govyadinoy"],
+  ["home-buckwheat-chicken", "grechka-s-kuritsey"],
+  ["home-buckwheat-vegetables", "grechka-s-morkovyu-i-pertsem"],
+  ["home-buckwheat-mushroom", "grechka-s-shampinonami"],
+  ["home-buckwheat-egg", "grechka-s-yaytsom"],
+  ["home-buckwheat-onion", "grechka-s-zharenym-lukom"],
+  ["catalog:mx-guacamole", "guakamole"],
+  ["home-vegetable-pan-zucchini", "kabachki-s-lukom-na-skovorode"],
+  ["catalog:it-cacio-e-pepe", "kacho-e-pepe"],
+  ["manual:manual-caprese", "kapreze"],
+  ["home-ground-meat-potato", "kartofel-s-farshem-na-skovorode"],
+  ["home-potato-bake-mushroom", "kartofel-zapechyonnyy-s-gribami"],
+  ["home-potato-bake-chicken", "kartofel-zapechyonnyy-s-kuritsey"],
+  ["home-potato-bake-onion", "kartofel-zapechyonnyy-s-lukom"],
+  ["home-potato-bake-tomato", "kartofel-zapechyonnyy-s-pomidorami"],
+  ["home-potato-bake-fish", "kartofel-zapechyonnyy-s-ryboy"],
+  ["simple:simple-mashed-potatoes", "kartofelnoe-pyure"],
+  ["simple:simple-potato-egg-salad", "kartofelnyy-salat-s-yaytsom"],
+  ["catalog:cn-egg-fried-rice", "kitayskiy-zharenyy-ris-s-yaytsom"],
+  ["home-honey-soy-chicken-wings", "kurinye-krylya-v-medovo-soevom-souse"],
+  ["home-chicken-soup-lentil", "kurinyy-sup-s-chechevitsey"],
+  ["home-chicken-soup-buckwheat", "kurinyy-sup-s-grechkoy"],
+  ["home-chicken-soup-potato", "kurinyy-sup-s-kartofelem"],
+  ["home-chicken-soup-noodle", "kurinyy-sup-s-lapshoy"],
+  ["home-chicken-soup-vegetables", "kurinyy-sup-s-ovoschami"],
+  ["home-chicken-soup-rice", "kurinyy-sup-s-risom"],
+  ["home-chicken-pan-pepper", "kuritsa-s-bolgarskim-pertsem"],
+  ["home-chicken-pan-mushroom", "kuritsa-s-gribami-na-skovorode"],
+  ["home-chicken-pan-onion", "kuritsa-s-lukom-na-skovorode"],
+  ["home-chicken-pan-tomato", "kuritsa-s-pomidorami-na-skovorode"],
+  ["home-chicken-pan-cheese", "kuritsa-s-syrom-na-skovorode"],
+  ["home-chicken-pan-cream", "kuritsa-v-slivkah"],
+  ["home-chicken-oven-cheese", "kuritsa-zapechyonnaya-pod-syrom"],
+  ["home-chicken-oven-broccoli", "kuritsa-zapechyonnaya-s-brokkoli"],
+  ["home-chicken-oven-mushroom", "kuritsa-zapechyonnaya-s-gribami"],
+  ["home-chicken-oven-potato", "kuritsa-zapechyonnaya-s-kartofelem"],
+  ["home-chicken-oven-onion", "kuritsa-zapechyonnaya-s-lukom"],
+  ["home-chicken-oven-tomato", "kuritsa-zapechyonnaya-s-pomidorami"],
+  ["catalog:pe-lomo-saltado", "lomo-saltado"],
+  ["home-pasta-basic-bacon", "makarony-s-bekonom"],
+  ["home-ground-meat-pasta", "makarony-s-farshem"],
+  ["home-pasta-basic-mushroom", "makarony-s-gribami"],
+  ["home-pasta-basic-chicken", "makarony-s-kuritsey"],
+  ["home-pasta-basic-tomato", "makarony-s-pomidorami"],
+  ["home-pasta-basic-cheese", "makarony-s-syrom"],
+  ["home-pasta-basic-tuna", "makarony-s-tuntsom"],
+  ["catalog:cn-mapo-tofu", "mapo-tofu"],
+  ["catalog:jp-miso-soup", "misosiru"],
+  ["home-carrot-apple-salad", "morkovno-yablochnyy-salat"],
+  ["catalog:in-mint-chutney", "myatnyy-chatni"],
+  ["home-pancakes-cheese", "nesladkie-oladi-s-syrom"],
+  ["catalog:vn-nuoc-cham", "nyok-cham"],
+  ["manual:manual-yogurt-cucumber", "ogurtsy-s-yogurtom"],
+  ["catalog:ru-okroshka", "okroshka-na-kvase"],
+  ["home-pancakes-banana", "oladi-s-bananom"],
+  ["home-pancakes-apple", "oladi-s-yablokom"],
+  ["home-pancakes-berries", "oladi-s-yagodami"],
+  ["simple:simple-omelette", "omlet"],
+  ["home-omelette-mushroom", "omlet-s-gribami"],
+  ["home-omelette-tomato", "omlet-s-pomidorami"],
+  ["home-omelette-cheese", "omlet-s-syrom"],
+  ["home-omelette-ham", "omlet-s-vetchinoy"],
+  ["home-omelette-green-onion", "omlet-s-zelyonym-lukom"],
+  ["home-omelette-spinach", "omlet-so-shpinatom"],
+  ["simple:simple-boiled-potatoes", "otvarnoy-kartofel"],
+  ["home-boiled-dumplings-sourcream", "otvarnye-pelmeni-so-smetanoy"],
+  ["home-vegetable-soup-lentil", "ovoschnoy-sup-s-chechevitsey"],
+  ["home-vegetable-soup-bean", "ovoschnoy-sup-s-fasolyu"],
+  ["home-vegetable-soup-cabbage", "ovoschnoy-sup-s-kapustoy"],
+  ["home-oatmeal-banana", "ovsyanaya-kasha-s-bananom"],
+  ["home-oatmeal-cocoa", "ovsyanaya-kasha-s-kakao"],
+  ["home-oatmeal-honey", "ovsyanaya-kasha-s-myodom"],
+  ["home-oatmeal-nuts", "ovsyanaya-kasha-s-orehami"],
+  ["home-oatmeal-apple", "ovsyanaya-kasha-s-yablokom"],
+  ["home-oatmeal-berries", "ovsyanaya-kasha-s-yagodami"],
+  ["catalog:jp-oyakodon", "oyakodon"],
+  ["catalog:th-pad-thai", "pad-tay"],
+  ["home-pasta-creamy-broccoli", "pasta-v-slivkah-s-brokkoli"],
+  ["home-pasta-creamy-mushroom", "pasta-v-slivkah-s-gribami"],
+  ["home-pasta-creamy-chicken", "pasta-v-slivkah-s-kuritsey"],
+  ["home-pasta-creamy-ham", "pasta-v-slivkah-s-vetchinoy"],
+  ["home-pasta-creamy-spinach", "pasta-v-slivkah-so-shpinatom"],
+  ["catalog:pe-aji-verde", "peruanskiy-ahi-verde"],
+  ["catalog:it-pesto", "pesto-dzhenoveze"],
+  ["catalog:ru-pozharsky", "pozharskie-kotlety"],
+  ["catalog:ru-syrniki", "syrniki"],
+  ["catalog:ua-varenyky", "vareniki-s-kartofelem"],
+  ["home-yogurt-bowl-banana", "yogurt-s-bananom"],
+  ["home-yogurt-bowl-honey", "yogurt-s-myodom"],
+  ["home-yogurt-bowl-nuts", "yogurt-s-orehami"],
+  ["home-yogurt-bowl-oats", "yogurt-s-ovsyanymi-hlopyami"],
+  ["home-yogurt-bowl-apple", "yogurt-s-yablokom"],
+  ["home-yogurt-bowl-berries", "yogurt-s-yagodami"],
+  ["home-potato-bake-cheese", "zapechyonnyy-kartofel-s-syrom"],
+  ["simple:simple-fried-potatoes-onion", "zharenaya-kartoshka-s-lukom"],
+  ["home-potato-pan-bacon", "zharenyy-kartofel-s-bekonom"],
+  ["home-potato-pan-pepper", "zharenyy-kartofel-s-bolgarskim-pertsem"],
+  ["home-potato-pan-mushroom", "zharenyy-kartofel-s-gribami"],
+  ["home-potato-pan-chicken", "zharenyy-kartofel-s-kuritsey"],
+  ["home-potato-pan-cheese", "zharenyy-kartofel-s-syrom"],
+  ["home-potato-pan-egg", "zharenyy-kartofel-s-yaytsom"],
+  ["home-fried-rice-bacon", "zharenyy-ris-s-bekonom"],
+  ["home-fried-rice-mushroom", "zharenyy-ris-s-gribami"],
+  ["home-fried-rice-chicken", "zharenyy-ris-s-kuritsey"],
+  ["home-fried-rice-vegetables", "zharenyy-ris-s-ovoschami"],
+  ["home-fried-rice-tuna", "zharenyy-ris-s-tuntsom"],
+  ["home-fried-rice-egg", "zharenyy-ris-s-yaytsom"],
+  ["catalog:cn-tomato-eggs", "pomidory-s-yaytsom-po-kitayski"],
+  ["catalog:th-prik-nam-pla", "prik-nam-pla"],
+  ["home-vegetable-soup-mushroom", "prostoy-gribnoy-sup"],
+  ["home-vegetable-soup-potato", "prostoy-kartofelnyy-sup"],
+  ["home-vegetable-soup-tomato", "prostoy-tomatnyy-sup"],
+  ["catalog:fr-ratatouille", "ratatuy"],
+  ["home-rice-pot-beef", "ris-s-govyadinoy-v-odnoy-kastryule"],
+  ["home-rice-pot-mushroom", "ris-s-gribami-v-odnoy-kastryule"],
+  ["home-rice-pot-chicken", "ris-s-kuritsey-v-odnoy-kastryule"],
+  ["home-rice-pot-vegetables", "ris-s-morkovyu-i-pertsem"],
+  ["home-rice-pot-tomato", "ris-s-pomidorami"],
+  ["home-ground-meat-rice", "ris-s-farshem"],
+  ["home-rice-pot-lentil", "ris-s-chechevitsey"],
+  ["home-rice-milk-porridge", "risovaya-kasha-na-moloke"],
+  ["manual:manual-flatbread-wrap", "rulet-iz-lavasha-s-syrom-i-ovoschami"],
+  ["home-fish-pan-cream", "ryba-v-slivochnom-souse"],
+  ["home-fish-pan-pepper", "ryba-s-bolgarskim-pertsem"],
+  ["home-fish-pan-potato", "ryba-s-kartofelem-na-skovorode"],
+  ["home-fish-pan-lemon", "ryba-s-limonom"],
+  ["home-fish-pan-onion", "ryba-s-lukom-na-skovorode"],
+  ["home-fish-pan-tomato", "ryba-s-pomidorami-na-skovorode"],
+  ["manual:manual-chickpea-salad", "salat-iz-nuta-i-ovoschey"],
+  ["manual:manual-vegetable-salad", "salat-iz-pomidorov-i-ogurtsov"],
+  ["home-tomato-cucumber-oil", "salat-iz-pomidorov-i-ogurtsov-s-maslom"],
+  ["home-tomato-cucumber-sourcream", "salat-iz-pomidorov-i-ogurtsov-so-smetanoy"],
+  ["home-egg-salad-cucumber", "salat-iz-yaits-i-ogurtsov"],
+  ["home-egg-salad-tomato", "salat-iz-yaits-i-pomidorov"],
+  ["catalog:ru-olivier", "salat-olive"],
+  ["home-chicken-salad-potato", "salat-s-kuritsey-i-kartofelem"],
+  ["home-chicken-salad-corn", "salat-s-kuritsey-i-kukuruzoy"],
+  ["home-chicken-salad-cucumber", "salat-s-kuritsey-i-ogurtsom"],
+  ["home-chicken-salad-tomato", "salat-s-kuritsey-i-pomidorami"],
+  ["home-chicken-salad-rice", "salat-s-kuritsey-i-risom"],
+  ["home-chicken-salad-cheese", "salat-s-kuritsey-i-syrom"],
+  ["manual:manual-bean-tuna-salad", "salat-s-tuntsom-i-fasolyu"],
+  ["home-egg-salad-corn", "salat-s-yaytsom-i-kukuruzoy"],
+  ["home-egg-salad-chicken", "salat-s-yaytsom-i-kuritsey"],
+  ["home-egg-salad-cheese", "salat-s-yaytsom-i-syrom"],
+  ["home-egg-salad-tuna", "salat-s-yaytsom-i-tuntsom"],
+  ["catalog:mx-salsa-roja", "salsa-roha"],
+  ["catalog:pe-ceviche", "seviche-peruano"],
+  ["catalog:ru-pelmeni", "sibirskie-pelmeni"],
+  ["home-pasta-creamy-cheese", "slivochnaya-pasta-s-syrom"],
+  ["catalog:fr-bechamel", "sous-beshamel"],
+  ["catalog:jp-teriyaki-sauce", "sous-tare-dlya-teriyaki"],
+  ["catalog:it-aglio-olio", "spagetti-alo-e-olio"],
+  ["catalog:it-carbonara", "spagetti-karbonara"],
+  ["home-pancakes-cottage", "oladi-s-tvorogom"],
+  ["catalog:cn-chili-oil", "sychuanskoe-krasnoe-maslo"],
+  ["manual:manual-avocado-sandwich", "sendvich-s-avokado"],
+  ["home-sandwich-ham", "sendvich-s-vetchinoy"],
+  ["manual:manual-ham-cheese-sandwich", "sendvich-s-vetchinoy-i-syrom"],
+  ["home-sandwich-chicken", "sendvich-s-kuritsey"],
+  ["home-sandwich-tomato", "sendvich-s-pomidorom"],
+  ["home-sandwich-cheese", "sendvich-s-syrom"],
+  ["manual:manual-cheese-sandwich", "sendvich-s-syrom-i-ovoschami"],
+  ["home-sandwich-tuna", "sendvich-s-tuntsom"],
+  ["home-sandwich-egg", "sendvich-s-yaytsom"],
+  ["catalog:lb-tabbouleh", "tabule"],
+  ["catalog:mx-tacos-al-pastor", "takos-al-pastor"],
+  ["home-cottage-cheese-banana", "tvorog-s-bananom"],
+  ["home-cottage-cheese-yogurt", "tvorog-s-yogurtom"],
+  ["home-cottage-cheese-honey", "tvorog-s-myodom"],
+  ["home-cottage-cheese-nuts", "tvorog-s-orehami"],
+  ["home-cottage-cheese-apple", "tvorog-s-yablokom"],
+  ["home-cottage-cheese-berries", "tvorog-s-yagodami"],
+  ["manual:manual-cottage-cheese-spread", "tvorozhnaya-namazka"],
+  ["catalog:th-tom-yum", "tom-yam-kung"],
+  ["catalog:ru-blini", "tonkie-bliny"],
+  ["catalog:es-tortilla", "tortilya-de-patatas"],
+  ["catalog:lb-toum", "tum"],
+  ["home-cabbage-mushroom", "tushyonaya-kapusta-s-gribami"],
+  ["home-cabbage-potato", "tushyonaya-kapusta-s-kartofelem"],
+  ["home-cabbage-sausage", "tushyonaya-kapusta-s-kolbasoy"],
+  ["home-cabbage-chicken", "tushyonaya-kapusta-s-kuritsey"],
+  ["home-cabbage-carrot", "tushyonaya-kapusta-s-morkovyu"],
+  ["home-cabbage-tomato", "tushyonaya-kapusta-s-pomidorami"],
+  ["home-ground-meat-cabbage", "tushyonaya-kapusta-s-farshem"],
+  ["home-pumpkin-rice-porridge", "tykvennaya-kasha-s-risom-na-moloke"],
+  ["catalog:uz-manti", "uzbekskie-manty"],
+  ["catalog:uz-plov", "uzbekskiy-plov"],
+  ["catalog:ua-borshch", "ukrainskiy-borsch"],
+  ["home-ground-meat-tomato", "farsh-s-pomidorami"],
+  ["catalog:vn-pho-bo", "fo-bo"],
+  ["catalog:fr-onion-soup", "frantsuzskiy-lukovyy-sup"],
+  ["catalog:tn-harissa", "harissa"],
+  ["catalog:ru-horseradish-sauce", "hren-so-smetanoy"],
+  ["catalog:me-hummus", "humus"],
+  ["home-vegetable-pan-cauliflower", "tsvetnaya-kapusta-s-lukom-na-skovorode"],
+  ["home-lentil-bean-chicken", "chechevitsa-s-kuritsey"],
+  ["home-lentil-bean-vegetables", "chechevitsa-s-ovoschami"],
+  ["home-lentil-bean-tomato", "chechevitsa-s-pomidorami"],
+  ["home-lentil-bean-rice", "chechevitsa-s-risom"],
+  ["home-lentil-bean-cheese", "chechevitsa-s-syrom"],
+  ["home-lentil-bean-egg", "chechevitsa-s-yaytsom"],
+  ["catalog:me-shakshuka", "shakshuka"],
+  ["home-vegetable-pan-mushroom", "shampinony-s-lukom-na-skovorode"],
+  ["home-pancakes-cocoa", "shokoladnye-oladi-s-kakao"],
+  ["catalog:ru-shchi", "schi-iz-kvashenoy-kapusty"],
+  ["home-fried-eggs-ham", "yaichnitsa-s-vetchinoy"],
+  ["home-fried-eggs-potato", "yaichnitsa-s-kartofelem"],
+  ["simple:simple-eggs-onion", "yaichnitsa-s-lukom"],
+  ["home-fried-eggs-tomato", "yaichnitsa-s-pomidorami"],
+  ["home-fried-eggs-onion", "yaichnitsa-s-repchatym-lukom"],
+  ["home-fried-eggs-cheese", "yaichnitsa-s-syrom"],
+  ["home-fried-eggs-mushroom", "yaichnitsa-s-shampinonami"],
+  ["simple:simple-fried-eggs", "yaichnitsa-glazunya"],
+  ["simple:simple-boiled-eggs", "yaytsa-vkrutuyu"],
 ]);
 
 export const RECIPE_PHOTO_CATALOG = Object.freeze(RECIPE_PHOTO_PAIRS.map(([id, slug]) => Object.freeze({ id, slug })));
