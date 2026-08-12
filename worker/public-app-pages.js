@@ -1,6 +1,6 @@
 import { loadRecipeBody } from "./catalog-page.js";
 import { seoRecipeEntries } from "./seo-pages.js";
-import { recipeImageSet, recipeImageUrls } from "./recipe-images.js";
+import { recipeImageSet, recipeImageUrls, recipeThumbnailUrl } from "./recipe-images.js";
 
 const SITE_ORIGIN = "https://kutno.ru";
 const HTML_CACHE = "public, max-age=300, s-maxage=1800, stale-while-revalidate=600";
@@ -115,8 +115,9 @@ function routeContent(route, entries) {
   if (route.type === "catalog") {
     const links = entries.map((entry) => {
       const photo = recipeImageSet(entry.recipe, entry.slug);
-      const preview = photo
-        ? `<img class="seo-recipe-preview" src="${escapeHtml(photo.square)}" alt="${escapeHtml(entry.recipe.title)}" width="1200" height="1200" loading="lazy" decoding="async">`
+      const thumb = recipeThumbnailUrl(entry.recipe, entry.slug);
+      const preview = photo && thumb
+        ? `<img class="seo-recipe-preview" src="${escapeHtml(thumb)}" srcset="${escapeHtml(thumb)} 400w, ${escapeHtml(photo.square)} 1200w" sizes="(max-width: 640px) 33vw, 200px" alt="${escapeHtml(entry.recipe.title)}" width="400" height="400" loading="lazy" decoding="async">`
         : "";
       return `<li>${preview}<a href="${escapeHtml(entry.pathname)}">${escapeHtml(entry.recipe.title)}</a></li>`;
     }).join("");
@@ -236,10 +237,28 @@ export async function servePublicAppPage(request, env) {
   return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "content-language": "ru", "cache-control": HTML_CACHE, "x-content-type-options": "nosniff", "x-kutno-public-route": route.type } });
 }
 
+const CRAWLER_API_RULES = [
+  "Allow: /",
+  "Allow: /api/catalog",
+  "Allow: /api/catalog-index",
+  "Allow: /api/recipe/",
+  "Allow: /api/photo-manifest",
+  "Allow: /api/matching-suggestions",
+  "Allow: /api/health",
+  "Disallow: /api/auth/",
+  "Disallow: /api/favorites",
+  "Disallow: /api/feature-state",
+  "Disallow: /api/shared-recipes",
+  "Disallow: /api/kitchen",
+  "Disallow: /api/telemetry",
+  "Disallow: /api/config",
+  "Disallow: /lite",
+].join("\n");
+
 export function serveCrawlerRules(request) {
   const url = new URL(request.url);
   if (url.pathname !== "/robots.txt" || (request.method !== "GET" && request.method !== "HEAD")) return null;
   const groups = ["OAI-SearchBot", "GPTBot", "ChatGPT-User", "OAI-AdsBot", "*"];
-  const body = `${groups.map((agent) => `User-agent: ${agent}\nAllow: /\nDisallow: /api/\nDisallow: /lite`).join("\n\n")}\n\nSitemap: ${SITE_ORIGIN}/sitemap.xml\n`;
+  const body = `${groups.map((agent) => `User-agent: ${agent}\n${CRAWLER_API_RULES}`).join("\n\n")}\n\nSitemap: ${SITE_ORIGIN}/sitemap.xml\n`;
   return new Response(request.method === "HEAD" ? "" : body, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "cdn-cache-control": "no-store", "x-content-type-options": "nosniff" } });
 }
