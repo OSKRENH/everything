@@ -3,6 +3,10 @@ import { seoRecipeEntries } from "./seo-pages.js";
 
 const SITE_ORIGIN = "https://kutno.ru";
 const IMAGE_RATIOS = ["1x1", "4x3", "16x9"];
+const LEGACY_RECIPE_PHOTO_COUNT = 119;
+const INSET_RECIPE_PHOTO_IDS = new Set(
+  RECIPE_PHOTO_CATALOG.slice(LEGACY_RECIPE_PHOTO_COUNT).map((item) => String(item.id || "")).filter(Boolean),
+);
 
 function cleanSlug(value = "") {
   const slug = String(value || "").trim().toLowerCase();
@@ -38,7 +42,12 @@ export function recipePhotoManifest(portions = 2) {
   return seoRecipeEntries(portions).flatMap((entry) => {
     const slug = recipePhotoSlug(entry.recipe, entry.slug);
     if (!slug) return [];
-    return [{ id: entry.id, title: entry.recipe.title, slug }];
+    return [{
+      id: entry.id,
+      title: entry.recipe.title,
+      slug,
+      inset: INSET_RECIPE_PHOTO_IDS.has(String(entry.id || "")),
+    }];
   });
 }
 
