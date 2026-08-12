@@ -26,12 +26,12 @@ function photoUrl(slug, ratio) {
   return `/img/${slug}-${meta.suffix}.webp`;
 }
 
-function createPhoto(slug, ratio, { hero = false } = {}) {
+function createPhoto(slug, ratio, { hero = false, inset = false } = {}) {
   const meta = PHOTO_RATIOS[ratio];
   const url = photoUrl(slug, ratio);
   if (!meta || !url) return null;
   const figure = document.createElement("figure");
-  figure.className = `kutno-recipe-photo ${hero ? "kutno-recipe-photo--hero" : "kutno-recipe-photo--card"}`;
+  figure.className = `kutno-recipe-photo ${hero ? "kutno-recipe-photo--hero" : "kutno-recipe-photo--card"}${inset ? " kutno-recipe-photo--inset" : ""}`;
   figure.dataset.recipePhoto = slug;
   const image = document.createElement("img");
   image.src = url;
@@ -69,7 +69,7 @@ function syncHero(indexes) {
   if (!recipe) return;
   const item = indexes.byId.get(recipeId(recipe)) || indexes.byTitle.get(normalizePhotoTitle(recipe.title));
   if (!item?.slug) return;
-  const photo = createPhoto(item.slug, "page", { hero: true });
+  const photo = createPhoto(item.slug, "page", { hero: true, inset: item.inset === true });
   if (photo) sheet.querySelector(":scope > .sheet-topline")?.insertAdjacentElement("afterend", photo);
 }
 
@@ -100,7 +100,7 @@ function syncCards(indexes) {
     if (!title) return;
     const item = indexes.byTitle.get(title);
     if (!item?.slug) return;
-    const photo = createPhoto(item.slug, "square");
+    const photo = createPhoto(item.slug, "square", { inset: item.inset === true });
     if (photo) attachCardPhoto(card, photo);
   });
 }
