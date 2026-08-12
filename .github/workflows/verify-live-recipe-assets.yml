@@ -1,0 +1,44 @@
+name: Verify live repaired recipe assets
+
+on:
+  push:
+    branches:
+      - agent/verify-live-recipe-assets
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download repaired source archive
+        run: |
+          curl --fail-with-body --location --retry 3 --retry-delay 2 \
+            "https://drive.usercontent.google.com/download?id=1xO2b3gms7y93ihbk0O_qQxRVvIW681T7&export=download&confirm=t" \
+            --output /tmp/repaired.zip
+          mkdir -p /tmp/repaired /tmp/live
+          unzip -q /tmp/repaired.zip -d /tmp/repaired
+          count=$(find /tmp/repaired -maxdepth 1 -type f -name '*.webp' | wc -l | tr -d ' ')
+          test "$count" = "87"
+
+      - name: Compare all repaired files with production
+        run: |
+          set -euo pipefail
+          checked=0
+          for source in /tmp/repaired/*.webp; do
+            name=$(basename "$source")
+            live="/tmp/live/$name"
+            code=$(curl --silent --show-error --location --retry 3 \
+              --output "$live" --write-out '%{http_code}' \
+              "https://kutno.ru/img/$name")
+            test "$code" = "200"
+            test "$(stat -c%s "$live")" -ge 10000
+            cmp --silent "$source" "$live" || {
+              echo "Production mismatch: $name"
+              echo "source $(sha256sum "$source")"
+              echo "live   $(sha256sum "$live")"
+              exit 1
+            }
+            checked=$((checked + 1))
+          done
+          test "$checked" = "87"
+          echo "Verified $checked/87 repaired WebP files byte-for-byte on https://kutno.ru/img/"
