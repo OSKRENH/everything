@@ -8,7 +8,7 @@ const EXPECTED = {
   "4x3": [1200, 900],
   "16x9": [1200, 675],
 };
-// Tiny placeholder/corrupt assets must never reach production.
+// Reject tiny placeholder or corrupt assets before production.
 const MIN_IMAGE_BYTES = 10_000;
 
 function uint24le(buffer, offset) {
