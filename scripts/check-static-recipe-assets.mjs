@@ -8,6 +8,7 @@ const EXPECTED = {
   "4x3": [1200, 900],
   "16x9": [1200, 675],
 };
+const MIN_IMAGE_BYTES = 10_000;
 
 function uint24le(buffer, offset) {
   return buffer[offset] | (buffer[offset + 1] << 8) | (buffer[offset + 2] << 16);
@@ -62,7 +63,7 @@ export function checkImageDirectory(directory) {
     const [, slug, ratio] = match;
     const file = path.join(absolute, entry.name);
     const stat = fs.statSync(file);
-    assert.ok(stat.size > 0, `${entry.name}: zero-byte image`);
+    assert.ok(stat.size >= MIN_IMAGE_BYTES, `${entry.name}: suspiciously small image (${stat.size} bytes)`);
     const dimensions = webpDimensions(fs.readFileSync(file));
     assert.deepEqual(dimensions, EXPECTED[ratio], `${entry.name}: wrong dimensions`);
     if (!bySlug.has(slug)) bySlug.set(slug, new Set());
