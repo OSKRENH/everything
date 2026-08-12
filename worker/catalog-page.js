@@ -1,12 +1,12 @@
 import { enrichRecipeSemantics } from "../src/ingredient-semantics-v3.js";
-import { decodeCatalogCursor, encodeCatalogCursor } from "./catalog-cursor.js";
-import { loadRuntimeRecipes } from "./catalog-runtime-store.js";
-import { CATALOG_VERSION, RUNTIME_RECIPES } from "./generated/catalog-runtime.js";
+import { encodeCatalogCursor, parseCatalogCursor } from "./catalog-cursor.js";
+import { loadRuntimeCatalog } from "./catalog-runtime-store.js";
+import { RUNTIME_RECIPES } from "./generated/catalog-runtime.js";
 import { recipeImageSet } from "./recipe-images.js";
 
 const DEFAULT_LIMIT = 12;
 const MAX_LIMIT = 12;
-const STATIC_CACHE = "public, max-age=0, s-maxage=3600, stale-while-revalidate=600";
+const STATIC_CACHE = "public, max-age=0, s-maxage=60, stale-while-revalidate=60";
 const RECIPE_BODY_PREFIX = "recipe:";
 
 function json(data, status = 200, headers = {}) {
@@ -66,8 +66,8 @@ export function catalogRuntimeRecipes() {
   return RUNTIME_RECIPES;
 }
 
-export async function catalogCompactRecipes(request = new Request("https://kutno.test/"), env = {}) {
-  const runtime = await loadRuntimeRecipes(request, env);
+export async function catalogCompactRecipes(request = new Request("https://kutno.test/"), env = {}, ctx = null) {
+  const runtime = (await loadRuntimeCatalog(request, env, ctx)).recipes;
   return runtime.map((recipe) => compactRecipe(recipe));
 }
 
@@ -130,10 +130,17 @@ function contextFromUrl(url) {
   };
 }
 
-function runtimeArgs(envOrRequestId = {}, requestId = "") {
+function runtimeArgs(envOrRequestId = {}, requestId = "", ctx = null) {
   return typeof envOrRequestId === "string"
-    ? { env: {}, requestId: envOrRequestId }
-    : { env: envOrRequestId || {}, requestId: requestId || "" };
+    ? { env: {}, requestId: envOrRequestId, ctx: null }
+    : { env: envOrRequestId || {}, requestId: requestId || "", ctx };
+}
+
+function catalogLimit(raw) {
+  if (raw === null || raw === "") return DEFAULT_LIMIT;
+  const numeric = Number(raw);
+  if (!Number.isFinite(numeric) || numeric <= 0) return DEFAULT_LIMIT;
+  return Math.min(MAX_LIMIT, Math.max(1, Math.floor(numeric)));
 }
 
 async function bodyFromKv(env, recipe) {
@@ -202,12 +209,17 @@ export async function loadRecipeBody(request, env, id, portions = 2) {
   return scaleRecipeBody(base, target);
 }
 
-export async function serveCatalogPage(request, envOrRequestId = {}, requestId = "") {
-  const args = runtimeArgs(envOrRequestId, requestId);
-  const runtime = await loadRuntimeRecipes(request, args.env);
+export async function serveCatalogPage(request, envOrRequestId = {}, requestId = "", ctx = null) {
+  const args = runtimeArgs(envOrRequestId, requestId, ctx);
+  const payload = await loadRuntimeCatalog(request, args.env, args.ctx);
+  const runtime = payload.recipes;
   const url = new URL(request.url);
-  const limit = Math.min(MAX_LIMIT, Math.max(1, Number(url.searchParams.get("limit")) || DEFAULT_LIMIT));
-  const offset = decodeCatalogCursor(url.searchParams.get("cursor") || "");
+  const limit = catalogLimit(url.searchParams.get("limit"));
+  const parsedCursor = parseCatalogCursor(url.searchParams.get("cursor") || "");
+  if (!parsedCursor.valid) {
+    return json({ error: "Некорректный курсор каталога", code: "invalid_cursor", catalogVersion: payload.catalogVersion }, 400, args.requestId ? { "x-request-id": args.requestId } : {});
+  }
+  const offset = parsedCursor.offset;
   const pageRecipes = runtime.slice(offset, offset + limit);
   const context = contextFromUrl(url);
   const recipes = pageRecipes.map((recipe) => compactRecipe(recipe, context));
@@ -219,7 +231,7 @@ export async function serveCatalogPage(request, envOrRequestId = {}, requestId =
     nextCursor,
     page: Math.floor(offset / limit) + 1,
     limit,
-    catalogVersion: CATALOG_VERSION,
+    catalogVersion: payload.catalogVersion,
     ...(offset === 0 ? { facets: catalogFacets(runtime) } : {}),
   }, 200, {
     ...(args.requestId ? { "x-request-id": args.requestId } : {}),
@@ -227,23 +239,27 @@ export async function serveCatalogPage(request, envOrRequestId = {}, requestId =
   });
 }
 
-export async function serveCatalogIndex(request, envOrRequestId = {}, requestId = "") {
-  const args = runtimeArgs(envOrRequestId, requestId);
-  const runtime = await loadRuntimeRecipes(request, args.env);
+export async function serveCatalogIndex(request, envOrRequestId = {}, requestId = "", ctx = null) {
+  const args = runtimeArgs(envOrRequestId, requestId, ctx);
+  const payload = await loadRuntimeCatalog(request, args.env, args.ctx);
+  const runtime = payload.recipes;
   return json({
     index: runtime.map(catalogIndexEntry),
     facets: catalogFacets(runtime),
     total: runtime.length,
-    catalogVersion: CATALOG_VERSION,
+    catalogVersion: payload.catalogVersion,
   }, 200, args.requestId ? { "x-request-id": args.requestId } : {});
 }
 
-export async function serveRecipeDetail(request, env, requestId = "") {
+export async function serveRecipeDetail(request, env, requestId = "", ctx = null) {
   const url = new URL(request.url);
   const rawId = decodeURIComponent(url.pathname.slice("/api/recipe/".length));
   const portions = Math.min(8, Math.max(1, Number(url.searchParams.get("portions")) || 2));
   if (!catalogRuntimeRecipe(rawId)) return json({ error: "Рецепт не найден" }, 404, requestId ? { "x-request-id": requestId } : {});
-  const recipe = await loadRecipeBody(request, env, rawId, portions);
+  const [recipe, payload] = await Promise.all([
+    loadRecipeBody(request, env, rawId, portions),
+    loadRuntimeCatalog(request, env, ctx),
+  ]);
   if (!recipe) return json({ error: "Рецепт временно недоступен" }, 503, requestId ? { "x-request-id": requestId } : {});
-  return json({ recipe, catalogVersion: CATALOG_VERSION }, 200, requestId ? { "x-request-id": requestId } : {});
+  return json({ recipe, catalogVersion: payload.catalogVersion }, 200, requestId ? { "x-request-id": requestId } : {});
 }
