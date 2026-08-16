@@ -74,6 +74,12 @@ function syncHero(indexes) {
 }
 
 function attachCardPhoto(card, photo) {
+  if (card.matches(".swipe-card")) {
+    photo.classList.add("kutno-recipe-photo--swipe-bg");
+    card.prepend(photo);
+    return;
+  }
+
   if (!card.matches(".recipe-entry")) {
     card.prepend(photo);
     return;
