@@ -1,4 +1,4 @@
-const CACHE_NAME = "kutno-resilient-v3";
+const CACHE_NAME = "kutno-resilient-v4";
 const FALLBACK_URL = "/lite";
 
 self.addEventListener("install", (event) => {
