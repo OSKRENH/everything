@@ -16,7 +16,8 @@ export default {
     const requestId = crypto.randomUUID();
     const url = new URL(request.url);
     try {
-      if (url.hostname === "www.kutno.ru") {
+      if (url.protocol === "http:" || url.hostname === "www.kutno.ru") {
+        url.protocol = "https:";
         url.hostname = "kutno.ru";
         return Response.redirect(url.toString(), 308);
       }
