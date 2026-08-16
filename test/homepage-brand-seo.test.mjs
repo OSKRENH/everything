@@ -24,7 +24,7 @@ test("загрузочный текст не должен становиться
   assert.match(index, /Кутно подберёт подходящие рецепты/);
 });
 
-test("поисковый favicon использует стабильный квадратный PNG", () => {
+test("поисковый favicon явно объявляет SVG и PNG fallback", () => {
+  assert.match(index, /rel="icon" href="\/favicon\.svg" type="image\/svg\+xml"/);
   assert.match(index, /rel="icon" href="\/app-icon-192\.png" sizes="192x192" type="image\/png"/);
-  assert.doesNotMatch(index, /rel="icon" href="\/favicon\.svg"/);
 });
