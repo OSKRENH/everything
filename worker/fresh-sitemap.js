@@ -1,7 +1,7 @@
 import { seoRecipeEntries } from "./seo-pages.js";
 
 const SITE_ORIGIN = "https://kutno.ru";
-const LAST_MODIFIED = "2026-08-10";
+const LAST_MODIFIED = "2026-08-17";
 
 function escapeXml(value = "") {
   return String(value)

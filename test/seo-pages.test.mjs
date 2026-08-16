@@ -29,6 +29,8 @@ test("страница всех рецептов отдаётся рабочим
   assert.match(html, /rel="canonical" href="https:\/\/kutno\.ru\/recipes"/);
   assert.match(html, /"@type":"ItemList"/);
   assert.match(html, /href="\/recipe\//);
+  assert.equal((html.match(/<meta\s+name="robots"/gi) || []).length, 1);
+  assert.match(html, /name="robots" content="index,follow,max-snippet:-1,max-image-preview:large"/);
 });
 
 test("страница рецепта содержит canonical, Recipe JSON-LD, ингредиенты и шаги", async () => {
@@ -40,8 +42,10 @@ test("страница рецепта содержит canonical, Recipe JSON-LD
   assert.match(html, /"@type":"Recipe"/);
   assert.match(html, /"recipeIngredient":\[/);
   assert.match(html, /"recipeInstructions":\[/);
+  assert.match(html, /"dateModified":"2026-08-17"/);
   assert.match(html, /<h2>Ингредиенты<\/h2>/);
   assert.match(html, /<h2>Как готовить<\/h2>/);
+  assert.equal((html.match(/<meta\s+name="robots"/gi) || []).length, 1);
 });
 
 test("несуществующий рецепт возвращает настоящий 404 и noindex", async () => {
@@ -58,6 +62,7 @@ test("sitemap содержит каталог и все страницы рец�
   assert.match(response.headers.get("content-type") || "", /application\/xml/);
   const xml = await response.text();
   assert.match(xml, /<loc>https:\/\/kutno\.ru\/recipes<\/loc>/);
+  assert.match(xml, /<lastmod>2026-08-17<\/lastmod>/);
   for (const entry of entries) assert.ok(xml.includes(`<loc>https://kutno.ru${entry.pathname}</loc>`));
 });
 

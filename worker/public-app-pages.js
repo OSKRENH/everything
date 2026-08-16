@@ -5,7 +5,7 @@ import { recipeImageSet, recipeImageUrls } from "./recipe-images.js";
 const SITE_ORIGIN = "https://kutno.ru";
 const HTML_CACHE = "public, max-age=300, s-maxage=1800, stale-while-revalidate=600";
 const CONTENT_PUBLISHED = "2026-08-10";
-const CONTENT_MODIFIED = "2026-08-10";
+const CONTENT_MODIFIED = "2026-08-17";
 
 function escapeHtml(value = "") {
   return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
@@ -223,13 +223,14 @@ export async function servePublicAppPage(request, env) {
   html = stripHeadMeta(html, /\s*<meta\s+property="og:image(?::(?:width|height))?"[^>]*>\s*/gi);
   html = stripHeadMeta(html, /\s*<meta\s+name="twitter:image"[^>]*>\s*/gi);
   html = replaceHeadValue(html, /<meta\s+name="twitter:card"\s+content="[^"]*"\s*\/?\s*>/i, `<meta name="twitter:card" content="${photo ? "summary_large_image" : "summary"}" />`);
+  html = replaceHeadValue(html, /<meta\s+name="robots"\s+content="[^"]*"\s*\/?\s*>/i, `<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large" />`);
   const imageMeta = photo ? [
     `<meta property="og:image" content="${escapeHtml(photo.social)}" />`,
     `<meta property="og:image:width" content="1200" />`,
     `<meta property="og:image:height" content="675" />`,
     `<meta name="twitter:image" content="${escapeHtml(photo.social)}" />`,
   ].join("\n") : "";
-  html = html.replace("</head>", `${imageMeta ? `${imageMeta}\n` : ""}<meta name="robots" content="index,follow,max-image-preview:large" />\n<script type="application/ld+json">${jsonScript(structuredData)}</script>\n<script>window.__KUTNO_PUBLIC_ROUTE__=${jsonScript(clientRoute)};</script>\n</head>`);
+  html = html.replace("</head>", `${imageMeta ? `${imageMeta}\n` : ""}<script type="application/ld+json">${jsonScript(structuredData)}</script>\n<script>window.__KUTNO_PUBLIC_ROUTE__=${jsonScript(clientRoute)};</script>\n</head>`);
   html = html.replace(/<noscript>[\s\S]*?<\/noscript>/i, routeNoscript(route, route.entries));
 
   if (request.method === "HEAD") html = "";

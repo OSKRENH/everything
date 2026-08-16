@@ -13,6 +13,10 @@ test("главная явно сообщает поисковикам бренд
   assert.match(index, /"url": "https:\/\/kutno\.ru\/"/);
 });
 
+test("главная содержит прямую индексируемую ссылку на базу рецептов", () => {
+  assert.match(index, /<a href="\/recipes">база рецептов<\/a>/);
+});
+
 test("загрузочный текст не должен становиться поисковым сниппетом", () => {
   assert.match(index, /data-nosnippet>загрузка<\/span>/);
   assert.match(index, /data-kutno-shell-status[^>]*data-nosnippet/);
