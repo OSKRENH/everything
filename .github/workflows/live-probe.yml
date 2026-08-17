@@ -13,7 +13,7 @@ jobs:
         run: |
           for attempt in $(seq 1 18); do
             html=$(curl --fail --silent --show-error --max-time 20 https://kutno.ru/ || true)
-            if printf '%s' "$html" | grep -q '/src/bootstrap.js?v=2'; then
+            if printf '%s' "$html" | grep -q 'data-kutno-shell'; then
               echo "Stable Kutno is live on attempt $attempt."
               exit 0
             fi
