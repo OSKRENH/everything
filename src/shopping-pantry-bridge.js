@@ -11,18 +11,12 @@ function readShopping() {
   }
 }
 
-function parsePurchasedAmount(value = "") {
-  const text = String(value).trim().toLocaleLowerCase("ru-RU").replace(/ё/g, "е");
-  if (!text) return null;
-  const match = text.match(/(?:^|\s)(\d+(?:[.,]\d+)?)\s*(кг|г|мл|л|шт\.?|уп\.?|упаковк(?:а|и|ок)?|банк(?:а|и|ок)?)(?:\s|$)/u);
-  if (!match) return null;
-  const quantity = Number(match[1].replace(",", "."));
-  if (!Number.isFinite(quantity) || quantity < 0) return null;
-  let unit = match[2];
-  if (/^шт/.test(unit)) unit = "шт.";
-  else if (/^уп/.test(unit)) unit = "уп.";
-  else if (/^банк/.test(unit)) unit = "банка";
-  return { quantity, unit };
+function normalizeUnit(value = "") {
+  const unit = String(value).toLocaleLowerCase("ru-RU");
+  if (/^шт/.test(unit)) return "шт.";
+  if (/^уп/.test(unit)) return "уп.";
+  if (/^банк/.test(unit)) return "банка";
+  return unit;
 }
 
 function unitFamily(unit) {
@@ -44,6 +38,26 @@ function fromBase(quantity, unit) {
   return quantity;
 }
 
+function parsePurchasedAmount(value = "") {
+  const text = String(value).trim().toLocaleLowerCase("ru-RU").replace(/ё/g, "е");
+  if (!text) return null;
+  const matches = [...text.matchAll(/(\d+(?:[.,]\d+)?)\s*(кг|г|мл|л|шт\.?|уп\.?|упаковк(?:а|и|ок)?|банк(?:а|и|ок)?)/gu)];
+  if (!matches.length) return null;
+  const parsed = matches.map((match) => ({
+    quantity: Number(match[1].replace(",", ".")),
+    unit: normalizeUnit(match[2]),
+  })).filter((item) => Number.isFinite(item.quantity) && item.quantity >= 0 && unitFamily(item.unit));
+  if (!parsed.length) return null;
+  const family = unitFamily(parsed[0].unit);
+  const compatible = parsed.filter((item) => unitFamily(item.unit) === family);
+  const unit = compatible[0].unit;
+  const quantity = compatible.reduce((sum, item) => sum + toBase(item.quantity, item.unit), 0);
+  return {
+    quantity: Math.round(fromBase(quantity, unit) * 100) / 100,
+    unit,
+  };
+}
+
 function mergePurchasedAmount(existing, purchased) {
   if (!purchased) return existing || null;
   if (!existing || existing.quantity == null || !existing.unit) return purchased;
@@ -57,10 +71,7 @@ function mergePurchasedAmount(existing, purchased) {
   };
 }
 
-function rememberBoughtAmounts() {
-  const bought = readShopping().filter((item) => item?.checked && item?.name);
-  if (!bought.length) return;
-
+function applyBoughtAmounts(bought) {
   for (const item of bought) {
     const parsed = parsePurchasedAmount(item.amount);
     if (!parsed) continue;
@@ -80,8 +91,11 @@ function rememberBoughtAmounts() {
 function handleMoveBought(event) {
   const button = event.target.closest?.('[data-kf-action="move-bought"]');
   if (!button) return;
-  // Capture the quantities before kutno-features removes checked shopping rows.
-  rememberBoughtAmounts();
+  // Snapshot before kutno-features removes checked rows, then update pantry
+  // after its bubble handler has added the product names to the kitchen.
+  const bought = readShopping().filter((item) => item?.checked && item?.name);
+  if (!bought.length) return;
+  queueMicrotask(() => applyBoughtAmounts(bought));
 }
 
 document.addEventListener("click", handleMoveBought, true);
