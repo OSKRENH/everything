@@ -148,5 +148,30 @@ export default defineConfig({
         fs.writeFileSync(output, featureSource, "utf8");
       },
     },
+    {
+      // main.js and public-routes.js are only ever reached via runtime `import()` inside
+      // startApplication(), so Vite's static analysis can't tell they always run and won't
+      // preload them on its own - the browser only starts fetching each one once the entry
+      // chunk has finished executing down to that await. Unlike a source-level <link
+      // rel="modulepreload" href="/src/main.js"> (which Rollup treats as a brand-new build
+      // entry and bundles twice - tried and reverted, see git history), this hooks
+      // transformIndexHtml post-build and points at the chunk filenames Rollup already
+      // produced for the dynamic import graph, so it can only ever reference an existing
+      // asset, never mint a duplicate module instance.
+      name: "kutno-preload-dynamic-entry-chunks",
+      transformIndexHtml: {
+        order: "post",
+        handler(html, context) {
+          const bundle = context.bundle;
+          if (!bundle) return html;
+          const targets = ["/src/main.js", "/src/public-routes.js"];
+          const links = Object.values(bundle)
+            .filter((chunk) => chunk.type === "chunk" && targets.some((target) => chunk.facadeModuleId?.replace(/\\/g, "/").endsWith(target)))
+            .map((chunk) => `    <link rel="modulepreload" href="/${chunk.fileName}" />\n`)
+            .join("");
+          return links ? html.replace("</head>", `${links}  </head>`) : html;
+        },
+      },
+    },
   ],
 });
