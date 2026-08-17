@@ -1,28 +1,58 @@
-name: Live production probe
+name: Stable source and production guard
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
+  verify-current-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Reject obsolete app architecture
+        run: |
+          test -f src/main.js
+          grep -q 'data-kutno-shell' index.html
+          grep -q 'src/bootstrap.js' index.html
+
+          if [ -e client/src/App.jsx ] || [ -e client/src/components/Navbar.jsx ] || [ -e functions/api/auth/login.js ]; then
+            echo "Obsolete React/Pages Kutno architecture detected. Refusing this source tree."
+            exit 1
+          fi
+
+          if grep -q 'client/src/main.jsx' package.json; then
+            echo "Obsolete client entrypoint detected in package.json."
+            exit 1
+          fi
+
+          echo "Current Kutno source lineage verified."
+
   verify-live-stable:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
-      - name: Wait for stable Kutno on production
+      - name: Wait for current Kutno on production
         run: |
           for attempt in $(seq 1 18); do
             html=$(curl --fail --silent --show-error --max-time 20 https://kutno.ru/ || true)
             if printf '%s' "$html" | grep -q 'data-kutno-shell'; then
-              echo "Stable Kutno is live on attempt $attempt."
+              if printf '%s' "$html" | grep -q 'id="root"'; then
+                echo "Obsolete React root is present together with current marker."
+                exit 1
+              fi
+              echo "Current Kutno is live on attempt $attempt."
               exit 0
             fi
             if printf '%s' "$html" | grep -q 'id="root"'; then
-              echo "Claude React version is still live (attempt $attempt/18)."
+              echo "Obsolete React Kutno is still live (attempt $attempt/18)."
             else
-              echo "Stable marker not visible yet (attempt $attempt/18)."
+              echo "Current marker not visible yet (attempt $attempt/18)."
             fi
             sleep 15
           done
-          echo "Stable Kutno did not become live within the probe window."
+          echo "Current Kutno did not become live within the probe window."
           exit 1
