@@ -25,14 +25,25 @@ jobs:
         run: npm ci
       - name: Build stable app
         run: npm run build
-      - name: Deploy stable app to Cloudflare
-        run: npx wrangler deploy
-      - name: Purge Cloudflare cache
+      - name: Resolve Cloudflare account
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ZONE_ID" ]; then
-            echo "Cloudflare purge skipped: missing repository secrets."
-            exit 0
+            echo "Missing Cloudflare deployment secrets."
+            exit 1
           fi
+          account_id=$(curl --fail-with-body --silent --show-error \
+            "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" | jq -r '.result.account.id // empty')
+          if [ -z "$account_id" ]; then
+            echo "Could not resolve Cloudflare account id from zone."
+            exit 1
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$account_id" >> "$GITHUB_ENV"
+      - name: Deploy stable app to Cloudflare
+        run: npx wrangler deploy --env=""
+      - name: Purge Cloudflare cache
+        run: |
           curl --fail-with-body --silent --show-error \
             "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/purge_cache" \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
