@@ -1,0 +1,17 @@
+/* Bundles the base stylesheet with the patch files that used to be loaded as 11 separate
+   <link> requests at runtime (see src/bootstrap.js history). Import order here reproduces the
+   exact cascade the old STYLE_URLS array produced - base styles first, then each patch in the
+   same order - so specificity/override behavior is unchanged; only the transport is (one
+   content-hashed, immutably-cached file instead of eleven weakly-cached ones). */
+@import "./styles.css";
+@import "./auth-fix.css";
+@import "./section-typography.css";
+@import "./kutno-features.css";
+@import "./matching-engine.css";
+@import "./matching-mobile-fix.css";
+@import "./catalog-stability.css";
+@import "./manual-mode.css";
+@import "./kutno-next.css";
+@import "./recipe-photos.css";
+@import "./mobile-recipe-ux.css";
+@import "./responsive-layout.css";

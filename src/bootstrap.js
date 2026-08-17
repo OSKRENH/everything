@@ -1,16 +1,15 @@
-const STYLE_URLS = [
-  "/auth-fix.css?v=4",
-  "/section-typography.css?v=11",
-  "/kutno-features.css?v=2",
-  "/matching-engine.css?v=1",
-  "/matching-mobile-fix.css?v=1",
-  "/catalog-stability.css?v=4",
-  "/manual-mode.css?v=1",
-  "/kutno-next.css?v=1",
-  "/recipe-photos.css?v=2",
-  "/mobile-recipe-ux.css?v=2",
-  "/responsive-layout.css?v=1",
-];
+// Static (not dynamic) import: Vite/Rollup bundles this straight into this entry chunk instead of
+// splitting it into its own lazily-fetched file, so it costs zero extra requests - it used to be
+// a separate <script src="/mobile-recipe-ux.js"> tag awaited before "kutno:ready" could fire,
+// which was both an extra network round trip on the critical path and (that file being outside
+// Vite's hashed-asset pipeline) served with cache-control: max-age=0, must-revalidate, forcing a
+// revalidation trip on every single page load rather than every deploy. Running its module body
+// this early (before main.js/public-routes.js have even started loading) is safe: it only sets up
+// a MutationObserver plus "kutno:ready"/"kutno:bridge-ready" listeners and calls enhance(document)
+// once immediately, none of which touch window.kutnoBridge synchronously - the one place that does
+// (the click handler) uses optional chaining and falls back to a plain navigation if kutnoBridge
+// isn't ready yet.
+import "./mobile-recipe-ux.js";
 
 function setShellStatus(message, failed = false) {
   const shell = document.querySelector("[data-kutno-shell]");
@@ -18,16 +17,6 @@ function setShellStatus(message, failed = false) {
   if (!shell || !status) return;
   status.textContent = message;
   shell.classList.toggle("is-delayed", failed);
-}
-
-function startStyles() {
-  for (const href of STYLE_URLS) {
-    if (document.querySelector(`link[href=\"${href}\"]`)) continue;
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = href;
-    document.head.append(link);
-  }
 }
 
 function loadPublicModule(src) {
@@ -98,14 +87,12 @@ function installFeatureSyncThrottle() {
 }
 
 async function startApplication() {
-  startStyles();
   installFeatureSyncThrottle();
   setShellStatus("Загружаем кухню…");
 
   try {
     await import("./main.js");
     await import("./public-routes.js");
-    await loadPublicModule("/mobile-recipe-ux.js?v=1");
     document.documentElement.dataset.kutnoReady = "true";
     window.dispatchEvent(new CustomEvent("kutno:ready"));
 

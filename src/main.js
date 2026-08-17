@@ -1,4 +1,4 @@
-import "./styles.css";
+import "./app-styles.css";
 import { ingredientCatalog } from "./ingredients.js";
 
 const STORAGE_KEY = "kutno-kitchen-v2";

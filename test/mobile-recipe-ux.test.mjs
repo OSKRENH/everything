@@ -3,14 +3,25 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const bootstrap = readFileSync("src/bootstrap.js", "utf8");
-const ux = readFileSync("public/mobile-recipe-ux.js", "utf8");
-const css = readFileSync("public/mobile-recipe-ux.css", "utf8");
+const ux = readFileSync("src/mobile-recipe-ux.js", "utf8");
+const css = readFileSync("src/mobile-recipe-ux.css", "utf8");
+const appStyles = readFileSync("src/app-styles.css", "utf8");
 const catalogScroll = readFileSync("src/catalog-scroll-fill.inject.js", "utf8");
 
 test("мобильный UX загружается до отложенных фото и функций", () => {
-  assert.match(bootstrap, /mobile-recipe-ux\.css\?v=2/);
-  assert.match(bootstrap, /await loadPublicModule\("\/mobile-recipe-ux\.js\?v=1"\)/);
-  assert.match(bootstrap, /catalog-stability\.css\?v=4/);
+  // mobile-recipe-ux.js/.css are bundled with the main app chunk (imported from bootstrap.js /
+  // app-styles.css) rather than fetched as separate <link>/<script> requests, so this checks the
+  // import wiring instead of a runtime URL. It stays ahead of the idle-callback-deferred extras
+  // (kutno-features.js, recipe-photos.js) in loadExtras below.
+  assert.match(appStyles, /@import "\.\/mobile-recipe-ux\.css";/);
+  // Static import (not a dynamic import() call) so Vite bundles it straight into the entry
+  // chunk instead of splitting it into a separately-fetched file.
+  assert.match(bootstrap, /^import "\.\/mobile-recipe-ux\.js";/m);
+  assert.ok(
+    bootstrap.indexOf('import "./mobile-recipe-ux.js";') < bootstrap.indexOf("loadExtras"),
+    "mobile-recipe-ux.js должен грузиться до объявления loadExtras (отложенных фото и функций)",
+  );
+  assert.match(appStyles, /@import "\.\/catalog-stability\.css";/);
 });
 
 test("открыватели рецептов превращаются в настоящие ссылки", () => {
