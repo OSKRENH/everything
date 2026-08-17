@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "npm test && vite build && node scripts/check-static-recipe-assets.mjs dist/img",
+    "build": "vite build && node scripts/check-static-recipe-assets.mjs dist/img",
     "build:worker": "node scripts/build-worker.mjs",
     "deploy": "wrangler deploy",
-    "check": "npm run build && wrangler deploy --dry-run",
+    "check": "npm test && npm run build && wrangler deploy --dry-run",
     "test": "node --test test/*.test.mjs",
     "check:static-assets": "node scripts/check-static-recipe-assets.mjs public/img && node scripts/check-static-recipe-assets.mjs dist/img"
   },
