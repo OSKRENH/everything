@@ -1,0 +1,28 @@
+name: Live production probe
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  verify-live-stable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Wait for stable Kutno on production
+        run: |
+          for attempt in $(seq 1 18); do
+            html=$(curl --fail --silent --show-error --max-time 20 https://kutno.ru/ || true)
+            if printf '%s' "$html" | grep -q '/src/bootstrap.js?v=2'; then
+              echo "Stable Kutno is live on attempt $attempt."
+              exit 0
+            fi
+            if printf '%s' "$html" | grep -q 'id="root"'; then
+              echo "Claude React version is still live (attempt $attempt/18)."
+            else
+              echo "Stable marker not visible yet (attempt $attempt/18)."
+            fi
+            sleep 15
+          done
+          echo "Stable Kutno did not become live within the probe window."
+          exit 1
