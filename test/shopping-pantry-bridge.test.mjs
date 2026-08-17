@@ -10,7 +10,7 @@ test("shopping pantry bridge is loaded by the current Kutno shell", () => {
 });
 
 test("shopping pantry bridge snapshots bought rows before shopping removes them", () => {
-  assert.match(source, /data-kf-action=[\\]?"move-bought/);
+  assert.ok(source.includes('data-kf-action="move-bought"'));
   assert.match(source, /addEventListener\("click", handleMoveBought, true\)/);
   assert.match(source, /queueMicrotask\(\(\) => applyBoughtAmounts\(bought\)\)/);
 });
