@@ -18,7 +18,7 @@ test("index содержит самостоятельный первый экр�
   const html = readFileSync("index.html", "utf8");
   assert.match(html, /data-kutno-shell/);
   assert.match(html, /Открыть лёгкую версию/);
-  assert.match(html, /src="\/src\/bootstrap\.js\?v=1"/);
+  assert.match(html, /src="\/src\/bootstrap\.js\?v=2"/);
   assert.doesNotMatch(html, /rel="preload" as="image"/);
   assert.doesNotMatch(html, /rel="stylesheet"/);
   assert.doesNotMatch(html, /illustration-preload-cache/);

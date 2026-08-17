@@ -66,7 +66,7 @@ test("клиент быстро открывает каталог, индекс 
   assert.match(bootstrap, /requestIdleCallback/);
   assert.match(bootstrap, /navigator\.serviceWorker\.register/);
   assert.match(bootstrap, /updateViaCache: "none"/);
-  assert.match(serviceWorker, /kutno-resilient-v3/);
+  assert.match(serviceWorker, /kutno-resilient-v4/);
   assert.match(serviceWorker, /navigationNetworkOnly/);
   assert.match(serviceWorker, /fetch\(request, \{ cache: "no-store" \}\)/);
   assert.doesNotMatch(serviceWorker, /cache\.add\("\/"\)/);
@@ -81,7 +81,7 @@ test("клиент быстро открывает каталог, индекс 
   assert.ok(vite.indexOf("${kitchenSimplifiedSource}") < vite.indexOf("${kitchenSmartSuggestionsSource}"));
   assert.ok(vite.indexOf("${kitchenSmartSuggestionsSource}") < vite.indexOf("${catalogDetailSource}"));
   assert.ok(vite.indexOf("${catalogDetailSource}") < vite.indexOf("${auditV7Source}"));
-  assert.match(index, /bootstrap\.js\?v=1/);
+  assert.match(index, /bootstrap\.js\?v=2/);
   assert.match(index, /data-kutno-shell/);
   assert.match(index, /data-seo-content/);
   assert.match(index, /href="\/lite"/);

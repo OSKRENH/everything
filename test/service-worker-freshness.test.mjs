@@ -6,7 +6,7 @@ const serviceWorker = fs.readFileSync(new URL("../public/sw.js", import.meta.url
 const bootstrap = fs.readFileSync(new URL("../src/bootstrap.js", import.meta.url), "utf8");
 
 test("Service Worker не возвращает устаревший полный app shell при сбое навигации", () => {
-  assert.match(serviceWorker, /kutno-resilient-v3/);
+  assert.match(serviceWorker, /kutno-resilient-v4/);
   assert.match(serviceWorker, /fetch\(request, \{ cache: "no-store" \}\)/);
   assert.match(serviceWorker, /cache\.match\(FALLBACK_URL\)/);
   assert.doesNotMatch(serviceWorker, /cache\.match\(request\) \|\| await cache\.match\(FALLBACK_URL\)/);

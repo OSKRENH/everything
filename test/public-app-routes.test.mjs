@@ -27,7 +27,7 @@ test("/recipes отдаёт основной shell и видимый серве�
   assert.equal(response.headers.get("x-kutno-public-route"), "catalog");
   const html = await response.text();
   assert.match(html, /data-kutno-shell/);
-  assert.match(html, /src="\/src\/bootstrap\.js\?v=1"/);
+  assert.match(html, /src="\/src\/bootstrap\.js\?v=2"/);
   assert.match(html, /window\.__KUTNO_PUBLIC_ROUTE__=\{"type":"catalog"/);
   assert.match(html, /"@type":"ItemList"/);
   assert.match(html, /<h1[^>]*data-seo-title[^>]*>Все рецепты<\/h1>/);
@@ -43,13 +43,13 @@ test("уникальный URL рецепта грузит shell, видимый
   assert.equal(response.headers.get("x-kutno-public-route"), "recipe");
   const html = await response.text();
   assert.match(html, /data-kutno-shell/);
-  assert.match(html, /src="\/src\/bootstrap\.js\?v=1"/);
+  assert.match(html, /src="\/src\/bootstrap\.js\?v=2"/);
   assert.ok(html.includes(`"id":"${entry.id.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`));
   assert.match(html, /"@type":"Recipe"/);
   assert.match(html, /"recipeIngredient":\[/);
   assert.match(html, /"recipeInstructions":\[/);
   assert.match(html, /"datePublished":"2026-08-10"/);
-  assert.match(html, /"dateModified":"2026-08-10"/);
+  assert.match(html, /"dateModified":"2026-08-17"/);
   assert.match(html, /<meta property="og:type" content="article" \/>/);
   assert.match(html, new RegExp(`<h1[^>]*data-seo-title[^>]*>${entry.recipe.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h1>`));
   assert.match(html, /data-seo-content[^>]*>[\s\S]*<h2>Ингредиенты<\/h2>[\s\S]*<h2>Как готовить<\/h2>/);
@@ -128,14 +128,17 @@ test("клиентский маршрут открывает Базу и шта�
   const bootstrap = readFileSync("src/bootstrap.js", "utf8");
   const wrangler = readFileSync("wrangler.jsonc", "utf8");
   const photos = readFileSync("public/recipe-photos.js", "utf8");
+  const appStyles = readFileSync("src/app-styles.css", "utf8");
   assert.match(source, /data-view=\\?"catalog/);
   assert.match(source, /kutnoBridge\.openRecipe/);
   assert.match(source, /MutationObserver/);
   assert.match(source, /recipe-sheet/);
   assert.match(source, /history\.pushState/);
   assert.match(bootstrap, /await import\("\.\/public-routes\.js"\)/);
-  assert.match(bootstrap, /\/recipe-photos\.js\?v=2/);
-  assert.match(bootstrap, /\/responsive-layout\.css\?v=1/);
+  assert.match(bootstrap, /\/recipe-photos\.js\?v=3/);
+  // responsive-layout.css is bundled via src/app-styles.css now, not a separate <link> from
+  // bootstrap.js - see the mobile UX / stylesheet consolidation commit.
+  assert.match(appStyles, /@import "\.\/responsive-layout\.css";/);
   assert.match(photos, /fetchPriority = "high"/);
   assert.match(photos, /image\.loading = "lazy"/);
   assert.match(photos, /image\.width = meta\.width/);
