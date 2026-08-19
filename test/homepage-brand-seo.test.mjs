@@ -15,6 +15,13 @@ test("главная явно сообщает поисковикам бренд
 
 test("главная содержит прямую индексируемую ссылку на базу рецептов", () => {
   assert.match(index, /<a href="\/recipes">база рецептов<\/a>/);
+  assert.match(index, /<a href="\/recipes">Посмотреть всю базу рецептов<\/a>/);
+});
+
+test("главная содержит полезный HTML даже до запуска JavaScript", () => {
+  assert.match(index, /<div class="boot-seo-content" data-seo-content>\s*<section/);
+  assert.match(index, /<h2>Рецепты из ваших продуктов<\/h2>/);
+  assert.match(index, /Кутно сопоставит их с базой рецептов/);
 });
 
 test("загрузочный текст не должен становиться поисковым сниппетом", () => {

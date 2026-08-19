@@ -181,7 +181,7 @@ function publicRouteFor(request) {
 }
 
 function missingRecipeResponse(request) {
-  const html = request.method === "HEAD" ? "" : `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,follow"><link rel="canonical" href="${SITE_ORIGIN}/recipes"><title>Рецепт не найден | Кутно</title></head><body><main><h1>Рецепт не найден</h1><p>Возможно, ссылка устарела. <a href="/recipes">Открыть все рецепты</a>.</p></main></body></html>`;
+  const html = request.method === "HEAD" ? "" : `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,follow"><title>Рецепт не найден | Кутно</title></head><body><main><h1>Рецепт не найден</h1><p>Возможно, ссылка устарела. <a href="/recipes">Открыть все рецепты</a>.</p></main></body></html>`;
   return new Response(html, { status: 404, headers: { "content-type": "text/html; charset=utf-8", "content-language": "ru", "cache-control": "public, max-age=60", "x-robots-tag": "noindex, follow", "x-content-type-options": "nosniff" } });
 }
 
@@ -234,7 +234,7 @@ export async function servePublicAppPage(request, env) {
   html = html.replace(/<noscript>[\s\S]*?<\/noscript>/i, routeNoscript(route, route.entries));
 
   if (request.method === "HEAD") html = "";
-  return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "content-language": "ru", "cache-control": HTML_CACHE, "x-content-type-options": "nosniff", "x-kutno-public-route": route.type } });
+  return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "content-language": "ru", "cache-control": HTML_CACHE, "link": `<${canonicalUrl}>; rel="canonical"`, "x-content-type-options": "nosniff", "x-kutno-public-route": route.type } });
 }
 
 export function serveCrawlerRules(request) {

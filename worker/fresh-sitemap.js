@@ -12,11 +12,20 @@ function escapeXml(value = "") {
     .replaceAll("'", "&apos;");
 }
 
+export function canonicalSitemapUrls(entries = seoRecipeEntries()) {
+  const paths = ["/", "/recipes", ...entries.map((entry) => entry.pathname)];
+  return [...new Set(paths)].flatMap((pathname) => {
+    const url = new URL(pathname, SITE_ORIGIN);
+    if (url.origin !== SITE_ORIGIN || url.protocol !== "https:" || url.search || url.hash) return [];
+    if (url.pathname !== "/" && url.pathname.endsWith("/")) return [];
+    return [url.toString()];
+  });
+}
+
 export function serveFreshSitemap(request) {
   const url = new URL(request.url);
   if (url.pathname !== "/sitemap.xml" || !["GET", "HEAD"].includes(request.method)) return null;
-  const entries = seoRecipeEntries(2);
-  const urls = [`${SITE_ORIGIN}/`, `${SITE_ORIGIN}/recipes`, ...entries.map((entry) => `${SITE_ORIGIN}${entry.pathname}`)];
+  const urls = canonicalSitemapUrls();
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((entry) => `  <url><loc>${escapeXml(entry)}</loc><lastmod>${LAST_MODIFIED}</lastmod></url>`).join("\n")}\n</urlset>\n`;
   return new Response(request.method === "HEAD" ? "" : body, {
     status: 200,
