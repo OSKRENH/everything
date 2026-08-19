@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { seoRecipeEntries, seoSlug } from "../worker/seo-pages.js";
-import { serveFreshSitemap } from "../worker/fresh-sitemap.js";
+import { canonicalSitemapUrls, serveFreshSitemap } from "../worker/fresh-sitemap.js";
 import { serveCrawlerRules, servePublicAppPage } from "../worker/public-app-pages.js";
 import { runtimeEnv } from "./runtime-assets.mjs";
 
@@ -24,6 +24,7 @@ test("у каждого рецепта есть уникальная индек�
 test("страница всех рецептов отдаётся рабочим app shell и ItemList", async () => {
   const response = await servePublicAppPage(new Request("https://kutno.ru/recipes"), env);
   assert.equal(response.status, 200);
+  assert.equal(response.headers.get("link"), '<https://kutno.ru/recipes>; rel="canonical"');
   const html = await response.text();
   assert.match(html, /<h1[^>]*data-seo-title[^>]*>Все рецепты<\/h1>/);
   assert.match(html, /rel="canonical" href="https:\/\/kutno\.ru\/recipes"/);
@@ -37,6 +38,7 @@ test("страница рецепта содержит canonical, Recipe JSON-LD
   const entry = seoRecipeEntries(2)[0];
   const response = await servePublicAppPage(new Request(`https://kutno.ru${entry.pathname}`), env);
   assert.equal(response.status, 200);
+  assert.equal(response.headers.get("link"), `<https://kutno.ru${entry.pathname}>; rel="canonical"`);
   const html = await response.text();
   assert.match(html, new RegExp(`rel="canonical" href="https://kutno\\.ru${entry.pathname.replaceAll("/", "\\/")}"`));
   assert.match(html, /"@type":"Recipe"/);
@@ -48,15 +50,38 @@ test("страница рецепта содержит canonical, Recipe JSON-LD
   assert.equal((html.match(/<meta\s+name="robots"/gi) || []).length, 1);
 });
 
-test("несуществующий рецепт возвращает настоящий 404 и noindex", async () => {
+test("параметры не создают новый canonical URL", async () => {
+  const response = await servePublicAppPage(new Request("https://kutno.ru/recipes?utm_source=test&ref=mail"), env);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("link"), '<https://kutno.ru/recipes>; rel="canonical"');
+  const html = await response.text();
+  assert.match(html, /rel="canonical" href="https:\/\/kutno\.ru\/recipes"/);
+  assert.doesNotMatch(html, /canonical[^>]+utm_source/i);
+});
+
+test("несуществующий рецепт возвращает настоящий 404 и noindex без ложного canonical", async () => {
   const response = await servePublicAppPage(new Request("https://kutno.ru/recipe/takogo-retsepta-net"), env);
   assert.equal(response.status, 404);
   assert.match(response.headers.get("x-robots-tag") || "", /noindex/);
-  assert.match(await response.text(), /Рецепт не найден/);
+  const html = await response.text();
+  assert.match(html, /Рецепт не найден/);
+  assert.doesNotMatch(html, /rel="canonical"/i);
 });
 
-test("sitemap содержит каталог и все страницы рецептов", async () => {
+test("sitemap содержит только уникальные конечные canonical URL", async () => {
   const entries = seoRecipeEntries(2);
+  const urls = canonicalSitemapUrls(entries);
+  assert.equal(urls.length, entries.length + 2);
+  assert.equal(new Set(urls).size, urls.length);
+  for (const value of urls) {
+    const url = new URL(value);
+    assert.equal(url.protocol, "https:");
+    assert.equal(url.hostname, "kutno.ru");
+    assert.equal(url.search, "");
+    assert.equal(url.hash, "");
+    if (url.pathname !== "/") assert.equal(url.pathname.endsWith("/"), false);
+  }
+
   const response = serveFreshSitemap(new Request("https://kutno.ru/sitemap.xml"));
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") || "", /application\/xml/);
