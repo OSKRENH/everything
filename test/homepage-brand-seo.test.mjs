@@ -11,6 +11,10 @@ test("главная явно сообщает поисковикам бренд
   assert.match(index, /"name": "Кутно"/);
   assert.match(index, /"alternateName": \["Кутно рецепты", "kutno\.ru"\]/);
   assert.match(index, /"url": "https:\/\/kutno\.ru\/"/);
+  assert.match(index, /property="og:image" content="https:\/\/kutno\.ru\/app-icon-512\.png"/);
+  assert.match(index, /name="twitter:image" content="https:\/\/kutno\.ru\/app-icon-512\.png"/);
+  assert.match(index, /"@type": "WebApplication"/);
+  assert.match(index, /"price": "0"/);
 });
 
 test("главная содержит прямую индексируемую ссылку на базу рецептов", () => {

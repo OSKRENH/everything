@@ -5,7 +5,7 @@ import { recipeImageSet, recipeImageUrls } from "./recipe-images.js";
 const SITE_ORIGIN = "https://kutno.ru";
 const HTML_CACHE = "public, max-age=300, s-maxage=1800, stale-while-revalidate=600";
 const CONTENT_PUBLISHED = "2026-08-10";
-const CONTENT_MODIFIED = "2026-08-17";
+const CONTENT_MODIFIED = "2026-09-01";
 
 function escapeHtml(value = "") {
   return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
@@ -89,17 +89,41 @@ function recipeStructuredData(entry) {
 }
 
 function catalogStructuredData(entries) {
+  const url = canonical("/recipes");
+  const description = `Полная база Кутно: ${entries.length} рецептов с ингредиентами, шагами, временем приготовления и КБЖУ.`;
   return {
     "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: "База рецептов Кутно",
-    numberOfItems: entries.length,
-    itemListElement: entries.map((entry, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      name: cleanText(entry.recipe.title, 180),
-      url: canonical(entry.pathname),
-    })),
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        "@id": `${url}#page`,
+        name: "База рецептов Кутно",
+        description,
+        url,
+        inLanguage: "ru",
+        isPartOf: { "@id": `${SITE_ORIGIN}/#website` },
+        mainEntity: { "@id": `${url}#recipes` },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Кутно", item: `${SITE_ORIGIN}/` },
+          { "@type": "ListItem", position: 2, name: "База рецептов", item: url },
+        ],
+      },
+      {
+        "@type": "ItemList",
+        "@id": `${url}#recipes`,
+        name: "База рецептов Кутно",
+        numberOfItems: entries.length,
+        itemListElement: entries.map((entry, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          name: cleanText(entry.recipe.title, 180),
+          url: canonical(entry.pathname),
+        })),
+      },
+    ],
   };
 }
 
@@ -220,17 +244,25 @@ export async function servePublicAppPage(request, env) {
   html = replaceHeadValue(html, /<meta\s+property="og:title"\s+content="[^"]*"\s*\/?\s*>/i, `<meta property="og:title" content="${escapeHtml(title)}" />`);
   html = replaceHeadValue(html, /<meta\s+property="og:description"\s+content="[^"]*"\s*\/?\s*>/i, `<meta property="og:description" content="${escapeHtml(description)}" />`);
   html = replaceHeadValue(html, /<meta\s+property="og:url"\s+content="[^"]*"\s*\/?\s*>/i, `<meta property="og:url" content="${escapeHtml(canonicalUrl)}" />`);
-  html = stripHeadMeta(html, /\s*<meta\s+property="og:image(?::(?:width|height))?"[^>]*>\s*/gi);
+  html = stripHeadMeta(html, /\s*<meta\s+property="og:image(?::(?:width|height|alt))?"[^>]*>\s*/gi);
   html = stripHeadMeta(html, /\s*<meta\s+name="twitter:image"[^>]*>\s*/gi);
   html = replaceHeadValue(html, /<meta\s+name="twitter:card"\s+content="[^"]*"\s*\/?\s*>/i, `<meta name="twitter:card" content="${photo ? "summary_large_image" : "summary"}" />`);
+  html = replaceHeadValue(html, /<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?\s*>/i, `<meta name="twitter:title" content="${escapeHtml(title)}" />`);
+  html = replaceHeadValue(html, /<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?\s*>/i, `<meta name="twitter:description" content="${escapeHtml(description)}" />`);
   html = replaceHeadValue(html, /<meta\s+name="robots"\s+content="[^"]*"\s*\/?\s*>/i, `<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large" />`);
-  const imageMeta = photo ? [
-    `<meta property="og:image" content="${escapeHtml(photo.social)}" />`,
-    `<meta property="og:image:width" content="1200" />`,
-    `<meta property="og:image:height" content="675" />`,
-    `<meta name="twitter:image" content="${escapeHtml(photo.social)}" />`,
-  ].join("\n") : "";
-  html = html.replace("</head>", `${imageMeta ? `${imageMeta}\n` : ""}<script type="application/ld+json">${jsonScript(structuredData)}</script>\n<script>window.__KUTNO_PUBLIC_ROUTE__=${jsonScript(clientRoute)};</script>\n</head>`);
+  const socialImage = photo?.social || `${SITE_ORIGIN}/app-icon-512.png`;
+  const imageMeta = [
+    `<meta property="og:image" content="${escapeHtml(socialImage)}" />`,
+    `<meta property="og:image:width" content="${photo ? "1200" : "512"}" />`,
+    `<meta property="og:image:height" content="${photo ? "675" : "512"}" />`,
+    `<meta property="og:image:alt" content="${escapeHtml(title)}" />`,
+    `<meta name="twitter:image" content="${escapeHtml(socialImage)}" />`,
+    `<meta name="twitter:image:alt" content="${escapeHtml(title)}" />`,
+  ].join("\n");
+  const articleMeta = isRecipe
+    ? `<meta property="article:published_time" content="${CONTENT_PUBLISHED}" />\n<meta property="article:modified_time" content="${CONTENT_MODIFIED}" />\n`
+    : "";
+  html = html.replace("</head>", `${imageMeta}\n${articleMeta}<script type="application/ld+json">${jsonScript(structuredData)}</script>\n<script>window.__KUTNO_PUBLIC_ROUTE__=${jsonScript(clientRoute)};</script>\n</head>`);
   html = html.replace(/<noscript>[\s\S]*?<\/noscript>/i, routeNoscript(route, route.entries));
 
   if (request.method === "HEAD") html = "";
@@ -241,6 +273,6 @@ export function serveCrawlerRules(request) {
   const url = new URL(request.url);
   if (url.pathname !== "/robots.txt" || (request.method !== "GET" && request.method !== "HEAD")) return null;
   const groups = ["OAI-SearchBot", "GPTBot", "ChatGPT-User", "OAI-AdsBot", "*"];
-  const body = `${groups.map((agent) => `User-agent: ${agent}\nAllow: /\nDisallow: /api/\nDisallow: /lite`).join("\n\n")}\n\nSitemap: ${SITE_ORIGIN}/sitemap.xml\n`;
+  const body = `${groups.map((agent) => `User-agent: ${agent}\nAllow: /\nDisallow: /api/auth/\nDisallow: /api/telemetry\nDisallow: /lite`).join("\n\n")}\n\nSitemap: ${SITE_ORIGIN}/sitemap.xml\n`;
   return new Response(request.method === "HEAD" ? "" : body, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "cdn-cache-control": "no-store", "x-content-type-options": "nosniff" } });
 }

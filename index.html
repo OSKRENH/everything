@@ -18,17 +18,46 @@
     <meta property="og:title" content="Кутно — рецепты из продуктов, которые есть дома" />
     <meta property="og:description" content="Подберите, что приготовить из ваших продуктов. Кутно показывает подходящие рецепты и помогает обойтись без лишних покупок." />
     <meta property="og:url" content="https://kutno.ru/" />
+    <meta property="og:image" content="https://kutno.ru/app-icon-512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="Кутно — рецепты из продуктов дома" />
     <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Кутно — рецепты из продуктов, которые есть дома" />
+    <meta name="twitter:description" content="Подберите, что приготовить из ваших продуктов, без лишних покупок." />
+    <meta name="twitter:image" content="https://kutno.ru/app-icon-512.png" />
+    <meta name="twitter:image:alt" content="Кутно — рецепты из продуктов дома" />
     <title>Кутно — рецепты из продуктов, которые есть дома</title>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "Кутно",
-        "alternateName": ["Кутно рецепты", "kutno.ru"],
-        "url": "https://kutno.ru/",
-        "description": "Кутно подбирает рецепты по продуктам, которые уже есть дома.",
-        "inLanguage": "ru"
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://kutno.ru/#website",
+            "name": "Кутно",
+            "alternateName": ["Кутно рецепты", "kutno.ru"],
+            "url": "https://kutno.ru/",
+            "description": "Кутно подбирает рецепты по продуктам, которые уже есть дома.",
+            "inLanguage": "ru"
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://kutno.ru/#app",
+            "name": "Кутно",
+            "url": "https://kutno.ru/",
+            "applicationCategory": "LifestyleApplication",
+            "operatingSystem": "Any",
+            "inLanguage": "ru",
+            "description": "Бесплатный сервис подбора рецептов по продуктам, которые уже есть дома.",
+            "featureList": ["Подбор рецептов по продуктам", "Собственная кухня", "Избранные рецепты", "КБЖУ"],
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "RUB"
+            }
+          }
+        ]
       }
     </script>
     <style>

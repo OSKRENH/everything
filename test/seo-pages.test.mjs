@@ -21,13 +21,15 @@ test("у каждого рецепта есть уникальная индек�
   assert.ok(entries.every((entry) => entry.pathname === `/recipe/${entry.slug}`));
 });
 
-test("страница всех рецептов отдаётся рабочим app shell и ItemList", async () => {
+test("страница всех рецептов отдаётся рабочим app shell и полную разметку коллекции", async () => {
   const response = await servePublicAppPage(new Request("https://kutno.ru/recipes"), env);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("link"), '<https://kutno.ru/recipes>; rel="canonical"');
   const html = await response.text();
   assert.match(html, /<h1[^>]*data-seo-title[^>]*>Все рецепты<\/h1>/);
   assert.match(html, /rel="canonical" href="https:\/\/kutno\.ru\/recipes"/);
+  assert.match(html, /"@type":"CollectionPage"/);
+  assert.match(html, /"@type":"BreadcrumbList"/);
   assert.match(html, /"@type":"ItemList"/);
   assert.match(html, /href="\/recipe\//);
   assert.equal((html.match(/<meta\s+name="robots"/gi) || []).length, 1);
@@ -44,7 +46,7 @@ test("страница рецепта содержит canonical, Recipe JSON-LD
   assert.match(html, /"@type":"Recipe"/);
   assert.match(html, /"recipeIngredient":\[/);
   assert.match(html, /"recipeInstructions":\[/);
-  assert.match(html, /"dateModified":"2026-08-17"/);
+  assert.match(html, /"dateModified":"2026-09-01"/);
   assert.match(html, /<h2>Ингредиенты<\/h2>/);
   assert.match(html, /<h2>Как готовить<\/h2>/);
   assert.equal((html.match(/<meta\s+name="robots"/gi) || []).length, 1);
@@ -87,7 +89,11 @@ test("sitemap содержит только уникальные конечны�
   assert.match(response.headers.get("content-type") || "", /application\/xml/);
   const xml = await response.text();
   assert.match(xml, /<loc>https:\/\/kutno\.ru\/recipes<\/loc>/);
-  assert.match(xml, /<lastmod>2026-08-17<\/lastmod>/);
+  assert.match(xml, /xmlns:image="http:\/\/www\.google\.com\/schemas\/sitemap-image\/1\.1"/);
+  assert.match(xml, /<lastmod>2026-09-01<\/lastmod>/);
+  assert.equal((xml.match(/<image:image>/g) || []).length, entries.length);
+  assert.match(xml, /<image:loc>https:\/\/kutno\.ru\/img\/[a-z0-9-]+-4x3\.webp<\/image:loc>/);
+  assert.match(xml, /<image:title>[^<]+<\/image:title>/);
   for (const entry of entries) assert.ok(xml.includes(`<loc>https://kutno.ru${entry.pathname}</loc>`));
 });
 
@@ -96,7 +102,9 @@ test("robots открывает публичные страницы и указ�
   assert.equal(response.status, 200);
   const text = await response.text();
   assert.match(text, /Allow: \//);
-  assert.match(text, /Disallow: \/api\//);
+  assert.doesNotMatch(text, /^Disallow: \/api\/$/m);
+  assert.match(text, /Disallow: \/api\/auth\//);
+  assert.match(text, /Disallow: \/api\/telemetry/);
   assert.match(text, /Sitemap: https:\/\/kutno\.ru\/sitemap\.xml/);
 });
 

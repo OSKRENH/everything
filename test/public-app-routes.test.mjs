@@ -49,8 +49,10 @@ test("уникальный URL рецепта грузит shell, видимый
   assert.match(html, /"recipeIngredient":\[/);
   assert.match(html, /"recipeInstructions":\[/);
   assert.match(html, /"datePublished":"2026-08-10"/);
-  assert.match(html, /"dateModified":"2026-08-17"/);
+  assert.match(html, /"dateModified":"2026-09-01"/);
   assert.match(html, /<meta property="og:type" content="article" \/>/);
+  assert.match(html, /<meta property="article:published_time" content="2026-08-10" \/>/);
+  assert.match(html, /<meta property="article:modified_time" content="2026-09-01" \/>/);
   assert.match(html, new RegExp(`<h1[^>]*data-seo-title[^>]*>${entry.recipe.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h1>`));
   assert.match(html, /data-seo-content[^>]*>[\s\S]*<h2>Ингредиенты<\/h2>[\s\S]*<h2>Как готовить<\/h2>/);
 });
@@ -63,6 +65,10 @@ test("рецепт с иллюстрацией получает 16:9 OG/Twitter 
   const html = await response.text();
   assert.match(html, /property="og:image" content="https:\/\/kutno\.ru\/img\/syrniki-16x9\.webp"/);
   assert.match(html, /name="twitter:image" content="https:\/\/kutno\.ru\/img\/syrniki-16x9\.webp"/);
+  assert.match(html, /property="og:image:alt" content="Сырники — рецепт в Кутно"/);
+  assert.match(html, /name="twitter:title" content="Сырники — рецепт в Кутно"/);
+  assert.match(html, /name="twitter:description" content="[^\"]+"/);
+  assert.match(html, /name="twitter:image:alt" content="Сырники — рецепт в Кутно"/);
   assert.match(html, /"image":\["https:\/\/kutno\.ru\/img\/syrniki-1x1\.webp","https:\/\/kutno\.ru\/img\/syrniki-4x3\.webp","https:\/\/kutno\.ru\/img\/syrniki-16x9\.webp"\]/);
   assert.match(html, /name="twitter:card" content="summary_large_image"/);
 });
@@ -119,7 +125,9 @@ test("robots явно разрешает OpenAI и не кэшируется н�
   assert.equal(response.headers.get("cdn-cache-control"), "no-store");
   const body = await response.text();
   for (const agent of ["OAI-SearchBot", "GPTBot", "ChatGPT-User", "OAI-AdsBot", "*"]) assert.match(body, new RegExp(`User-agent: ${agent.replace("*", "\\*")}\\nAllow: /`));
-  assert.match(body, /Disallow: \/api\//);
+  assert.doesNotMatch(body, /^Disallow: \/api\/$/m);
+  assert.match(body, /Disallow: \/api\/auth\//);
+  assert.match(body, /Disallow: \/api\/telemetry/);
   assert.match(body, /Sitemap: https:\/\/kutno\.ru\/sitemap\.xml/);
 });
 
