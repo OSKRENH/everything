@@ -113,26 +113,26 @@ jobs:
             echo "Live image sitemap is incomplete: expected $expected_images images, got $actual_images"
             exit 1
           fi
-          if ! rg -q 'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"' /tmp/kutno-sitemap.xml; then
+          if ! grep -q 'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"' /tmp/kutno-sitemap.xml; then
             echo "Live sitemap is missing the image namespace"
             exit 1
           fi
           echo "Live image sitemap is complete: $actual_images images"
 
           curl --fail --silent --show-error --max-time 20 https://kutno.ru/robots.txt -o /tmp/kutno-robots.txt
-          if rg -q '^Disallow: /api/$' /tmp/kutno-robots.txt; then
+          if grep -q '^Disallow: /api/$' /tmp/kutno-robots.txt; then
             echo "robots.txt still blocks all API URLs, so Google cannot observe X-Robots-Tag"
             exit 1
           fi
           for rule in 'Disallow: /api/auth/' 'Disallow: /api/telemetry' 'Sitemap: https://kutno.ru/sitemap.xml'; do
-            if ! rg -Fq "$rule" /tmp/kutno-robots.txt; then
+            if ! grep -Fq "$rule" /tmp/kutno-robots.txt; then
               echo "robots.txt is missing required rule: $rule"
               exit 1
             fi
           done
 
           curl --fail --silent --show-error --max-time 20 --dump-header /tmp/kutno-api-headers.txt 'https://kutno.ru/api/catalog?limit=1' -o /tmp/kutno-api-catalog.json
-          if ! tr -d '\r' < /tmp/kutno-api-headers.txt | rg -qi '^x-robots-tag: noindex, nofollow$'; then
+          if ! tr -d '\r' < /tmp/kutno-api-headers.txt | grep -qi '^x-robots-tag: noindex, nofollow$'; then
             echo "Live API response is missing X-Robots-Tag: noindex, nofollow"
             exit 1
           fi
