@@ -101,6 +101,7 @@ test("golden routes фиксируют ключевые заголовки SEO �
   assert.match(recipe.headers.get("cache-control") || "", /stale-while-revalidate=600/);
   assert.equal(recipe.headers.get("x-kutno-public-route"), "recipe");
   assert.ok(recipe.headers.get("x-request-id"));
+  assert.equal(recipe.headers.get("x-robots-tag"), null);
 
   const sitemap = await worker.fetch(req("GET", "/sitemap.xml"), env, ctx);
   assert.equal(sitemap.headers.get("cache-control"), "no-store");
@@ -109,4 +110,5 @@ test("golden routes фиксируют ключевые заголовки SEO �
   const api = await worker.fetch(req("GET", "/api/catalog"), env, ctx);
   assert.ok(api.headers.get("x-request-id"));
   assert.match(api.headers.get("server-timing") || "", /catalog/);
+  assert.equal(api.headers.get("x-robots-tag"), "noindex, nofollow");
 });
